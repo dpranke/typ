@@ -1,0 +1,10 @@
+#!/bin/bash
+if readlink $0 > /dev/null
+then
+    SCRIPTDIR=$(dirname $(readlink $0))
+else
+    pushd $(dirname $0) > /dev/null
+    SCRIPTDIR=$(pwd -P)
+    popd > /dev/null
+fi
+python -B $SCRIPTDIR/pytest.py $@
