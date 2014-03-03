@@ -7,4 +7,4 @@ else
     SCRIPTDIR=$(pwd -P)
     popd > /dev/null
 fi
-python -B $SCRIPTDIR/pytest.py $@
+python -B "$SCRIPTDIR/pytest.py" $@
