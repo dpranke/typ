@@ -21,6 +21,8 @@ def main(argv=None):
     ap.add_argument('-n', action='store_true', dest='dry_run',
                     help=('dry run (don\'t run commands but act like they '
                           'succeeded)'))
+    ap.add_argument('-q', action='store_true', dest='quiet', default=False,
+                    help='be quiet (only print errors)')
     ap.add_argument('-v', action='count', dest='verbose', default=0)
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
@@ -48,21 +50,36 @@ def main(argv=None):
         sys.stdout.write(str(msg) + end)
         sys.stdout.flush()
 
-    printer = Printer(print_out, sys.stdout.isatty() and not args.verbose)
+    should_overwrite = sys.stdout.isatty() and not args.verbose
+    printer = Printer(print_out, should_overwrite)
 
     stats.total = len(test_names)
+    printed_something = False
+    returncode = 0
     for name in test_names:
         stats.started += 1
-        printer.update(stats.format() + name, elide=(args.verbose == 0))
+        if not args.quiet and should_overwrite:
+            printer.update(stats.format() + name, elide=(not args.verbose))
+
         res, out, err = run_test(name)
+
         stats.finished += 1
-        printer.update(stats.format() + name + ' passed' if res == 0 else ' failed:',
-                       elide=(args.verbose == 0 and res == 0))
+        if res:
+            returncode = 1
+            suffix = ' failed' + (':' if (out or err) else '')
+            printer.update(stats.format() + name + suffix, elide=False)
+        elif not args.quiet or out or err:
+            suffix = ' passed' + (':' if (out or err) else '')
+            printer.update(stats.format() + name + suffix,
+                           elide=(not out and not err))
         for l in out.splitlines():
             print '  %s' % l
         for l in err.splitlines():
             print >> sys.stderr, '  %s' % l
-    print ''
+
+    if not args.quiet or returncode:
+        print ''
+    return returncode
 
 def run_test(name):
     loader = unittest.loader.TestLoader()
