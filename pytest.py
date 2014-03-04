@@ -1,6 +1,7 @@
 import argparse
 import multiprocessing
 import os
+import subprocess
 import sys
 import time
 import unittest
@@ -14,6 +15,8 @@ from pool import Pool
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.usage = '%(prog)s [options] tests...'
+    ap.add_argument('-c', '--coverage', action='store_true',
+                    help='produce coverage information')
     ap.add_argument('-j', metavar='N', type=int, dest='jobs',
                     default=multiprocessing.cpu_count(),
                     help=('run N jobs in parallel [default=%(default)s, '
@@ -28,6 +31,9 @@ def main(argv=None):
                     help=argparse.SUPPRESS)
 
     args = ap.parse_args(argv)
+
+    if args.coverage:
+        return run_under_coverage(argv)
 
     started_time = time.time()
 
@@ -80,6 +86,19 @@ def main(argv=None):
     if not args.quiet or returncode:
         print ''
     return returncode
+
+
+def run_under_coverage(argv):
+    argv = argv or sys.argv
+    if '-c' in argv:
+        argv.remove('-c')
+    if '--coverage' in argv:
+        argv.remove('--coverage')
+    subprocess.call(['coverage', 'erase'])
+    res = subprocess.call(['coverage', 'run', __file__] + argv[1:])
+    subprocess.call(['coverage', 'report', '--omit=*/pytest/*'])
+    return res
+
 
 def run_test(name):
     loader = unittest.loader.TestLoader()
