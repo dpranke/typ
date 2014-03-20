@@ -10,7 +10,7 @@ import StringIO
 
 from pytest_stats import Stats
 from pytest_printer import Printer
-from pytest_pool import Pool
+
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
@@ -62,7 +62,6 @@ def main(argv=None):
     printer = Printer(print_out, should_overwrite)
 
     stats.total = len(test_names)
-    printed_something = False
     returncode = 0
     for name in test_names:
         stats.started += 1
@@ -129,6 +128,7 @@ class PassThrough(StringIO.StringIO):
             self.stream.flush(*args, **kwargs)
         StringIO.StringIO.flush(self, *args, **kwargs)
 
+
 class TestResult(unittest.TestResult):
     # unittests's TestResult has built-in support for buffering
     # stdout and stderr, but unfortunately it interacts awkwardly w/
@@ -141,6 +141,10 @@ class TestResult(unittest.TestResult):
                                          verbosity=verbosity)
         self.out = ''
         self.err = ''
+        self.__orig_out = None
+        self.__orig_err = None
+
+    # "Invalid name" pylint: disable=C0103
 
     def startTest(self, test):
         self.__orig_out = sys.stdout

@@ -11,8 +11,8 @@ class Pool(object):
         self.workers = []
         for worker_num in range(num_processes):
             w = multiprocessing.Process(target=_loop,
-                                        args=(worker_num, callback, self.requests,
-                                              self.responses))
+                                        args=(worker_num, callback,
+                                              self.requests, self.responses))
             w.start()
             self.workers.append(w)
 
@@ -35,7 +35,7 @@ class Pool(object):
             w.join()
 
 
-def _loop(worker_num, callback, requests, responses):
+def _loop(_worker_num, callback, requests, responses):
     try:
         while True:
             args = requests.get(block=True)
