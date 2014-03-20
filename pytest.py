@@ -17,7 +17,8 @@ def main(argv=None):
     started_time = time.time()
 
     args = parse_args(argv)
-
+    if args.timing and args.verbose == 0:
+        args.verbose = 1
     if args.coverage:
         return run_under_coverage(argv)
 
@@ -32,7 +33,7 @@ def main(argv=None):
 def parse_args(argv):
     ap = argparse.ArgumentParser()
     ap.usage = '%(prog)s [options] tests...'
-    ap.add_argument('-c', action='store_true',
+    ap.add_argument('-c', dest='coverage', action='store_true',
                     help='produce coverage information')
     ap.add_argument('-j', metavar='N', type=int, dest='jobs',
                     default=multiprocessing.cpu_count(),
@@ -46,10 +47,12 @@ def parse_args(argv):
     ap.add_argument('-q', action='store_true', dest='quiet', default=False,
                     help='be quiet (only print errors)')
     ap.add_argument('-s', dest='status_format',
-                    default=os.getenv('NINJA_STATUS', '[%s/%t] '),
+                    default=os.getenv('NINJA_STATUS', '[%f/%t] '),
                     help=('format for status updates '
                           '(defaults to NINJA_STATUS env var if set, '
-                          '"[%%s/%%t] " otherwise)'))
+                          '"[%%f/%%t] " otherwise)'))
+    ap.add_argument('-t', dest='timing', action='store_true',
+                    help="print time per test (implies -v)")
     ap.add_argument('-v', action='count', dest='verbose', default=0,
                     help="verbose logging")
     ap.add_argument('tests', nargs='*', default=[],
@@ -86,7 +89,7 @@ def find_tests(args):
 
 
 def run_tests(args, printer, stats, test_names):
-    returncode = 0
+    num_failures = 0
     running_jobs = set()
     stats.total = len(test_names)
 
@@ -100,33 +103,40 @@ def run_tests(args, printer, stats, test_names):
                 running_jobs.add(test_name)
                 print_test_started(printer, args, stats, test_name)
 
-            test_name, res, out, err = pool.get()
+            test_name, res, out, err, took = pool.get()
             running_jobs.remove(test_name)
             if res:
-                returncode = 1
+                num_failures += 1
             stats.finished += 1
             print_test_finished(printer, args, stats, test_name,
-                                res, out, err)
+                                res, out, err, took)
     finally:
         pool.close()
 
-    if not args.quiet or returncode:
+    if not args.quiet:
+        printer.update('%d tests run in %.4fs, %d failure%s.' %
+                       (stats.finished,
+                        time.time() - stats.started_time,
+                        num_failures,
+                        '' if num_failures == 1 else 's'))
         print_()
-    return returncode
+    return 1 if num_failures > 0 else 0
 
 
 def run_test(args, test_name):
     if args.dry_run:
-        return test_name, 0, '', ''
+        return test_name, 0, '', '', 0
     loader = unittest.loader.TestLoader()
     result = TestResult(pass_through=args.pass_through)
     suite = loader.loadTestsFromName(test_name)
+    start = time.time()
     suite.run(result)
+    took = time.time() - start
     if result.failures:
-        return 1, result.out, result.err + result.failures[0][1]
+        return 1, result.out, result.err + result.failures[0][1], took
     if result.errors:
-        return 1, result.out, result.err + result.errors[0][1]
-    return test_name, 0, result.out, result.err
+        return 1, result.out, result.err + result.errors[0][1], took
+    return test_name, 0, result.out, result.err, took
 
 
 def print_test_started(printer, args, stats, test_name):
@@ -134,14 +144,15 @@ def print_test_started(printer, args, stats, test_name):
         printer.update(stats.format() + test_name, elide=(not args.verbose))
 
 
-def print_test_finished(printer, args, stats, test_name, res, out, err):
+def print_test_finished(printer, args, stats, test_name, res, out, err, took):
+    suffix = '%s%s%s' % (' failed' if res else ' passed',
+                         (' %.4fs' % took) if args.timing else '',
+                         (':\n' if (out or err) else ''))
     if res:
-        suffix = ' failed' + (':\n' if (out or err) else '')
         printer.update(stats.format() + test_name + suffix, elide=False)
     elif not args.quiet or out or err:
-        suffix = ' passed' + (':' if (out or err) else '')
         printer.update(stats.format() + test_name + suffix,
-                       elide=(not out and not err))
+                       elide=(not out and not err and not args.verbose))
     for l in out.splitlines():
         print_('  %s' % l)
     for l in err.splitlines():
