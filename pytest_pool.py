@@ -35,12 +35,10 @@ class ProcessPool(object):
             self.requests.put((False, None))
         self.requests.close()
 
-    def terminate(self):
         for w in self.workers:
             w.terminate()
         self.responses.close()
 
-    def join(self):
         for w in self.workers:
             w.join()
 
@@ -58,12 +56,6 @@ class AsyncPool(object):
         return self.callback(self.usrp, self.msgs.pop(0))
 
     def close(self):
-        pass
-
-    def terminate(self):
-        pass
-
-    def join(self):
         pass
 
 
