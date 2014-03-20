@@ -8,9 +8,9 @@ import unittest
 import StringIO
 
 
-from stats import Stats
-from printer import Printer
-from pool import Pool
+from pytest_stats import Stats
+from pytest_printer import Printer
+from pytest_pool import Pool
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
