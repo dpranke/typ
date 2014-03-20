@@ -2,27 +2,37 @@ import multiprocessing
 import Queue
 
 
-class Pool(object):
-    def __init__(self, num_processes, callback):
-        self.num_processes = num_processes
-        self.callback = callback
+Empty = Queue.Empty
+
+
+def make_pool(jobs, callback, usrp):
+    if jobs > 1:
+        return ProcessPool(jobs, callback, usrp)
+    return AsyncPool(callback, usrp)
+
+
+class ProcessPool(object):
+    def __init__(self, jobs, callback, usrp):
+        self.jobs = jobs
         self.requests = multiprocessing.Queue()
         self.responses = multiprocessing.Queue()
         self.workers = []
-        for worker_num in range(num_processes):
+        for worker_num in range(jobs):
             w = multiprocessing.Process(target=_loop,
-                                        args=(worker_num, callback,
+                                        args=(worker_num, callback, usrp,
                                               self.requests, self.responses))
             w.start()
             self.workers.append(w)
 
     def send(self, msg):
-        self.requests.put(msg)
+        self.requests.put((True, msg))
 
     def get(self, block=True, timeout=None):
         return self.responses.get(block, timeout)
 
     def close(self):
+        for w in self.workers:
+            self.requests.put((False, None))
         self.requests.close()
 
     def terminate(self):
@@ -35,11 +45,35 @@ class Pool(object):
             w.join()
 
 
-def _loop(_worker_num, callback, requests, responses):
+class AsyncPool(object):
+    def __init__(self, callback, usrp):
+        self.callback = callback
+        self.usrp = usrp
+        self.msgs = []
+
+    def send(self, msg):
+        self.msgs.append(msg)
+
+    def get(self, block=True, timeout=None):
+        return self.callback(self.usrp, self.msgs.pop(0))
+
+    def close(self):
+        pass
+
+    def terminate(self):
+        pass
+
+    def join(self):
+        pass
+
+
+def _loop(_worker_num, callback, usrp, requests, responses):
     try:
-        while True:
-            args = requests.get(block=True)
-            resp = callback(args)
-            responses.put(resp)
+        keep_going = True
+        while keep_going:
+            keep_going, args = requests.get(block=True)
+            if keep_going:
+                resp = callback(usrp, args)
+                responses.put(resp)
     except Queue.Empty:
         pass

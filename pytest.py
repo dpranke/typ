@@ -8,6 +8,7 @@ import unittest
 import StringIO
 
 
+from pytest_pool import make_pool
 from pytest_stats import Stats
 from pytest_printer import Printer
 
@@ -63,26 +64,45 @@ def main(argv=None):
 
     stats.total = len(test_names)
     returncode = 0
-    for name in test_names:
-        stats.started += 1
-        if not args.quiet and should_overwrite:
-            printer.update(stats.format() + name, elide=(not args.verbose))
+    running_jobs = set()
+    pool = make_pool(args.jobs, run_test, args)
+    pool_closed = False
+    try:
+        while test_names or running_jobs:
+            while test_names and len(running_jobs) < args.jobs:
+                test_name = test_names.pop(0)
+                stats.started += 1
+                if not args.quiet and should_overwrite:
+                    printer.update(stats.format() + test_name,
+                                   elide=(not args.verbose))
 
-        res, out, err = run_test(args, name)
+                pool.send(test_name)
+                running_jobs.add(test_name)
 
-        stats.finished += 1
-        if res:
-            returncode = 1
-            suffix = ' failed' + (':\n' if (out or err) else '')
-            printer.update(stats.format() + name + suffix, elide=False)
-        elif not args.quiet or out or err:
-            suffix = ' passed' + (':' if (out or err) else '')
-            printer.update(stats.format() + name + suffix,
-                           elide=(not out and not err))
-        for l in out.splitlines():
-            print '  %s' % l
-        for l in err.splitlines():
-            print >> sys.stderr, '  %s' % l
+            if not test_names and not pool_closed:
+                pool.close()
+                pool_closed = True
+
+            test_name, res, out, err = pool.get(block=True)
+            running_jobs.remove(test_name)
+
+            stats.finished += 1
+            if res:
+                returncode = 1
+                suffix = ' failed' + (':\n' if (out or err) else '')
+                printer.update(stats.format() + test_name + suffix,
+                               elide=False)
+            elif not args.quiet or out or err:
+                suffix = ' passed' + (':' if (out or err) else '')
+                printer.update(stats.format() + test_name + suffix,
+                               elide=(not out and not err))
+            for l in out.splitlines():
+                print '  %s' % l
+            for l in err.splitlines():
+                print >> sys.stderr, '  %s' % l
+    finally:
+        pool.terminate()
+        pool.join()
 
     if not args.quiet or returncode:
         print ''
@@ -101,16 +121,16 @@ def run_under_coverage(argv):
     return res
 
 
-def run_test(args, name):
+def run_test(args, test_name):
     loader = unittest.loader.TestLoader()
     result = TestResult(pass_through=args.pass_through)
-    suite = loader.loadTestsFromName(name)
+    suite = loader.loadTestsFromName(test_name)
     suite.run(result)
     if result.failures:
         return 1, result.out, result.err + result.failures[0][1]
     if result.errors:
         return 1, result.out, result.err + result.errors[0][1]
-    return 0, result.out, result.err
+    return test_name, 0, result.out, result.err
 
 
 class PassThrough(StringIO.StringIO):
@@ -159,4 +179,8 @@ class TestResult(unittest.TestResult):
         sys.stderr = self.__orig_err
 
 if __name__ == '__main__':
-    main()
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print >> sys.stderr, "Interrupted, exiting"
+        sys.exit(130)
