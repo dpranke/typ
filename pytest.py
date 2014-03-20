@@ -14,6 +14,23 @@ from pytest_printer import Printer
 
 
 def main(argv=None):
+    started_time = time.time()
+
+    args = parse_args(argv)
+
+    if args.coverage:
+        return run_under_coverage(argv)
+
+    stats = Stats(os.getenv('NINJA_STATUS', '[%s/%t] '), time.time,
+                  started_time)
+    should_overwrite = sys.stdout.isatty() and not args.verbose
+    printer = Printer(print_, should_overwrite)
+
+    test_names = find_tests(args)
+    return run_tests(args, printer, stats, test_names)
+
+
+def parse_args(argv):
     ap = argparse.ArgumentParser()
     ap.usage = '%(prog)s [options] tests...'
     ap.add_argument('-c', '--coverage', action='store_true',
@@ -32,14 +49,22 @@ def main(argv=None):
     ap.add_argument('-v', action='count', dest='verbose', default=0)
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
+    return ap.parse_args(argv)
 
-    args = ap.parse_args(argv)
 
-    if args.coverage:
-        return run_under_coverage(argv)
+def run_under_coverage(argv):
+    argv = argv or sys.argv
+    if '-c' in argv:
+        argv.remove('-c')
+    if '--coverage' in argv:
+        argv.remove('--coverage')
+    subprocess.call(['coverage', 'erase'])
+    res = subprocess.call(['coverage', 'run', __file__] + argv[1:])
+    subprocess.call(['coverage', 'report', '--omit=*/pytest/*'])
+    return res
 
-    started_time = time.time()
 
+def find_tests(args):
     loader = unittest.loader.TestLoader()
     test_names = []
     for test in args.tests:
@@ -51,28 +76,21 @@ def main(argv=None):
                 test_names.extend(test_case.id() for test_case in suite)
             else:
                 test_names.append(suite.id())
+    return test_names
 
-    stats = Stats(os.getenv('NINJA_STATUS', '[%s/%t] '), time.time,
-                  started_time)
 
-    def print_out(msg, end='\n'):
-        sys.stdout.write(str(msg) + end)
-        sys.stdout.flush()
-
-    should_overwrite = sys.stdout.isatty() and not args.verbose
-    printer = Printer(print_out, should_overwrite)
-
-    stats.total = len(test_names)
+def run_tests(args, printer, stats, test_names):
     returncode = 0
     running_jobs = set()
     pool = make_pool(args.jobs, run_test, args)
     pool_closed = False
+    stats.total = len(test_names)
     try:
         while test_names or running_jobs:
             while test_names and len(running_jobs) < args.jobs:
                 test_name = test_names.pop(0)
                 stats.started += 1
-                if not args.quiet and should_overwrite:
+                if not args.quiet and printer.should_overwrite:
                     printer.update(stats.format() + test_name,
                                    elide=(not args.verbose))
 
@@ -97,28 +115,16 @@ def main(argv=None):
                 printer.update(stats.format() + test_name + suffix,
                                elide=(not out and not err))
             for l in out.splitlines():
-                print '  %s' % l
+                print_('  %s' % l)
             for l in err.splitlines():
-                print >> sys.stderr, '  %s' % l
+                print_('  %s' % l, stream=sys.stderr)
     finally:
         pool.terminate()
         pool.join()
 
     if not args.quiet or returncode:
-        print ''
+        print_('')
     return returncode
-
-
-def run_under_coverage(argv):
-    argv = argv or sys.argv
-    if '-c' in argv:
-        argv.remove('-c')
-    if '--coverage' in argv:
-        argv.remove('--coverage')
-    subprocess.call(['coverage', 'erase'])
-    res = subprocess.call(['coverage', 'run', __file__] + argv[1:])
-    subprocess.call(['coverage', 'report', '--omit=*/pytest/*'])
-    return res
 
 
 def run_test(args, test_name):
@@ -133,6 +139,11 @@ def run_test(args, test_name):
     if result.errors:
         return 1, result.out, result.err + result.errors[0][1]
     return test_name, 0, result.out, result.err
+
+
+def print_(msg, end='\n', stream=sys.stdout):
+    stream.write(str(msg) + end)
+    stream.write.flush()
 
 
 class PassThrough(StringIO.StringIO):
@@ -179,6 +190,7 @@ class TestResult(unittest.TestResult):
         self.err = sys.stderr.getvalue()
         sys.stdout = self.__orig_out
         sys.stderr = self.__orig_err
+
 
 if __name__ == '__main__':
     try:

@@ -2,7 +2,7 @@ import multiprocessing
 import Queue
 
 
-Empty = Queue.Empty
+Empty = Queue.Empty  # "Invalid name" # pylint: disable=C0103
 
 
 def make_pool(jobs, callback, usrp):
@@ -31,7 +31,7 @@ class ProcessPool(object):
         return self.responses.get(block, timeout)
 
     def close(self):
-        for w in self.workers:
+        for _ in self.workers:
             self.requests.put((False, None))
         self.requests.close()
 
@@ -54,7 +54,7 @@ class AsyncPool(object):
     def send(self, msg):
         self.msgs.append(msg)
 
-    def get(self, block=True, timeout=None):
+    def get(self, block=True, timeout=None): # unused pylint: disable=W0613
         return self.callback(self.usrp, self.msgs.pop(0))
 
     def close(self):
