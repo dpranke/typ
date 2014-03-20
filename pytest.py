@@ -21,8 +21,7 @@ def main(argv=None):
     if args.coverage:
         return run_under_coverage(argv)
 
-    stats = Stats(os.getenv('NINJA_STATUS', '[%s/%t] '), time.time,
-                  started_time)
+    stats = Stats(args.status_format, time.time, started_time)
     should_overwrite = sys.stdout.isatty() and not args.verbose
     printer = Printer(print_, should_overwrite)
 
@@ -33,7 +32,7 @@ def main(argv=None):
 def parse_args(argv):
     ap = argparse.ArgumentParser()
     ap.usage = '%(prog)s [options] tests...'
-    ap.add_argument('-c', '--coverage', action='store_true',
+    ap.add_argument('-c', action='store_true',
                     help='produce coverage information')
     ap.add_argument('-j', metavar='N', type=int, dest='jobs',
                     default=multiprocessing.cpu_count(),
@@ -42,13 +41,20 @@ def parse_args(argv):
     ap.add_argument('-n', action='store_true', dest='dry_run',
                     help=('dry run (don\'t run commands but act like they '
                           'succeeded)'))
-    ap.add_argument('-p', '--pass-through', action='store_true',
+    ap.add_argument('-p', dest='pass_through', action='store_true',
                     help='pass output through while running tests')
     ap.add_argument('-q', action='store_true', dest='quiet', default=False,
                     help='be quiet (only print errors)')
-    ap.add_argument('-v', action='count', dest='verbose', default=0)
+    ap.add_argument('-s', dest='status_format',
+                    default=os.getenv('NINJA_STATUS', '[%s/%t] '),
+                    help=('format for status updates '
+                          '(defaults to NINJA_STATUS env var if set, '
+                          '"[%%s/%%t] " otherwise)'))
+    ap.add_argument('-v', action='count', dest='verbose', default=0,
+                    help="verbose logging")
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
+
     return ap.parse_args(argv)
 
 
