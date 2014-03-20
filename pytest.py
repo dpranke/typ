@@ -25,6 +25,9 @@ def main(argv=None):
     printer = Printer(print_, should_overwrite)
 
     test_names = find_tests(args)
+    if args.list_only:
+        print_('\n'.join(sorted(test_names)))
+        return 0
     return run_tests(args, printer, stats, test_names)
 
 
@@ -33,11 +36,16 @@ def parse_args(argv):
     ap.usage = '%(prog)s [options] tests...'
     ap.add_argument('-c', dest='coverage', action='store_true',
                     help='produce coverage information')
+    ap.add_argument('-f', dest='file_list', action='store',
+                    help=('take the list of tests from the file '
+                          '(use "-" for stdin)'))
+    ap.add_argument('-l', dest='list_only', action='store_true',
+                    help='list all the test names found in the given tests')
     ap.add_argument('-j', metavar='N', type=int, dest='jobs',
                     default=multiprocessing.cpu_count(),
                     help=('run N jobs in parallel [default=%(default)s, '
                           'derived from CPUs available]'))
-    ap.add_argument('-n', action='store_true', dest='dry_run',
+    ap.add_argument('-n', dest='dry_run', action='store_true',
                     help=('dry run (don\'t run commands but act like they '
                           'succeeded)'))
     ap.add_argument('-p', dest='pass_through', action='store_true',
@@ -74,7 +82,17 @@ def run_under_coverage(argv):
 def find_tests(args):
     loader = unittest.loader.TestLoader()
     test_names = []
-    for test in args.tests:
+    if args.file_list:
+        if args.file_list == '-':
+            f = sys.stdin
+        else:
+            f = open(args.file_list)
+        tests = [line.strip() for line in f.readlines()]
+        f.close()
+    else:
+        tests = args.tests
+
+    for test in tests:
         if test.endswith('.py'):
             test = test.replace('/', '').replace('.py', '')
         module_suite = loader.loadTestsFromName(test)
