@@ -122,6 +122,8 @@ def run_under_coverage(argv):
 
 
 def run_test(args, test_name):
+    if args.dry_run:
+        return test_name, 0, '', ''
     loader = unittest.loader.TestLoader()
     result = TestResult(pass_through=args.pass_through)
     suite = loader.loadTestsFromName(test_name)
