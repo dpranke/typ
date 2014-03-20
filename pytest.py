@@ -17,8 +17,6 @@ def main(argv=None):
     started_time = time.time()
 
     args = parse_args(argv)
-    if args.timing and args.verbose == 0:
-        args.verbose = 1
     if args.coverage:
         return run_under_coverage(argv)
 
@@ -52,7 +50,7 @@ def parse_args(argv):
                           '(defaults to NINJA_STATUS env var if set, '
                           '"[%%f/%%t] " otherwise)'))
     ap.add_argument('-t', dest='timing', action='store_true',
-                    help="print time per test (implies -v)")
+                    help="print timing info")
     ap.add_argument('-v', action='count', dest='verbose', default=0,
                     help="verbose logging")
     ap.add_argument('tests', nargs='*', default=[],
@@ -114,10 +112,12 @@ def run_tests(args, printer, stats, test_names):
         pool.close()
 
     if not args.quiet:
-        printer.update('%d tests run in %.4fs, %d failure%s.' %
-                       (stats.finished,
-                        time.time() - stats.started_time,
-                        num_failures,
+        if args.timing:
+            timing_clause = ' in %.4fs' % (time.time() - stats.started_time)
+        else:
+            timing_clause = ''
+        printer.update('%d tests run%s, %d failure%s.' %
+                       (stats.finished, timing_clause, num_failures,
                         '' if num_failures == 1 else 's'))
         print_()
     return 1 if num_failures > 0 else 0
