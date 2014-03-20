@@ -24,6 +24,8 @@ def main(argv=None):
     ap.add_argument('-n', action='store_true', dest='dry_run',
                     help=('dry run (don\'t run commands but act like they '
                           'succeeded)'))
+    ap.add_argument('-p', '--pass-through', action='store_true',
+                    help='pass output through while running tests')
     ap.add_argument('-q', action='store_true', dest='quiet', default=False,
                     help='be quiet (only print errors)')
     ap.add_argument('-v', action='count', dest='verbose', default=0)
@@ -67,12 +69,12 @@ def main(argv=None):
         if not args.quiet and should_overwrite:
             printer.update(stats.format() + name, elide=(not args.verbose))
 
-        res, out, err = run_test(name)
+        res, out, err = run_test(args, name)
 
         stats.finished += 1
         if res:
             returncode = 1
-            suffix = ' failed' + (':' if (out or err) else '')
+            suffix = ' failed' + (':\n' if (out or err) else '')
             printer.update(stats.format() + name + suffix, elide=False)
         elif not args.quiet or out or err:
             suffix = ' passed' + (':' if (out or err) else '')
@@ -100,9 +102,9 @@ def run_under_coverage(argv):
     return res
 
 
-def run_test(name):
+def run_test(args, name):
     loader = unittest.loader.TestLoader()
-    result = TestResult()
+    result = TestResult(pass_through=args.pass_through)
     suite = loader.loadTestsFromName(name)
     suite.run(result)
     if result.failures:
@@ -112,20 +114,39 @@ def run_test(name):
     return 0, result.out, result.err
 
 
+class PassThrough(StringIO.StringIO):
+    def __init__(self, stream=None):
+        self.stream = stream
+        StringIO.StringIO.__init__(self)
+
+    def write(self, *args, **kwargs):
+        if self.stream:
+            self.stream.write(*args, **kwargs)
+        StringIO.StringIO.write(self, *args, **kwargs)
+
+    def flush(self, *args, **kwargs):
+        if self.stream:
+            self.stream.flush(*args, **kwargs)
+        StringIO.StringIO.flush(self, *args, **kwargs)
+
 class TestResult(unittest.TestResult):
     # unittests's TestResult has built-in support for buffering
     # stdout and stderr, but unfortunately it interacts awkwardly w/
     # the way they format errors (the output gets comingled and rearranged).
-    def __init__(self, *args, **kwargs):
-        super(TestResult, self).__init__(*args, **kwargs)
+    def __init__(self, stream=None, descriptions=None, verbosity=None,
+                 pass_through=False):
+        self.pass_through = pass_through
+        super(TestResult, self).__init__(stream=stream,
+                                         descriptions=descriptions,
+                                         verbosity=verbosity)
         self.out = ''
         self.err = ''
 
     def startTest(self, test):
         self.__orig_out = sys.stdout
         self.__orig_err = sys.stderr
-        sys.stdout = StringIO.StringIO()
-        sys.stderr = StringIO.StringIO()
+        sys.stdout = PassThrough(sys.stdout if self.pass_through else None)
+        sys.stderr = PassThrough(sys.stderr if self.pass_through else None)
 
     def stopTest(self, test):
         self.out = sys.stdout.getvalue()
