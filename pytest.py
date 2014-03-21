@@ -151,10 +151,12 @@ def run_test(args, test_name):
     suite.run(result)
     took = time.time() - start
     if result.failures:
-        return 1, result.out, result.err + result.failures[0][1], took
+        return (test_name, 1, result.out, result.err + result.failures[0][1],
+                took)
     if result.errors:
-        return 1, result.out, result.err + result.errors[0][1], took
-    return test_name, 0, result.out, result.err, took
+        return (test_name, 1, result.out, result.err + result.errors[0][1],
+                took)
+    return (test_name, 0, result.out, result.err, took)
 
 
 def print_test_started(printer, args, stats, test_name):
