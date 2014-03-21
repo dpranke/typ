@@ -1,6 +1,8 @@
 import argparse
+import inspect
 import multiprocessing
 import os
+import pdb
 import subprocess
 import sys
 import time
@@ -20,6 +22,10 @@ def main(argv=None):
     if args.coverage:
         return run_under_coverage(argv)
 
+    if args.debugger:
+        args.jobs = 1
+        args.pass_through = True
+
     stats = Stats(args.status_format, time.time, started_time)
     should_overwrite = sys.stdout.isatty() and not args.verbose
     printer = Printer(print_, should_overwrite)
@@ -36,6 +42,8 @@ def parse_args(argv):
     ap.usage = '%(prog)s [options] tests...'
     ap.add_argument('-c', dest='coverage', action='store_true',
                     help='produce coverage information')
+    ap.add_argument('-d', dest='debugger', action='store_true',
+                    help='run a single test under the debugger')
     ap.add_argument('-f', dest='file_list', action='store',
                     help=('take the list of tests from the file '
                           '(use "-" for stdin)'))
@@ -148,7 +156,16 @@ def run_test(args, test_name):
     result = TestResult(pass_through=args.pass_through)
     suite = loader.loadTestsFromName(test_name)
     start = time.time()
-    suite.run(result)
+    if args.debugger:
+        test_case = suite._tests[0]
+        test_func = getattr(test_case, test_case._testMethodName)
+        fname = inspect.getsourcefile(test_func)
+        lineno = inspect.getsourcelines(test_func)[1] + 1
+        dbg = pdb.Pdb()
+        dbg.set_break(fname, lineno)
+        dbg.runcall(suite.run, result)
+    else:
+        suite.run(result)
     took = time.time() - start
     if result.failures:
         return (test_name, 1, result.out, result.err + result.failures[0][1],
