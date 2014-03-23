@@ -79,10 +79,12 @@ def run_under_coverage(argv):
     argv = argv or sys.argv
     if '-c' in argv:
         argv.remove('-c')
-    if '--coverage' in argv:
-        argv.remove('--coverage')
+    if '-j' in argv:
+        argv.remove('-j')
+
     subprocess.call(['coverage', 'erase'])
-    res = subprocess.call(['coverage', 'run', __file__] + argv[1:])
+    res = subprocess.call(['coverage', 'run', __file__] +
+                          ['-j', '1'] + argv[1:])
     subprocess.call(['coverage', 'report', '--omit=*/pytest/*'])
     return res
 
