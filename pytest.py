@@ -122,7 +122,7 @@ def run_tests(args, printer, stats, test_names):
     pool = make_pool(args.jobs, run_test, args)
     try:
         while test_names or running_jobs:
-            while test_names and len(running_jobs) < args.jobs:
+            while test_names and (len(running_jobs) < args.jobs):
                 test_name = test_names.pop(0)
                 stats.started += 1
                 pool.send(test_name)
