@@ -51,6 +51,7 @@ class AsyncPool(object):
         self.callback = callback
         self.usrp = usrp
         self.msgs = []
+        self.closed = False
 
     def send(self, msg):
         self.msgs.append(msg)
@@ -59,6 +60,9 @@ class AsyncPool(object):
         return self.callback(self.usrp, self.msgs.pop(0))
 
     def close(self):
+        self.closed = True
+
+    def join(self):
         pass
 
 
