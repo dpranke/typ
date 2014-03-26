@@ -17,6 +17,7 @@ class ProcessPool(object):
         self.requests = multiprocessing.Queue()
         self.responses = multiprocessing.Queue()
         self.workers = []
+        self.closed = False
         for worker_num in range(jobs):
             w = multiprocessing.Process(target=_loop,
                                         args=(worker_num, callback, usrp,
@@ -34,13 +35,15 @@ class ProcessPool(object):
         for _ in self.workers:
             self.requests.put((False, None))
         self.requests.close()
+        self.closed = True
 
-        for w in self.workers:
-            w.terminate()
-        self.responses.close()
-
+    def join(self):
+        if not self.closed:
+            for w in self.workers:
+                w.terminate()
         for w in self.workers:
             w.join()
+        self.responses.close()
 
 
 class AsyncPool(object):
@@ -68,4 +71,6 @@ def _loop(_worker_num, callback, usrp, requests, responses):
                 resp = callback(usrp, args)
                 responses.put(resp)
     except Queue.Empty:
+        pass
+    except IOError:
         pass

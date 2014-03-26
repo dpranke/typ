@@ -136,8 +136,9 @@ def run_tests(args, printer, stats, test_names):
             stats.finished += 1
             print_test_finished(printer, args, stats, test_name,
                                 res, out, err, took)
-    finally:
         pool.close()
+    finally:
+        pool.join()
 
     if not args.quiet:
         if args.timing:
@@ -195,7 +196,7 @@ def print_test_finished(printer, args, stats, test_name, res, out, err, took):
     for l in out.splitlines():
         print_('  %s' % l)
     for l in err.splitlines():
-        print_('  %s' % l, stream=sys.stderr)
+        print_('  %s' % l)
 
 
 def print_(msg='', end='\n', stream=sys.stdout):
