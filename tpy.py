@@ -24,9 +24,9 @@ import unittest
 import StringIO
 
 
-from pytest_pool import make_pool
-from pytest_stats import Stats
-from pytest_printer import Printer
+from tpy_pool import make_pool
+from tpy_stats import Stats
+from tpy_printer import Printer
 
 
 VERSION = '0.1'
