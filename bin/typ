@@ -15,10 +15,10 @@
 
 if readlink $0 > /dev/null
 then
-    SCRIPTDIR=$(dirname $(readlink $0))
+    SCRIPTDIR=$(dirname $(readlink $0))/..
 else
-    pushd $(dirname $0) > /dev/null
+    pushd $(dirname $0)/.. > /dev/null
     SCRIPTDIR=$(pwd -P)
     popd > /dev/null
 fi
-python -B "$SCRIPTDIR/tpy.py" $@
+python -B "$SCRIPTDIR/typ/__main__.py" $@

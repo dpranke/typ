@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import multiprocessing
-import Queue
 
-
-Empty = Queue.Empty  # "Invalid name" # pylint: disable=C0103
+try:
+    from queue import Empty
+except ImportError:
+    from Queue import Empty
 
 
 def make_pool(jobs, callback, usrp):
@@ -88,7 +89,7 @@ def _loop(_worker_num, callback, usrp, requests, responses):
             if keep_going:
                 resp = callback(usrp, args)
                 responses.put(resp)
-    except Queue.Empty:
+    except Empty:
         pass
     except IOError:
         pass

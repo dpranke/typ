@@ -1,8 +1,8 @@
-tpy
-===
+typ (Test Your Program)
+=======================
 
-tpy is a simple python testing wrapper.
+typ is a simple program for testing Python code and standalone binaries.
 
-It supports test discovery, parallel test execution, clean logging of progress
-and results in the style of the Ninja build tool, and integrated code coverage
-and debugging (pdb) support.
+For testing Python code, it supports test discovery, parallel test execution,
+clean logging of progress and results in the style of the Ninja build tool,
+integrated code coverage, and debugging (pdb) support.

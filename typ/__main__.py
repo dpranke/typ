@@ -14,6 +14,7 @@
 
 import argparse
 import inspect
+import io
 import multiprocessing
 import os
 import pdb
@@ -21,15 +22,17 @@ import subprocess
 import sys
 import time
 import unittest
-import StringIO
 
 
-from tpy_pool import make_pool
-from tpy_stats import Stats
-from tpy_printer import Printer
+from typ.pool import make_pool
+from typ.stats import Stats
+from typ.printer import Printer
 
 
-VERSION = '0.1'
+def version():
+    here = os.path.abspath(os.path.dirname(__file__))
+    with open(os.path.join(here, 'VERSION')) as fp:
+        return fp.read().strip()
 
 
 def main(argv=None):
@@ -37,7 +40,7 @@ def main(argv=None):
 
     args = parse_args(argv)
     if args.version:
-        print_(VERSION)
+        print_(version())
         return 0
     if args.coverage:
         return run_under_coverage(argv)
@@ -57,7 +60,7 @@ def main(argv=None):
 
 
 def parse_args(argv):
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(prog='typ')
     ap.usage = '%(prog)s [options] tests...'
     ap.add_argument('-c', dest='coverage', action='store_true',
                     help='produce coverage information')
@@ -89,7 +92,7 @@ def parse_args(argv):
     ap.add_argument('-v', action='count', dest='verbose', default=0,
                     help="verbose logging")
     ap.add_argument('-V', '--version', action='store_true',
-                    help='print pytest version ("%s")' % VERSION)
+                    help='print pytest version ("%s")' % version())
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
@@ -225,20 +228,20 @@ def print_(msg='', end='\n', stream=sys.stdout):
     stream.flush()
 
 
-class PassThrough(StringIO.StringIO):
+class PassThrough(io.StringIO):
     def __init__(self, stream=None):
         self.stream = stream
-        StringIO.StringIO.__init__(self)
+        super(PassThrough, self).__init__()
 
     def write(self, *args, **kwargs):
         if self.stream:
             self.stream.write(*args, **kwargs)
-        StringIO.StringIO.write(self, *args, **kwargs)
+        super(PassThrough, self).write(*args, **kwargs)
 
     def flush(self, *args, **kwargs):
         if self.stream:
             self.stream.flush(*args, **kwargs)
-        StringIO.StringIO.flush(self, *args, **kwargs)
+        super(PassThrough, self).flush(*args, **kwargs)
 
 
 class TestResult(unittest.TestResult):
