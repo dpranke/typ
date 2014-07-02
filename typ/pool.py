@@ -15,6 +15,8 @@
 import multiprocessing
 
 try:
+    # This gets compatibility for both Python 2 and Python 3.
+    # import failure ... pylint: disable=F0401
     from queue import Empty
 except ImportError:
     from Queue import Empty
@@ -71,7 +73,7 @@ class AsyncPool(object):
     def send(self, msg):
         self.msgs.append(msg)
 
-    def get(self, block=True, timeout=None): # unused pylint: disable=W0613
+    def get(self, block=True, timeout=None):  # unused pylint: disable=W0613
         return self.callback(self.usrp, self.msgs.pop(0))
 
     def close(self):

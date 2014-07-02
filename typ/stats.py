@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 class Stats(object):
     def __init__(self, status_format, time_fn, started_time):
         self.fmt = status_format

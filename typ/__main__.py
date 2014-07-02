@@ -184,6 +184,7 @@ def run_test(args, test_name):
     suite = loader.loadTestsFromName(test_name)
     start = time.time()
     if args.debugger:
+        # Access to a protected member  pylint: disable=W0212
         test_case = suite._tests[0]
         test_func = getattr(test_case, test_case._testMethodName)
         fname = inspect.getsourcefile(test_func)
