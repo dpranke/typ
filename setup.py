@@ -30,14 +30,17 @@ readme_lines = readme.splitlines()
 setup(
     name='typ',
     packages=['typ'],
+    package_data={'': ['VERSION', '../README.md']},
     entry_points={
         'console_scripts': [
             'typ=typ.__main__:main',
         ]
     },
     version=version,
+    author='Dirk Pranke',
+    author_email='dpranke@chromium.org',
     description=readme_lines[3],
-    long_description='\n'.join(readme_lines[4:]),
+    long_description=('\n' + '\n'.join(readme_lines)),
     url='https://github.com/dpranke/typ',
     license='Apache',
     classifiers=[

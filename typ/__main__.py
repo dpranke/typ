@@ -107,9 +107,9 @@ def run_under_coverage(argv):
         argv.remove('-j')
 
     subprocess.call(['coverage', 'erase'])
-    res = subprocess.call(['coverage', 'run', __file__] +
+    res = subprocess.call(['coverage', 'run', '-m', 'typ'] +
                           ['-j', '1'] + argv[1:])
-    subprocess.call(['coverage', 'report', '--omit=*/pytest/*'])
+    subprocess.call(['coverage', 'report', '--omit=*/typ/*'])
     return res
 
 
