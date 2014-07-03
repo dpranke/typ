@@ -48,7 +48,7 @@ def main(argv=None):
         args.jobs = 1
         args.pass_through = True
 
-    stats = Stats(args.status_format, time.time, started_time)
+    stats = Stats(args.status_format, time.time, started_time, args.jobs)
     should_overwrite = sys.stdout.isatty() and not args.verbose
     printer = Printer(print_, should_overwrite)
 
@@ -210,6 +210,7 @@ def print_test_started(printer, args, stats, test_name):
 
 
 def print_test_finished(printer, args, stats, test_name, res, out, err, took):
+    stats.add_time()
     suffix = '%s%s%s' % (' failed' if res else ' passed',
                          (' %.4fs' % took) if args.timing else '',
                          (':\n' if (out or err) else ''))

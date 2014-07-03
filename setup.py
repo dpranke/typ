@@ -32,7 +32,7 @@ setup(
     packages=['typ'],
     entry_points={
         'console_scripts': [
-            'typ=typ:main',
+            'typ=typ.__main__:main',
         ]
     },
     version=version,
