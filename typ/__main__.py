@@ -53,6 +53,9 @@ def main(argv=None):
     printer = Printer(print_, should_overwrite)
 
     test_names = find_tests(args)
+    if test_names is None:
+        return 1
+
     if args.list_only:
         print_('\n'.join(sorted(test_names)))
         return 0
@@ -128,8 +131,16 @@ def find_tests(args):
 
     for test in tests:
         if test.endswith('.py'):
-            test = test.replace('/', '').replace('.py', '')
-        module_suite = loader.loadTestsFromName(test)
+            name = test.replace('/', '.')[:-3]
+        else:
+            name = test
+
+        try:
+            module_suite = loader.loadTestsFromName(name)
+        except AttributeError as e:
+            print_('Error: failed to import "%s"' % name, stream=sys.stderr)
+            return None
+
         for suite in module_suite:
             if isinstance(suite, unittest.suite.TestSuite):
                 test_names.extend(test_case.id() for test_case in suite)
