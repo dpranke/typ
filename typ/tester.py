@@ -244,8 +244,16 @@ def print_test_finished(printer, args, stats, test_name, res, out, err, took):
         for l in err.splitlines():
             print_('  %s' % l)
     elif not args.quiet:
+        if args.verbose > 1 and (out or err):
+            suffix += ':\n'
         printer.update(stats.format() + test_name + suffix,
                        elide=(not args.verbose))
+        if args.verbose > 1:
+            for l in out.splitlines():
+                print_('  %s' % l)
+            for l in err.splitlines():
+                print_('  %s' % l)
+
 
 def print_(msg='', end='\n', stream=orig_stdout):
     stream.write(str(msg) + end)
