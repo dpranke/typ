@@ -34,6 +34,9 @@ def version():
     with open(os.path.join(here, 'VERSION')) as fp:
         return fp.read().strip()
 
+orig_stdout = sys.stdout
+orig_stderr = sys.stderr
+
 
 def main(argv=None):
     started_time = time.time()
@@ -48,18 +51,26 @@ def main(argv=None):
         args.jobs = 1
         args.pass_through = True
 
-    stats = Stats(args.status_format, time.time, started_time, args.jobs)
-    should_overwrite = sys.stdout.isatty() and not args.verbose
-    printer = Printer(print_, should_overwrite)
+    sys.stdout = PassThrough(sys.stdout if args.pass_through else None)
+    sys.stderr = PassThrough(sys.stderr if args.pass_through else None)
 
-    test_names = find_tests(args)
-    if test_names is None:
-        return 1
+    try:
+        stats = Stats(args.status_format, time.time, started_time, args.jobs)
+        should_overwrite = orig_stdout.isatty() and not args.verbose
+        printer = Printer(print_, should_overwrite)
 
-    if args.list_only:
-        print_('\n'.join(sorted(test_names)))
-        return 0
-    return run_tests(args, printer, stats, test_names)
+        test_names = find_tests(args)
+        if test_names is None:
+            return 1
+
+        if args.list_only:
+            print_('\n'.join(sorted(test_names)))
+            return 0
+        return run_tests(args, printer, stats, test_names)
+    finally:
+        sys.stdout = orig_stdout
+        sys.stderr = orig_stderr
+
 
 
 def parse_args(argv):
@@ -222,21 +233,21 @@ def print_test_started(printer, args, stats, test_name):
 
 def print_test_finished(printer, args, stats, test_name, res, out, err, took):
     stats.add_time()
-    suffix = '%s%s%s' % (' failed' if res else ' passed',
-                         (' %.4fs' % took) if args.timing else '',
-                         (':\n' if (out or err) else ''))
+    suffix = '%s%s' % (' failed' if res else ' passed',
+                         (' %.4fs' % took) if args.timing else '')
     if res:
+        if out or err:
+            suffix += ':\n'
         printer.update(stats.format() + test_name + suffix, elide=False)
-    elif not args.quiet or out or err:
+        for l in out.splitlines():
+            print_('  %s' % l)
+        for l in err.splitlines():
+            print_('  %s' % l)
+    elif not args.quiet:
         printer.update(stats.format() + test_name + suffix,
-                       elide=(not out and not err and not args.verbose))
-    for l in out.splitlines():
-        print_('  %s' % l)
-    for l in err.splitlines():
-        print_('  %s' % l)
+                       elide=(not args.verbose))
 
-
-def print_(msg='', end='\n', stream=sys.stdout):
+def print_(msg='', end='\n', stream=orig_stdout):
     stream.write(str(msg) + end)
     stream.flush()
 
@@ -246,10 +257,10 @@ class PassThrough(io.StringIO):
         self.stream = stream
         super(PassThrough, self).__init__()
 
-    def write(self, *args, **kwargs):
+    def write(self, msg, *args, **kwargs):
         if self.stream:
-            self.stream.write(*args, **kwargs)
-        super(PassThrough, self).write(*args, **kwargs)
+            self.stream.write(unicode(msg), *args, **kwargs)
+        super(PassThrough, self).write(unicode(msg), *args, **kwargs)
 
     def flush(self, *args, **kwargs):
         if self.stream:
@@ -264,27 +275,21 @@ class TestResult(unittest.TestResult):
     def __init__(self, stream=None, descriptions=None, verbosity=None,
                  pass_through=False):
         self.pass_through = pass_through
+        self.out_pos = 0
+        self.err_pos = 0
         super(TestResult, self).__init__(stream=stream,
                                          descriptions=descriptions,
                                          verbosity=verbosity)
-        self.out = ''
-        self.err = ''
-        self.__orig_out = None
-        self.__orig_err = None
 
     # "Invalid name" pylint: disable=C0103
 
     def startTest(self, test):
-        self.__orig_out = sys.stdout
-        self.__orig_err = sys.stderr
-        sys.stdout = PassThrough(sys.stdout if self.pass_through else None)
-        sys.stderr = PassThrough(sys.stderr if self.pass_through else None)
+        self.out_pos = len(sys.stdout.getvalue())
+        self.err_pos = len(sys.stderr.getvalue())
 
     def stopTest(self, test):
-        self.out = sys.stdout.getvalue()
-        self.err = sys.stderr.getvalue()
-        sys.stdout = self.__orig_out
-        sys.stderr = self.__orig_err
+        self.out = sys.stdout.getvalue()[self.out_pos:]
+        self.err = sys.stderr.getvalue()[self.err_pos:]
 
 
 if __name__ == '__main__':
