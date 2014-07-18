@@ -277,6 +277,8 @@ class TestResult(unittest.TestResult):
         self.pass_through = pass_through
         self.out_pos = 0
         self.err_pos = 0
+        self.out = ''
+        self.err = ''
         super(TestResult, self).__init__(stream=stream,
                                          descriptions=descriptions,
                                          verbosity=verbosity)
