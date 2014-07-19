@@ -59,6 +59,11 @@ def main(argv=None):
         should_overwrite = orig_stdout.isatty() and not args.verbose
         printer = Printer(print_, should_overwrite, cols=args.terminal_width)
 
+        if args.top_level_dir:
+            path = os.path.abspath(args.top_level_dir)
+            if path not in sys.path:
+                sys.path.append(path)
+
         test_names = find_tests(args)
         if test_names is None:
             return 1
@@ -111,6 +116,9 @@ def parse_args(argv):
     ap.add_argument('--terminal-width',
                     help='width of output [default=current width, %(default)d]',
                     type=int, default=terminal_width())
+    ap.add_argument('--top-level-dir', default='.',
+                    help=('top directory of project '
+                          '(used when running subdirs)'))
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
@@ -145,24 +153,43 @@ def find_tests(args):
         tests = args.tests
 
     for test in tests:
-        if test.endswith('.py'):
-            name = test.replace('/', '.')[:-3]
-        else:
-            name = test
-
         try:
-            module_suite = loader.loadTestsFromName(name)
+            if os.path.isfile(test):
+                name = os.path.relpath(test, args.top_level_dir)
+                if name.endswith('.py'):
+                    name = name[:-3]
+                if name.startswith('./'):
+                    name = name[2:]
+                name = name.replace('/', '.')
+                module_suite = loader.loadTestsFromName(name)
+            elif os.path.isdir(test):
+                module_suite = loader.discover(test, '*_unittest.py',
+                                               args.top_level_dir)
+            else:
+                possible_dir = os.path.relpath(test.replace('.', '/'),
+                                               args.top_level_dir)
+                if os.path.isdir(possible_dir):
+                    module_suite = loader.discover(possible_dir,
+                                                   '*_unittest.py',
+                                                   args.top_level_dir)
+                else:
+                    name = possible_dir.replace('/', '.')
+                    module_suite = loader.loadTestsFromName(name)
         except AttributeError as e:
-            print_('Error: failed to import "%s"' % name, stream=sys.stderr)
+            print_('Error: failed to import "%s": %s' % (name, str(e)),
+                   stream=sys.stderr)
             return None
 
-        for suite in module_suite:
-            if isinstance(suite, unittest.suite.TestSuite):
-                test_names.extend(test_case.id() for test_case in suite)
-            else:
-                test_names.append(suite.id())
+        add_names_from_suite(test_names, module_suite)
     return test_names
 
+
+def add_names_from_suite(test_names, obj):
+    if isinstance(obj, unittest.suite.TestSuite):
+        for el in obj:
+            add_names_from_suite(test_names, el)
+    else:
+        test_names.append(obj.id())
 
 def run_tests(args, printer, stats, test_names):
     num_failures = 0
