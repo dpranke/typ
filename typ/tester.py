@@ -57,7 +57,7 @@ def main(argv=None):
     try:
         stats = Stats(args.status_format, time.time, started_time, args.jobs)
         should_overwrite = orig_stdout.isatty() and not args.verbose
-        printer = Printer(print_, should_overwrite)
+        printer = Printer(print_, should_overwrite, cols=args.terminal_width)
 
         test_names = find_tests(args)
         if test_names is None:
@@ -102,11 +102,15 @@ def parse_args(argv):
                           '(defaults to NINJA_STATUS env var if set, '
                           '"[%%f/%%t] " otherwise)'))
     ap.add_argument('-t', dest='timing', action='store_true',
-                    help="print timing info")
+                    help='print timing info')
     ap.add_argument('-v', action='count', dest='verbose', default=0,
-                    help="verbose logging")
+                    help=('verbose logging '
+                          '(specify multiple times for more output)'))
     ap.add_argument('-V', '--version', action='store_true',
                     help='print pytest version ("%s")' % version())
+    ap.add_argument('--terminal-width',
+                    help='width of output [default=current width, %(default)d]',
+                    type=int, default=terminal_width())
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
@@ -300,6 +304,42 @@ class TestResult(unittest.TestResult):
     def stopTest(self, test):
         self.out = sys.stdout.getvalue()[self.out_pos:]
         self.err = sys.stderr.getvalue()[self.err_pos:]
+
+
+def terminal_width():
+    """Returns sys.maxint if the width cannot be determined."""
+    try:
+        if sys.platform == 'win32':
+            # From http://code.activestate.com/recipes/ \
+            #   440694-determine-size-of-console-window-on-windows/
+            from ctypes import windll, create_string_buffer
+
+            STDERR_HANDLE = -12
+            handle = windll.kernel32.GetStdHandle(STDERR_HANDLE)
+
+            SCREEN_BUFFER_INFO_SZ = 22
+            buf = create_string_buffer(SCREEN_BUFFER_INFO_SZ)
+
+            if windll.kernel32.GetConsoleScreenBufferInfo(handle, buf):
+                import struct
+                fields = struct.unpack("hhhhHhhhhhh", buf.raw)
+                left = fields[5]
+                right = fields[7]
+
+                # Note that we return 1 less than the width since writing
+                # into the rightmost column automatically performs a line feed.
+                return right - left
+            return sys.maxint
+        else:
+            import fcntl
+            import struct
+            import termios
+            packed = fcntl.ioctl(sys.stderr.fileno(),
+                                 termios.TIOCGWINSZ, '\0' * 8)
+            _, columns, _, _ = struct.unpack('HHHH', packed)
+            return columns
+    except:
+        return sys.maxint
 
 
 if __name__ == '__main__':
