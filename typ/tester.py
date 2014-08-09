@@ -63,6 +63,12 @@ def main(argv=None):
             path = os.path.abspath(args.top_level_dir)
             if path not in sys.path:
                 sys.path.append(path)
+        else:
+            top_dir = os.getcwd()
+            while os.path.exists(os.path.join(top_dir, '__init__.py')):
+                top_dir = os.path.dirname(top_dir)
+            if top_dir != os.getcwd() and top_dir not in sys.path:
+                sys.path.append(top_dir)
 
         test_names = find_tests(args)
         if test_names is None:
