@@ -138,7 +138,9 @@ def run_under_coverage(argv):
     if '-c' in argv:
         argv.remove('-c')
     if '-j' in argv:
-        argv.remove('-j')
+        idx = argv.index('-j')
+        argv.pop(idx)
+        argv.pop(idx)
 
     subprocess.call(['coverage', 'erase'])
     res = subprocess.call(['coverage', 'run', '-m', 'typ'] +
