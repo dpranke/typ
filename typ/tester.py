@@ -24,6 +24,7 @@ import time
 import unittest
 
 
+from typ import json_results
 from typ.pool import make_pool
 from typ.stats import Stats
 from typ.printer import Printer
@@ -33,6 +34,7 @@ def version():
     here = os.path.abspath(os.path.dirname(__file__))
     with open(os.path.join(here, 'VERSION')) as fp:
         return fp.read().strip()
+
 
 orig_stdout = sys.stdout
 orig_stderr = sys.stderr
@@ -77,7 +79,8 @@ def main(argv=None):
         if args.list_only:
             print_('\n'.join(sorted(test_names)))
             return 0
-        return run_tests(args, printer, stats, test_names)
+
+        return run_tests_with_retries(args, printer, stats, test_names)
     finally:
         sys.stdout = orig_stdout
         sys.stderr = orig_stderr
@@ -86,51 +89,84 @@ def main(argv=None):
 
 def parse_args(argv):
     ap = argparse.ArgumentParser(prog='typ')
-    ap.usage = '%(prog)s [options] tests...'
-    ap.add_argument('-c', dest='coverage', action='store_true',
+    ap.usage = '%(prog)s [options] [tests...]'
+    ap.add_argument('-c', '--coverage', action='store_true',
                     help='produce coverage information')
-    ap.add_argument('-d', dest='debugger', action='store_true',
+    ap.add_argument('-d', '--debugger', action='store_true',
                     help='run a single test under the debugger')
-    ap.add_argument('-f', dest='file_list', action='store',
-                    help=('take the list of tests from the file '
-                          '(use "-" for stdin)'))
-    ap.add_argument('-l', dest='list_only', action='store_true',
-                    help='list all the test names found in the given tests')
-    ap.add_argument('-j', metavar='N', type=int, dest='jobs',
+    ap.add_argument('-f', '--file-list', metavar='FILENAME', action='store',
+                    help=('Take the list of tests from the file '
+                          '(use "-" for stdin).'))
+    ap.add_argument('-l', '--list-only', action='store_true',
+                    help='List all the test names found in the given tests.')
+    ap.add_argument('-j', '--jobs', metavar='N', type=int,
                     default=multiprocessing.cpu_count(),
-                    help=('run N jobs in parallel [default=%(default)s, '
-                          'derived from CPUs available]'))
-    ap.add_argument('-n', dest='dry_run', action='store_true',
-                    help=('dry run (don\'t run commands but act like they '
-                          'succeeded)'))
-    ap.add_argument('-p', dest='pass_through', action='store_true',
-                    help='pass output through while running tests')
-    ap.add_argument('-q', action='store_true', dest='quiet', default=False,
-                    help='be quiet (only print errors)')
-    ap.add_argument('-s', dest='status_format',
+                    help=('Run N jobs in parallel '
+                          '(defaults to %(default)d, from CPUs available).'))
+    ap.add_argument('-n', '--dry-run', action='store_true',
+                    help=('Do not actually run the tests, act like they '
+                          'succeeded.'))
+    ap.add_argument('-p', '--pass-through', action='store_true',
+                    help='Pass output through while running tests.')
+    ap.add_argument('-q', '--quiet', action='store_true', default=False,
+                    help='Be as quiet as possible (only print errors).')
+    ap.add_argument('-s', '--status-format',
                     default=os.getenv('NINJA_STATUS', '[%f/%t] '),
-                    help=('format for status updates '
+                    help=('Format for status updates '
                           '(defaults to NINJA_STATUS env var if set, '
-                          '"[%%f/%%t] " otherwise)'))
-    ap.add_argument('-t', dest='timing', action='store_true',
-                    help='print timing info')
-    ap.add_argument('-v', action='count', dest='verbose', default=0,
-                    help=('verbose logging '
-                          '(specify multiple times for more output)'))
+                          '"[%%f/%%t] " otherwise).'))
+    ap.add_argument('-t', '--timing', action='store_true',
+                    help='Print timing info.')
+    ap.add_argument('-v', '--verbose', action='count', default=0,
+                    help=('Log verbosely '
+                          '(specify multiple times for more output).'))
     ap.add_argument('-V', '--version', action='store_true',
-                    help='print typ version ("%s")' % version())
+                    help='Print the typ version ("%s") and exit.' % version())
     ap.add_argument('--all', action='store_true',
-                    help='run tests that are skipped by default')
-    ap.add_argument('--terminal-width',
-                    help='width of output [default=current width, %(default)d]',
-                    type=int, default=terminal_width())
+                    help='Include tests that are skipped by default.')
+    ap.add_argument('--builder-name',
+                    help='Builder name to include in the uploaded data '
+                         '(as shown on the buildbot waterfall).')
+    ap.add_argument('--master-name',
+                    help='Buildbot master name to include in the '
+                         'uploaded data.')
+    ap.add_argument('--metadata', action='append', default=[],
+                    help=('Optional key=value metadata that will be included '
+                          'in the results '
+                          '(can be used for revision numbers, etc.).'))
+    ap.add_argument('--retry-limit', type=int, default=0,
+                    help='Retry each failure up to N times to de-flake things '
+                         '(defaults to %(default)d, no retries).')
+    ap.add_argument('--terminal-width', type=int, default=terminal_width(),
+                    help=('Width of output (defaults to '
+                          'current terminal width, %(default)d).'))
+    ap.add_argument('--test-results-server', default='',
+                    help=('If specified, upload the full results to '
+                          'this server.'))
+    ap.add_argument('--test-type',
+                    help=('Name of test type to include in the uploaded data '
+                          '(e.g., "telemetry_unittests").'))
     ap.add_argument('--top-level-dir', default='.',
-                    help=('top directory of project '
-                          '(used when running subdirs)'))
+                    help=('Top directory of project '
+                          '(used when running subdirs).'))
+    ap.add_argument('--write-full-results-to', metavar='FILENAME',
+                    action='store',
+                    help='If specified, write the full results to that path.')
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
-    return ap.parse_args(argv)
+    args = ap.parse_args(argv)
+
+    for val in args.metadata:
+        if '=' not in val:
+            ap.error('Error: malformed metadata "%s"' % val)
+
+    if (args.test_results_server and
+        (not args.builder_name or not args.master_name or not args.test_type)):
+        ap.error('Error: --builder-name, --master-name, and --test-type '
+                 'must be specified along with --test-result-server.')
+
+    return args
 
 
 def run_under_coverage(argv):
@@ -201,7 +237,39 @@ def add_names_from_suite(test_names, obj):
     else:
         test_names.append(obj.id())
 
-def run_tests(args, printer, stats, test_names):
+
+def run_tests_with_retries(args, printer, stats, test_names):
+    all_test_names = test_names
+
+    result = run_one_set_of_tests(args, printer, stats, test_names)
+    results = [result]
+
+    failed_tests = json_results.failed_test_names(result)
+    retry_limit = args.retry_limit
+
+    # When retrying failures, only run one test at a time.
+    args.jobs = 1
+
+    while retry_limit and failed_tests:
+        result = run_one_set_of_tests(args, printer, stats, failed_tests)
+        results.append(result)
+        failed_tests = json_results.failed_test_names(result)
+        retry_limit -= 1
+
+    full_results = json_results.full_results(args, all_test_names, results)
+    json_results.write_full_results_if_necessary(args, full_results)
+
+    err_occurred, err_str = json_results.upload_full_results_if_necessary(
+        args, full_results)
+    if err_occurred:
+        for line in err_str.splitlines():
+            print_(line)
+        return 1
+
+    return json_results.exit_code_from_full_results(full_results)
+
+
+def run_one_set_of_tests(args, printer, stats, test_names):
     num_failures = 0
     running_jobs = set()
     stats.total = len(test_names)
@@ -379,7 +447,7 @@ def terminal_width():
                                  termios.TIOCGWINSZ, '\0' * 8)
             _, columns, _, _ = struct.unpack('HHHH', packed)
             return columns
-    except:
+    except Exception:
         return sys.maxint
 
 

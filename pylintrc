@@ -57,11 +57,12 @@ load-plugins=
 # R0903: Too few public methods
 # R0904: Too many public methods
 # R0913: Too many arguments
+# W0141: Used builtin function 'map'
 # W0142: Used * or ** magic
 # W0511: TODO
 # W0614: Unused import X from wildcard import
 # W0703: Catch "Exception"
-disable=C0111,I0010,I0011,R0201,R0801,W0142,W0511,W0703
+disable=C0111,I0010,I0011,R0201,R0801,W0141,W0142,W0511,W0703
 
 
 [REPORTS]
@@ -172,13 +173,13 @@ bad-functions=map,filter,apply,input
 module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
 
 # Regular expression which should only match correct module level names
-const-rgx=(([A-Z_][A-Z0-9_]*)|(__.*__))$
+const-rgx=(([a-zA-Z_][a-zA-Z0-9_]*)|(__.*__))$
 
 # Regular expression which should only match correct class names
 class-rgx=[A-Z_][a-zA-Z0-9]+$
 
 # Regular expression which should only match correct function names
-function-rgx=[a-z_][a-z0-9_]{2,30}$
+function-rgx=[a-z_][a-z0-9_]{2,40}$
 
 # Regular expression which should only match correct method names
 method-rgx=[a-z_][a-z0-9_]{2,40}$
@@ -190,7 +191,7 @@ attr-rgx=[a-z_][a-z0-9_]{2,30}$
 argument-rgx=[a-z_][a-z0-9_]{0,30}$
 
 # Regular expression which should only match correct variable names
-variable-rgx=[a-z_][a-z0-9_]{0,30}$
+variable-rgx=[a-zA-Z0-9_]{1,30}$
 
 # Regular expression which should only match correct list comprehension /
 # generator expression variable names
