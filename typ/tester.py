@@ -112,7 +112,7 @@ def parse_args(argv):
                     help=('verbose logging '
                           '(specify multiple times for more output)'))
     ap.add_argument('-V', '--version', action='store_true',
-                    help='print pytest version ("%s")' % version())
+                    help='print typ version ("%s")' % version())
     ap.add_argument('--all', action='store_true',
                     help='run tests that are skipped by default')
     ap.add_argument('--terminal-width',
