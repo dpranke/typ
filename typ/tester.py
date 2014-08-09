@@ -113,6 +113,8 @@ def parse_args(argv):
                           '(specify multiple times for more output)'))
     ap.add_argument('-V', '--version', action='store_true',
                     help='print pytest version ("%s")' % version())
+    ap.add_argument('--all', action='store_true',
+                    help='run tests that are skipped by default')
     ap.add_argument('--terminal-width',
                     help='width of output [default=current width, %(default)d]',
                     type=int, default=terminal_width())
@@ -150,7 +152,7 @@ def find_tests(args):
         tests = [line.strip() for line in f.readlines()]
         f.close()
     else:
-        tests = args.tests
+        tests = args.tests or ['.']
 
     for test in tests:
         try:
@@ -234,7 +236,11 @@ def run_test(args, test_name):
         return test_name, 0, '', '', 0
     loader = unittest.loader.TestLoader()
     result = TestResult(pass_through=args.pass_through)
-    suite = loader.loadTestsFromName(test_name)
+    try:
+        suite = loader.loadTestsFromName(test_name)
+    except Exception as e:
+        return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
+                0)
     start = time.time()
     if args.debugger:
         # Access to a protected member  pylint: disable=W0212
