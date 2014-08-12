@@ -125,7 +125,7 @@ def parse_args(argv):
     ap.add_argument('-v', '--verbose', action='count', default=0,
                     help=('Log verbosely '
                           '(specify multiple times for more output).'))
-    ap.add_argument('-P', '--path', action='append',
+    ap.add_argument('-P', '--path', action='append', default=[],
                     help=('add dir to sys.path'))
     ap.add_argument('-V', '--version', action='store_true',
                     help='Print the typ version ("%s") and exit.' % version())
