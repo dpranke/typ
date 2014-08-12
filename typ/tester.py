@@ -72,6 +72,11 @@ def main(argv=None):
             if top_dir != os.getcwd() and top_dir not in sys.path:
                 sys.path.append(top_dir)
 
+        for path in args.path:
+            ap = os.path.abspath(path)
+            if ap not in sys.path:
+                sys.path.append(ap)
+
         test_names = find_tests(args)
         if test_names is None:
             return 1
@@ -120,6 +125,8 @@ def parse_args(argv):
     ap.add_argument('-v', '--verbose', action='count', default=0,
                     help=('Log verbosely '
                           '(specify multiple times for more output).'))
+    ap.add_argument('-P', '--path', action='append',
+                    help=('add dir to sys.path'))
     ap.add_argument('-V', '--version', action='store_true',
                     help='Print the typ version ("%s") and exit.' % version())
     ap.add_argument('--all', action='store_true',
@@ -274,6 +281,7 @@ def run_one_set_of_tests(args, printer, stats, test_names):
     running_jobs = set()
     stats.total = len(test_names)
 
+    result = TestResult()
     pool = make_pool(args.jobs, run_test, args)
     try:
         while test_names or running_jobs:
@@ -288,6 +296,9 @@ def run_one_set_of_tests(args, printer, stats, test_names):
             running_jobs.remove(test_name)
             if res:
                 num_failures += 1
+                result.errors.append((test_name, err))
+            else:
+                result.successes.append((test_name, err))
             stats.finished += 1
             print_test_finished(printer, args, stats, test_name,
                                 res, out, err, took)
@@ -304,7 +315,7 @@ def run_one_set_of_tests(args, printer, stats, test_names):
                        (stats.finished, timing_clause, num_failures,
                         '' if num_failures == 1 else 's'))
         print_()
-    return 1 if num_failures > 0 else 0
+    return result
 
 
 def run_test(args, test_name):
@@ -315,6 +326,7 @@ def run_test(args, test_name):
     try:
         suite = loader.loadTestsFromName(test_name)
     except Exception as e:
+        import pdb; pdb.set_trace()
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
     start = time.time()
@@ -400,6 +412,7 @@ class TestResult(unittest.TestResult):
         self.err_pos = 0
         self.out = ''
         self.err = ''
+        self.successes = []
         super(TestResult, self).__init__(stream=stream,
                                          descriptions=descriptions,
                                          verbosity=verbosity)

@@ -62,7 +62,7 @@ def full_results(args, test_names, results):
     num_failures = num_failures_after_retries(results)
     test_results['num_failures_by_type'] = {
         'FAIL': num_failures,
-        'PASS': len(all_test_names) - num_failures,
+        'PASS': len(test_names) - num_failures,
     }
 
     sets_of_passing_test_names = map(passing_test_names, results)
@@ -119,11 +119,11 @@ def num_failures_after_retries(results):
 
 
 def failed_test_names(result):
-    return set(test.id() for test, _ in result.failures + result.errors)
+    return set(test for test, _ in result.failures + result.errors)
 
 
 def passing_test_names(result):
-    return set(test.id() for test in result.successes)
+    return set(test for test, _ in result.successes)
 
 
 def _add_path_to_trie(trie, path, value):
