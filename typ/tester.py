@@ -36,12 +36,13 @@ def version():
         return fp.read().strip()
 
 
+DEFAULT_STATUS_FORMAT = '[%f/%t] '
+
 orig_stdout = sys.stdout
 orig_stderr = sys.stderr
 
 
 def main(argv=None):
-    started_time = time.time()
 
     args = parse_args(argv)
     if args.version:
@@ -53,43 +54,54 @@ def main(argv=None):
         args.jobs = 1
         args.pass_through = True
 
-    sys.stdout = PassThrough(sys.stdout if args.pass_through else None)
-    sys.stderr = PassThrough(sys.stderr if args.pass_through else None)
-
+    trap_stdio()
     try:
-        stats = Stats(args.status_format, time.time, started_time, args.jobs)
-        should_overwrite = orig_stdout.isatty() and not args.verbose
-        printer = Printer(print_, should_overwrite, cols=args.terminal_width)
-
-        if args.top_level_dir:
-            path = os.path.abspath(args.top_level_dir)
-            if path not in sys.path:
-                sys.path.append(path)
-        else:
-            top_dir = os.getcwd()
-            while os.path.exists(os.path.join(top_dir, '__init__.py')):
-                top_dir = os.path.dirname(top_dir)
-            if top_dir != os.getcwd() and top_dir not in sys.path:
-                sys.path.append(top_dir)
-
-        for path in args.path:
-            ap = os.path.abspath(path)
-            if ap not in sys.path:
-                sys.path.append(ap)
-
-        test_names = find_tests(args)
-        if test_names is None:
-            return 1
-
-        if args.list_only:
-            print_('\n'.join(sorted(test_names)))
-            return 0
-
-        return run_tests_with_retries(args, printer, stats, test_names)
+      return run(args)
     finally:
-        sys.stdout = orig_stdout
-        sys.stderr = orig_stderr
+      release_stdio()
 
+def run(args):
+    started_time = time.time()
+
+    stats = Stats(args.status_format, time.time, started_time, args.jobs)
+    should_overwrite = orig_stdout.isatty() and not args.verbose
+    printer = Printer(print_, should_overwrite, cols=args.terminal_width)
+
+    if args.top_level_dir:
+        path = os.path.abspath(args.top_level_dir)
+        if path not in sys.path:
+            sys.path.append(path)
+    else:
+        top_dir = os.getcwd()
+        while os.path.exists(os.path.join(top_dir, '__init__.py')):
+            top_dir = os.path.dirname(top_dir)
+        if top_dir != os.getcwd() and top_dir not in sys.path:
+            sys.path.append(top_dir)
+
+    for path in args.path:
+        ap = os.path.abspath(path)
+        if ap not in sys.path:
+            sys.path.append(ap)
+
+    test_names = find_tests(args)
+    if test_names is None:
+        return 1
+
+    if args.list_only:
+        print_('\n'.join(sorted(test_names)))
+        return 0
+
+    return run_tests_with_retries(args, printer, stats, test_names)
+
+
+def trap_stdio(should_passthrough):
+    sys.stdout = PassThrough(sys.stdout if should_passthrough else None)
+    sys.stderr = PassThrough(sys.stderr if should_passthrough else None)
+
+
+def release_stdio():
+    sys.stdout = orig_stdout
+    sys.stderr = orig_stderr
 
 
 def parse_args(argv):
@@ -105,7 +117,7 @@ def parse_args(argv):
     ap.add_argument('-l', '--list-only', action='store_true',
                     help='List all the test names found in the given tests.')
     ap.add_argument('-j', '--jobs', metavar='N', type=int,
-                    default=multiprocessing.cpu_count(),
+                    default=default_job_count(),
                     help=('Run N jobs in parallel '
                           '(defaults to %(default)d, from CPUs available).'))
     ap.add_argument('-n', '--dry-run', action='store_true',
@@ -116,7 +128,7 @@ def parse_args(argv):
     ap.add_argument('-q', '--quiet', action='store_true', default=False,
                     help='Be as quiet as possible (only print errors).')
     ap.add_argument('-s', '--status-format',
-                    default=os.getenv('NINJA_STATUS', '[%f/%t] '),
+                    default=os.getenv('NINJA_STATUS', DEFAULT_STATUS_FORMAT),
                     help=('Format for status updates '
                           '(defaults to NINJA_STATUS env var if set, '
                           '"[%%f/%%t] " otherwise).'))
@@ -231,7 +243,6 @@ def find_tests(args):
         except AttributeError as e:
             print_('Error: failed to import "%s": %s' % (name, str(e)),
                    stream=sys.stderr)
-            return None
 
         add_names_from_suite(test_names, module_suite)
     return test_names
@@ -251,7 +262,7 @@ def run_tests_with_retries(args, printer, stats, test_names):
     result = run_one_set_of_tests(args, printer, stats, test_names)
     results = [result]
 
-    failed_tests = json_results.failed_test_names(result)
+    failed_tests = list(json_results.failed_test_names(result))
     retry_limit = args.retry_limit
 
     # When retrying failures, only run one test at a time.
@@ -326,7 +337,6 @@ def run_test(args, test_name):
     try:
         suite = loader.loadTestsFromName(test_name)
     except Exception as e:
-        import pdb; pdb.set_trace()
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
     start = time.time()
@@ -456,12 +466,16 @@ def terminal_width():
             import fcntl
             import struct
             import termios
-            packed = fcntl.ioctl(sys.stderr.fileno(),
+            packed = fcntl.ioctl(orig_stderr.fileno(),
                                  termios.TIOCGWINSZ, '\0' * 8)
             _, columns, _, _ = struct.unpack('HHHH', packed)
             return columns
     except Exception:
         return sys.maxint
+
+
+def default_job_count():
+    return multiprocessing.cpu_count()
 
 
 if __name__ == '__main__':
