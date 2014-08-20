@@ -54,7 +54,7 @@ def main(argv=None):
         args.jobs = 1
         args.pass_through = True
 
-    trap_stdio()
+    trap_stdio(args.pass_through)
     try:
       return run(args)
     finally:
