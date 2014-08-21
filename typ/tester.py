@@ -223,22 +223,22 @@ def find_tests(args):
                 name = os.path.relpath(test, args.top_level_dir)
                 if name.endswith('.py'):
                     name = name[:-3]
-                if name.startswith('./'):
+                if name.startswith('.' + os.sep):
                     name = name[2:]
-                name = name.replace('/', '.')
+                name = name.replace(os.sep, '.')
                 module_suite = loader.loadTestsFromName(name)
             elif os.path.isdir(test):
                 module_suite = loader.discover(test, '*_unittest.py',
                                                args.top_level_dir)
             else:
-                possible_dir = os.path.relpath(test.replace('.', '/'),
+                possible_dir = os.path.relpath(test.replace('.', os.sep),
                                                args.top_level_dir)
                 if os.path.isdir(possible_dir):
                     module_suite = loader.discover(possible_dir,
                                                    '*_unittest.py',
                                                    args.top_level_dir)
                 else:
-                    name = possible_dir.replace('/', '.')
+                    name = possible_dir.replace(os.sep, '.')
                     module_suite = loader.loadTestsFromName(name)
         except AttributeError as e:
             print_('Error: failed to import "%s": %s' % (name, str(e)),
@@ -268,10 +268,18 @@ def run_tests_with_retries(args, printer, stats, test_names):
     # When retrying failures, only run one test at a time.
     args.jobs = 1
 
+    if retry_limit and failed_tests:
+        printer.flush()
+        printer.print_('')
+        printer.print_('Retrying failed tests ...')
+        printer.print_('')
+
     while retry_limit and failed_tests:
+        stats = Stats(args.status_format, time.time, time.time(), args.jobs)
+        stats.total = len(failed_tests)
         result = run_one_set_of_tests(args, printer, stats, failed_tests)
         results.append(result)
-        failed_tests = json_results.failed_test_names(result)
+        failed_tests = list(json_results.failed_test_names(result))
         retry_limit -= 1
 
     full_results = json_results.full_results(args, all_test_names, results)
@@ -319,7 +327,7 @@ def run_one_set_of_tests(args, printer, stats, test_names):
 
     if not args.quiet:
         if args.timing:
-            timing_clause = ' in %.4fs' % (time.time() - stats.started_time)
+            timing_clause = ' in %.1fs' % (time.time() - stats.started_time)
         else:
             timing_clause = ''
         printer.update('%d tests run%s, %d failure%s.' %
