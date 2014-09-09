@@ -12,18 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
-
-from typ import tester
-
-
-def main(argv=None):
-    return tester.main(argv)
 
 
 if __name__ == '__main__':
-    try:
-        sys.exit(main())
-    except KeyboardInterrupt:
-        print >> sys.stderr, "Interrupted, exiting"
-        sys.exit(130)
+    if sys.platform == 'win32':
+        # In order to use multiprocessing on windows, we need to ensure
+        # that the 'main' module is importable, and __main__.py isn't.
+        # This code instead spawns a subprocess and invokes the main routine
+        # in tester.py, which *is* importable.
+        typ_dir = os.path.dirname(os.path.abspath(__file__))
+        tester_path = os.path.join(typ_dir, 'tester.py')
+        import subprocess
+        proc = subprocess.Popen([sys.executable, tester_path] + sys.argv[1:])
+        try:
+            proc.wait()
+        except KeyboardInterrupt:
+            # We need a second wait in order to make sure the subprocess exits fully.
+            proc.wait()
+        sys.exit(proc.returncode)
+    else:
+        try:
+            from typ import tester
+            sys.exit(tester.main())
+        except KeyboardInterrupt:
+            print >> sys.stderr, "Interrupted, exiting"
+            sys.exit(130)

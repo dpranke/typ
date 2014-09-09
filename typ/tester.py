@@ -54,11 +54,11 @@ def main(argv=None):
         args.jobs = 1
         args.pass_through = True
 
-    trap_stdio(args.pass_through)
+    _setup_process(args)
     try:
       return run(args)
     finally:
-      release_stdio()
+      _teardown_process(args)
 
 def run(args):
     started_time = time.time()
@@ -92,6 +92,14 @@ def run(args):
         return 0
 
     return run_tests_with_retries(args, printer, stats, test_names)
+
+
+def _setup_process(args):
+    trap_stdio(args.pass_through)
+
+
+def _teardown_process(args):
+    release_stdio()
 
 
 def trap_stdio(should_passthrough):
@@ -301,7 +309,7 @@ def run_one_set_of_tests(args, printer, stats, test_names):
     stats.total = len(test_names)
 
     result = TestResult()
-    pool = make_pool(args.jobs, run_test, args)
+    pool = make_pool(args.jobs, run_test, args, _setup_process, _teardown_process)
     try:
         while test_names or running_jobs:
             while test_names and (len(running_jobs) < args.jobs):

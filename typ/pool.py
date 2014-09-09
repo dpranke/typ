@@ -22,14 +22,14 @@ except ImportError:
     from Queue import Empty
 
 
-def make_pool(jobs, callback, usrp):
+def make_pool(jobs, callback, usrp, pre_fn, post_fn):
     if jobs > 1:
-        return ProcessPool(jobs, callback, usrp)
+        return ProcessPool(jobs, callback, usrp, pre_fn, post_fn)
     return AsyncPool(callback, usrp)
 
 
 class ProcessPool(object):
-    def __init__(self, jobs, callback, usrp):
+    def __init__(self, jobs, callback, usrp, pre_fn, post_fn):
         self.jobs = jobs
         self.requests = multiprocessing.Queue()
         self.responses = multiprocessing.Queue()
@@ -38,7 +38,8 @@ class ProcessPool(object):
         for worker_num in range(jobs):
             w = multiprocessing.Process(target=_loop,
                                         args=(worker_num, callback, usrp,
-                                              self.requests, self.responses))
+                                              self.requests, self.responses,
+                                              pre_fn, post_fn))
             w.start()
             self.workers.append(w)
 
@@ -83,8 +84,9 @@ class AsyncPool(object):
         pass
 
 
-def _loop(_worker_num, callback, usrp, requests, responses):
+def _loop(_worker_num, callback, usrp, requests, responses, setup_process, teardown_process):
     try:
+        setup_process(usrp)
         keep_going = True
         while keep_going:
             keep_going, args = requests.get(block=True)
@@ -95,3 +97,5 @@ def _loop(_worker_num, callback, usrp, requests, responses):
         pass
     except IOError:
         pass
+    finally:
+        teardown_process(usrp)
