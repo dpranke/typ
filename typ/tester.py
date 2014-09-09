@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import fnmatch
 import inspect
 import io
 import multiprocessing
@@ -43,22 +44,26 @@ orig_stderr = sys.stderr
 
 
 def main(argv=None):
-
-    args = parse_args(argv)
-    if args.version:
-        print_(version())
-        return 0
-    if args.coverage:
-        return run_under_coverage(argv)
-    if args.debugger:
-        args.jobs = 1
-        args.pass_through = True
-
-    _setup_process(args)
     try:
-      return run(args)
-    finally:
-      _teardown_process(args)
+        args = parse_args(argv)
+        if args.version:
+            print_(version())
+            return 0
+        if args.coverage:
+            return run_under_coverage(argv)
+        if args.debugger:
+            args.jobs = 1
+            args.pass_through = True
+
+        _setup_process(args)
+        try:
+            return run(args)
+        finally:
+            _teardown_process(args)
+    except KeyboardInterrupt:
+        print_("interrupted, exiting", stream=orig_stderr)
+        return 130
+
 
 def run(args):
     started_time = time.time()
@@ -179,6 +184,9 @@ def parse_args(argv):
     ap.add_argument('--write-full-results-to', metavar='FILENAME',
                     action='store',
                     help='If specified, write the full results to that path.')
+    ap.add_argument('-x', '--exclude', metavar='glob', default=[],
+                    action='append',
+                    help='test globs to exclude')
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
@@ -252,16 +260,18 @@ def find_tests(args):
             print_('Error: failed to import "%s": %s' % (name, str(e)),
                    stream=sys.stderr)
 
-        add_names_from_suite(test_names, module_suite)
+        add_names_from_suite(test_names, module_suite, args.exclude)
     return test_names
 
 
-def add_names_from_suite(test_names, obj):
+def add_names_from_suite(test_names, obj, globs_to_exclude):
     if isinstance(obj, unittest.suite.TestSuite):
         for el in obj:
-            add_names_from_suite(test_names, el)
+            add_names_from_suite(test_names, el, globs_to_exclude)
     else:
-        test_names.append(obj.id())
+        test_name = obj.id()
+        if not any(fnmatch.fnmatch(test_name, glob) for glob in globs_to_exclude):
+            test_names.append(test_name)
 
 
 def run_tests_with_retries(args, printer, stats, test_names):
@@ -495,8 +505,4 @@ def default_job_count():
 
 
 if __name__ == '__main__':
-    try:
-        sys.exit(main())
-    except KeyboardInterrupt:
-        print >> sys.stderr, "Interrupted, exiting"
-        sys.exit(130)
+    sys.exit(main())

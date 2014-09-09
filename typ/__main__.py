@@ -16,7 +16,7 @@ import os
 import sys
 
 
-if __name__ == '__main__':
+def main():
     if sys.platform == 'win32':
         # In order to use multiprocessing on windows, we need to ensure
         # that the 'main' module is importable, and __main__.py isn't.
@@ -31,11 +31,11 @@ if __name__ == '__main__':
         except KeyboardInterrupt:
             # We need a second wait in order to make sure the subprocess exits fully.
             proc.wait()
-        sys.exit(proc.returncode)
+        return proc.returncode
     else:
-        try:
-            from typ import tester
-            sys.exit(tester.main())
-        except KeyboardInterrupt:
-            print >> sys.stderr, "Interrupted, exiting"
-            sys.exit(130)
+        from typ import tester
+        return tester.main()
+
+
+if __name__ == '__main__':
+    sys.exit(main())
