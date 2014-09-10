@@ -66,18 +66,42 @@ def full_results(args, test_names, results):
     }
 
     sets_of_passing_test_names = map(passing_test_names, results)
-    sets_of_failing_test_names = map(failed_test_names, results)
+    sets_of_failing_test_names = map(functools.partial(failed_test_names, suite),
+                                     results)
+
+    # Handle tests skipped via the unittest skip decorators (like skipUnless).
+    # TODO: We still need a way for the caller to add user-skipped tests.
+    skipped_tests = (set(all_test_names) - sets_of_passing_test_names[0]
+                                         - sets_of_failing_test_names[0])
+
+    num_tests = len(all_test_names)
+    num_failures = num_failures_after_retries(suite, results)
+    num_skips = len(skipped_tests)
+    num_passes = num_tests - num_failures - num_skips
+    full_results['num_failures_by_type'] = {
+        'FAIL': num_failures,
+        'PASS': num_passes,
+        'SKIP': num_skips,
+    }
 
     test_results['tests'] = {}
 
     for test_name in test_names:
-        value = {
-            'expected': 'PASS',
-            'actual': actual_results_for_test(test_name,
-                                              sets_of_failing_test_names,
-                                              sets_of_passing_test_names),
-        }
-        _add_path_to_trie(full_results['tests'], test_name, value)
+        if test_name in skipped_tests:
+            value = {
+                'expected': 'SKIP',
+                'actual': 'SKIP',
+            }
+        else:
+            value = {
+                'expected': 'PASS',
+                'actual': actual_results_for_test(test_name,
+                                                  sets_of_failing_test_names,
+                                                  sets_of_passing_test_names),
+            }
+            if value['actual'].endswith('FAIL'):
+                value['is_unexpected'] = True
+            _add_path_to_trie(full_results['tests'], test_name, value)
 
     return test_results
 
@@ -119,7 +143,32 @@ def num_failures_after_retries(results):
 
 
 def failed_test_names(result):
-    return set(test for test, _ in result.failures + result.errors)
+  failed_test_names = set()
+  for test, error in result.failures + result.errors:
+    if isinstance(test, unittest.TestCase):
+      failed_test_names.add(test.id())
+    elif isinstance(test, unittest.suite._ErrorHolder):  # pylint: disable=W0212
+      # If there's an error in setUpClass or setUpModule, unittest gives us an
+      # _ErrorHolder object. We can parse the object's id for the class or
+      # module that failed, then find all tests in that class or module.
+      match = re.match('setUp[a-zA-Z]+ \\((.+)\\)', test.id())
+      assert match, "Don't know how to retry after this error:\n%s" % error
+      module_or_class = match.groups()[0]
+      failed_test_names |= _find_children(module_or_class,
+                                          all_test_names(suite))
+    else:
+      assert False, 'Unknown test type: %s' % test.__class__
+  return failed_test_names
+
+
+def _find_children(parent, potential_children):
+  children = set()
+  parent_name_parts = parent.split('.')
+  for potential_child in potential_children:
+    child_name_parts = potential_child.split('.')
+    if parent_name_parts == child_name_parts[:len(parent_name_parts)]:
+      children.add(potential_child)
+  return children
 
 
 def passing_test_names(result):
