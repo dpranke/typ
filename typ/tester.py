@@ -88,22 +88,23 @@ def run(args):
         if ap not in sys.path:
             sys.path.append(ap)
 
-    test_names = find_tests(args)
-    if test_names is None:
+    test_names, serial_test_names, skip_test_names = find_tests(args)
+    if not test_names and not serial_test_names:
         return 1
 
     if args.list_only:
-        print_('\n'.join(sorted(test_names)))
+        print_('\n'.join(sorted(test_names + serial_test_names)))
         return 0
 
-    return run_tests_with_retries(args, printer, stats, test_names)
+    return run_tests_with_retries(args, printer, stats, test_names,
+                                  serial_test_names, skip_test_names)
 
 
 def _setup_process(args):
     trap_stdio(args.pass_through)
 
 
-def _teardown_process(args):
+def _teardown_process(args):  # pylint: disable=W0613
     release_stdio()
 
 
@@ -154,8 +155,6 @@ def parse_args(argv):
                     help=('add dir to sys.path'))
     ap.add_argument('-V', '--version', action='store_true',
                     help='Print the typ version ("%s") and exit.' % version())
-    ap.add_argument('--all', action='store_true',
-                    help='Include tests that are skipped by default.')
     ap.add_argument('--builder-name',
                     help='Builder name to include in the uploaded data '
                          '(as shown on the buildbot waterfall).')
@@ -184,6 +183,9 @@ def parse_args(argv):
     ap.add_argument('--write-full-results-to', metavar='FILENAME',
                     action='store',
                     help='If specified, write the full results to that path.')
+    ap.add_argument('--serial', metavar='glob', default=[],
+                    action='append',
+                    help='test globs to run serially (in isolation)')
     ap.add_argument('-x', '--exclude', metavar='glob', default=[],
                     action='append',
                     help='test globs to exclude')
@@ -223,6 +225,22 @@ def run_under_coverage(argv):
 def find_tests(args):
     loader = unittest.loader.TestLoader()
     test_names = []
+    serial_test_names = []
+    skip_names = []
+
+    def add_names_from_suite(obj):
+        if isinstance(obj, unittest.suite.TestSuite):
+            for el in obj:
+                add_names_from_suite(el)
+        else:
+            test_name = obj.id()
+            if any(fnmatch.fnmatch(test_name, glob) for glob in args.exclude):
+                skip_names.append(test_name)
+            elif any(fnmatch.fnmatch(test_name, glob) for glob in args.serial):
+                serial_test_names.append(test_name)
+            else:
+                test_names.append(test_name)
+
     if args.file_list:
         if args.file_list == '-':
             f = sys.stdin
@@ -260,24 +278,16 @@ def find_tests(args):
             print_('Error: failed to import "%s": %s' % (name, str(e)),
                    stream=sys.stderr)
 
-        add_names_from_suite(test_names, module_suite, args.exclude)
-    return test_names
+        add_names_from_suite(module_suite)
+    return test_names, serial_test_names, skip_names
 
 
-def add_names_from_suite(test_names, obj, globs_to_exclude):
-    if isinstance(obj, unittest.suite.TestSuite):
-        for el in obj:
-            add_names_from_suite(test_names, el, globs_to_exclude)
-    else:
-        test_name = obj.id()
-        if not any(fnmatch.fnmatch(test_name, glob) for glob in globs_to_exclude):
-            test_names.append(test_name)
-
-
-def run_tests_with_retries(args, printer, stats, test_names):
+def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
+                           skip_test_names):
     all_test_names = test_names
 
-    result = run_one_set_of_tests(args, printer, stats, test_names)
+    result = run_one_set_of_tests(args, printer, stats, test_names,
+                                  serial_test_names, skip_test_names)
     results = [result]
 
     failed_tests = list(json_results.failed_test_names(result))
@@ -295,7 +305,8 @@ def run_tests_with_retries(args, printer, stats, test_names):
     while retry_limit and failed_tests:
         stats = Stats(args.status_format, time.time, time.time(), args.jobs)
         stats.total = len(failed_tests)
-        result = run_one_set_of_tests(args, printer, stats, failed_tests)
+        result = run_one_set_of_tests(args, printer, stats, failed_tests,
+                                      [], [])
         results.append(result)
         failed_tests = list(json_results.failed_test_names(result))
         retry_limit -= 1
@@ -313,13 +324,48 @@ def run_tests_with_retries(args, printer, stats, test_names):
     return json_results.exit_code_from_full_results(full_results)
 
 
-def run_one_set_of_tests(args, printer, stats, test_names):
+def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
+                         skip_test_names):
     num_failures = 0
-    running_jobs = set()
-    stats.total = len(test_names)
+    stats.total = (len(test_names) + len(serial_test_names) +
+                   len(skip_test_names))
 
     result = TestResult()
-    pool = make_pool(args.jobs, run_test, args, _setup_process, _teardown_process)
+
+    skip_tests(args, printer, stats, result, skip_test_names)
+
+    num_failures += run_test_list(args, printer, stats, result,
+                                  test_names, args.jobs)
+    num_failures += run_test_list(args, printer, stats, result,
+                                  serial_test_names, 1)
+
+    if not args.quiet:
+        if args.timing:
+            timing_clause = ' in %.1fs' % (time.time() - stats.started_time)
+        else:
+            timing_clause = ''
+        printer.update('%d tests run%s, %d failure%s.' %
+                       (stats.finished, timing_clause, num_failures,
+                        '' if num_failures == 1 else 's'))
+        print_()
+
+    return result
+
+
+def skip_tests(args, printer, stats, result, test_names):
+    for test_name in test_names:
+        stats.started += 1
+        print_test_started(printer, args, stats, test_name)
+        result.addSkip(test_name, '')
+        stats.finished += 1
+        print_test_finished(printer, args, stats, test_name, 0, '', '', 0)
+
+
+def run_test_list(args, printer, stats, result, test_names, jobs):
+    num_failures = 0
+    running_jobs = set()
+
+    pool = make_pool(jobs, run_test, args, _setup_process, _teardown_process)
     try:
         while test_names or running_jobs:
             while test_names and (len(running_jobs) < args.jobs):
@@ -343,16 +389,7 @@ def run_one_set_of_tests(args, printer, stats, test_names):
     finally:
         pool.join()
 
-    if not args.quiet:
-        if args.timing:
-            timing_clause = ' in %.1fs' % (time.time() - stats.started_time)
-        else:
-            timing_clause = ''
-        printer.update('%d tests run%s, %d failure%s.' %
-                       (stats.finished, timing_clause, num_failures,
-                        '' if num_failures == 1 else 's'))
-        print_()
-    return result
+    return num_failures
 
 
 def run_test(args, test_name):

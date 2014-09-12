@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import functools
 import json
 import time
 import unittest
@@ -57,28 +58,18 @@ def full_results(args, test_names, results):
         key, val = md.split('=', 1)
         full_results[key] = val
 
-    # TODO(dpranke): Handle skipped tests as well.
-
     num_failures = num_failures_after_retries(results)
-    test_results['num_failures_by_type'] = {
-        'FAIL': num_failures,
-        'PASS': len(test_names) - num_failures,
-    }
-
     sets_of_passing_test_names = map(passing_test_names, results)
-    sets_of_failing_test_names = map(functools.partial(failed_test_names, suite),
-                                     results)
+    sets_of_failing_test_names = map(failed_test_names, results)
 
-    # Handle tests skipped via the unittest skip decorators (like skipUnless).
-    # TODO: We still need a way for the caller to add user-skipped tests.
-    skipped_tests = (set(all_test_names) - sets_of_passing_test_names[0]
-                                         - sets_of_failing_test_names[0])
+    skipped_tests = (set(test_names) - sets_of_passing_test_names[0]
+                                     - sets_of_failing_test_names[0])
 
-    num_tests = len(all_test_names)
-    num_failures = num_failures_after_retries(suite, results)
+    num_tests = len(test_names)
+    num_failures = num_failures_after_retries(results)
     num_skips = len(skipped_tests)
     num_passes = num_tests - num_failures - num_skips
-    full_results['num_failures_by_type'] = {
+    test_results['num_failures_by_type'] = {
         'FAIL': num_failures,
         'PASS': num_passes,
         'SKIP': num_skips,
@@ -145,19 +136,8 @@ def num_failures_after_retries(results):
 def failed_test_names(result):
   failed_test_names = set()
   for test, error in result.failures + result.errors:
-    if isinstance(test, unittest.TestCase):
-      failed_test_names.add(test.id())
-    elif isinstance(test, unittest.suite._ErrorHolder):  # pylint: disable=W0212
-      # If there's an error in setUpClass or setUpModule, unittest gives us an
-      # _ErrorHolder object. We can parse the object's id for the class or
-      # module that failed, then find all tests in that class or module.
-      match = re.match('setUp[a-zA-Z]+ \\((.+)\\)', test.id())
-      assert match, "Don't know how to retry after this error:\n%s" % error
-      module_or_class = match.groups()[0]
-      failed_test_names |= _find_children(module_or_class,
-                                          all_test_names(suite))
-    else:
-      assert False, 'Unknown test type: %s' % test.__class__
+      assert isinstance(test, str), 'Unexpected test type: %s' % test.__class__
+      failed_test_names.add(test)
   return failed_test_names
 
 
