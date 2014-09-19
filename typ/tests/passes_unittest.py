@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+contents = """
 import sys
 import unittest
 
@@ -29,3 +30,5 @@ class PassingTests(unittest.TestCase):
 
     def test_prints_to_stderr_and_passes(self):
         print_('hello, stderr', stream=sys.stderr)
+
+"""

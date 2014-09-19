@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+contents = """
 import sys
 import unittest
-
 
 def print_(msg='', end='\n', stream=sys.stdout):
     stream.write(str(msg) + end)
@@ -32,4 +32,4 @@ class FailingTests(unittest.TestCase):
     def test_prints_to_stderr_and_fails(self):
         print_('hello, stderr', stream=sys.stderr)
         self.fail('This should fail.')
-
+"""

@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright 2014 Dirk Pranke. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ class Printer(object):
     def update(self, msg, elide=True):
         if elide and len(msg) > self.cols - 5:
             msg = msg[:self.cols - 5] + ' ...'
-        if self.should_overwrite:
+        if self.should_overwrite and self.last_line:
             self.print_('\r' + ' ' * len(self.last_line) + '\r', end='')
         elif self.last_line:
             self.print_('')

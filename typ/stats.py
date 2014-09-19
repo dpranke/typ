@@ -57,8 +57,8 @@ class Stats(object):
                 elif cn == 'o':
                     now = self._time()
                     if now > self.started_time:
-                        out += '%5.1f' % (self.finished - self.started /
-                                          now - self.started_time)
+                        out += '%5.1f' % (self.finished * 1.0 /
+                                          (now - self.started_time))
                     else:
                         out += '-'
                 elif cn == 'p':
@@ -74,10 +74,10 @@ class Stats(object):
                     out += str(self.total)
                 elif cn == 'u':
                     out += str(self.total - self.finished)
-                elif cn == '%%':
+                elif cn == '%':
                     out += '%'
                 else:
-                    out += cn
+                    out += c + cn
                 p += 2
             else:
                 out += c
