@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import collections
 import shlex
 import unittest
 
@@ -63,14 +62,7 @@ class MainTestCase(TestCase):
         prog = prog or self.prog
         host = host or self.host or self.make_host()
         stdin_io = StringIO(stdin) if stdin else None
-
-        if cmd is None:
-            argv = []
-        elif not isinstance(cmd, collections.Iterable):
-            # FIXME: is there a better way to handle things on windows?
-            argv = shlex.split(cmd)
-        else:
-            argv = cmd
+        argv = shlex.split(cmd) if isinstance(cmd, basestring) else cmd or []
 
         try:
             orig_wd = host.getcwd()
