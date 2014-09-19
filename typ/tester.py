@@ -51,7 +51,7 @@ def main(argv=None, host=None):
             print_(version())
             return 0
         if args.coverage:
-            return run_under_coverage(argv, host)
+            return _run_under_coverage(host, args, argv)
         if args.debugger:
             args.jobs = 1
             args.pass_through = True
@@ -198,6 +198,8 @@ def parse_args(argv):
                     action='append',
                     help=('filename globs to look for '
                           '(defaults to "*_unittest.py", "*_test.py")'))
+    ap.add_argument('--omit-coverage', default='*/typ/*',
+                    help='globs to omit in coverage report')
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
@@ -218,7 +220,7 @@ def parse_args(argv):
     return args
 
 
-def run_under_coverage(argv, host=None):
+def _run_under_coverage(host, args, argv):
     argv = argv or sys.argv
     host = host or Host()
     if '-c' in argv:
@@ -227,11 +229,20 @@ def run_under_coverage(argv, host=None):
         idx = argv.index('-j')
         argv.pop(idx)
         argv.pop(idx)
+    if '--omit-coverage' in argv:
+        idx = argv.index('--omit-coverage')
+        argv.pop(idx)
+        argv.pop(idx)
 
     host.call(['coverage', 'erase'])
-    res, _, _ = host.call(['coverage', 'run', '-m', 'typ'] +
-                          ['-j', '1'] + argv[1:])
-    host.call(['coverage', 'report', '--omit=*/typ/*'])
+    res, out, err = host.call(['coverage', 'run', '-m', 'typ'] +
+                              ['-j', '1'] + argv[1:])
+    report_args = ['coverage', 'report']
+    if args.omit_coverage:
+        report_args.append('--omit=' + args.omit_coverage)
+    _, out, _ = host.call(report_args)
+    for l in out.splitlines():
+        print_(l)
     return res
 
 
