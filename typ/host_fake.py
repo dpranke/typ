@@ -30,6 +30,8 @@ class FakeHost(object):
         self.sep = '/'
         self.dirs = set([])
         self.files = {}
+        self.fetches = []
+        self.fetch_responses = {}
         self.written_files = {}
         self.last_tmpdir = None
         self.current_tmpno = 0
@@ -161,3 +163,21 @@ class FakeHost(object):
         self.maybe_mkdir(self.dirname(full_path))
         self.files[full_path] = contents
         self.written_files[full_path] = contents
+
+    def fetch(self, url, data=None, headers=None):
+        resp = self.fetch_responses.get(url, FakeResponse('', url))
+        self.fetches.append((url, data, headers, resp))
+        return resp
+
+
+class FakeResponse(StringIO):
+    def __init__(self, response, url, code=200):
+        StringIO.__init__(self, response)
+        self._url = url
+        self.code = code
+
+    def geturl(self):
+        return self._url
+
+    def getcode(self):
+        return self.code

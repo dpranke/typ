@@ -36,7 +36,7 @@ def upload_full_results_if_necessary(args, test_results, host=None):
              ('master', args.master_name),
              ('testtype', args.test_type)]
     content_type, data = _encode_multipart_form_data(attrs, test_results)
-    return _upload_data(url, data, content_type)
+    return _upload_data(host, url, data, content_type)
 
 
 TEST_SEPARATOR = '.'
@@ -191,10 +191,9 @@ def _encode_multipart_form_data(attrs, test_results):
     return content_type, body
 
 
-def _upload_data(url, data, content_type):
-    request = urllib2.Request(url, data, {'Content-Type': content_type})
+def _upload_data(host, url, data, content_type):
     try:
-        response = urllib2.urlopen(request)
+        response = host.fetch(url, data, {'Content-Type': content_type})
         if response.code == 200:
             return False, ''
         return True, ('Uploading the JSON results failed with %d: "%s"' %

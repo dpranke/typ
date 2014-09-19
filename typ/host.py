@@ -114,3 +114,6 @@ class Host(object):
     def _write(self, path, contents, mode):
         with open(path, mode) as f:
             f.write(contents)
+
+    def fetch(self, url, data=None, headers=None):
+        return urllib2.urlopen(urllib2.Request(url, data, headers))
