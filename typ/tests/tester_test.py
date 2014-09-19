@@ -14,7 +14,6 @@
 
 import sys
 
-from typ import tester
 from typ import test_case
 
 class TestTester(test_case.MainTestCase):

@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-
 from typ import host_fake
 from typ import json_results
 from typ import test_case
@@ -48,6 +46,7 @@ class TestWriteFullResultsIfNecessary(test_case.TestCase):
         self.assertEqual(host.read_text_file(args.write_full_results_to),
                          '"empty"\n')
 
+
 class TestUploadFullResultsIfNecessary(test_case.TestCase):
 
     def test_no_upload(self):
@@ -73,7 +72,7 @@ class TestUploadFullResultsIfNecessary(test_case.TestCase):
         self.assertEqual(len(host.fetches), 1)
         url, data, headers, _ = host.fetches[0]
         ctype = 'multipart/form-data; boundary=-M-A-G-I-C---B-O-U-N-D-A-R-Y-'
-        self.assertEqual(headers, {'Content-Type': ctype})
+        self.assertEqual(url, 'http://localhost/testfile/upload')
         self.assertEqual(
             data,
             ('---M-A-G-I-C---B-O-U-N-D-A-R-Y-\r\n'
@@ -89,8 +88,10 @@ class TestUploadFullResultsIfNecessary(test_case.TestCase):
              '\r\n'
              'fake_test_type\r\n'
              '---M-A-G-I-C---B-O-U-N-D-A-R-Y-\r\n'
-             'Content-Disposition: form-data; name="file"; filename="full_results.json"\r\n'
+             'Content-Disposition: form-data; name="file"; '
+             'filename="full_results.json"\r\n'
              'Content-Type: application/json\r\n'
              '\r\n'
              '{"foo": "bar"}\r\n'
              '---M-A-G-I-C---B-O-U-N-D-A-R-Y---\r\n'))
+        self.assertEqual(headers, {'Content-Type': ctype})

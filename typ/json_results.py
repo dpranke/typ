@@ -15,7 +15,8 @@
 import json
 import time
 import unittest
-import urllib2
+
+from typ.host import Host
 
 
 def write_full_results_if_necessary(args, test_results, host=None):

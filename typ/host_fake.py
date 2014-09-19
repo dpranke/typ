@@ -50,13 +50,13 @@ class FakeHost(object):
         args = shlex.split(cmd_str)
         if args[0] == 'echo' and args[-2] == '>':
             out = ' '.join(args[1:len(args) - 2]) + '\n'
-            self.write(self.abspath(args[-1]), out)
+            self._write(self.abspath(args[-1]), out)
             return 0, '', ''
         if args[0] == 'cat' and args[-2] == '>':
             out = ''
             for f in args[1:len(args) - 2]:
-                out += self.read(f)
-            self.write(self.abspath(args[-1]), out)
+                out += self._read(f)
+            self._write(self.abspath(args[-1]), out)
             return 0, '', ''
         return 1, '', ''
 

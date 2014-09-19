@@ -19,7 +19,6 @@ import io
 import multiprocessing
 import os
 import pdb
-import subprocess
 import sys
 import time
 import unittest

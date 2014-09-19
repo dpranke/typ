@@ -41,7 +41,7 @@ class TestPool(test_case.TestCase):
                          set(['True/False/hello',
                               'True/False/world']))
         expected_context = {'setup': True, 'teardown': True}
-        expected_final_contexts = [expected_context for i in range(jobs)]
+        expected_final_contexts = [expected_context for _ in range(jobs)]
         self.assertEqual(final_contexts, expected_final_contexts)
 
     def test_single_job(self):

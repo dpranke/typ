@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib2
 
 
 class Host(object):
@@ -109,7 +110,7 @@ class Host(object):
         return self._write(path, contents, mode='w')
 
     def write_binary_file(self, path, contents):
-        return self._read(path, contents, mode='wb')
+        return self._write(path, contents, mode='wb')
 
     def _write(self, path, contents, mode):
         with open(path, mode) as f:
