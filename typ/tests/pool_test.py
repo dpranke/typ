@@ -14,9 +14,34 @@
 
 import unittest
 
-from typ import pool
+from typ import pool as typ_pool
+
+def setup_fn(usrp):
+    usrp['setup'] = True
+
+def teardown_fn(usrp):
+    usrp['teardown'] = True
+
+def echo_fn(usrp, args):
+    return '%s/%s/%s' % (usrp['setup'], usrp['teardown'], args)
 
 class TestPool(unittest.TestCase):
 
-    def test_basic(self):
-        pass
+    def run_basic_test(self, jobs):
+        usrp = {'setup': False, 'teardown': False}
+        pool = typ_pool.make_pool(jobs, echo_fn, usrp, setup_fn, teardown_fn)
+        pool.send('hello')
+        pool.send('world')
+        msg1 = pool.get()
+        msg2 = pool.get()
+        pool.close()
+        pool.join()
+        self.assertEqual(set([msg1, msg2]),
+                         set(['True/False/hello',
+                              'True/False/world']))
+
+    def test_single_job(self):
+        self.run_basic_test(1)
+
+    def test_two_jobs(self):
+        self.run_basic_test(2)

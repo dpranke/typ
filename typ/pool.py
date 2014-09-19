@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import multiprocessing
 
 try:
@@ -25,7 +26,7 @@ except ImportError:
 def make_pool(jobs, callback, usrp, pre_fn, post_fn):
     if jobs > 1:
         return ProcessPool(jobs, callback, usrp, pre_fn, post_fn)
-    return AsyncPool(callback, usrp)
+    return AsyncPool(callback, usrp, pre_fn, post_fn)
 
 
 class ProcessPool(object):
@@ -65,11 +66,13 @@ class ProcessPool(object):
 
 
 class AsyncPool(object):
-    def __init__(self, callback, usrp):
+    def __init__(self, callback, usrp, pre_fn, post_fn):
         self.callback = callback
-        self.usrp = usrp
+        self.usrp = copy.deepcopy(usrp)
         self.msgs = []
         self.closed = False
+        self.post_fn = post_fn
+        pre_fn(self.usrp)
 
     def send(self, msg):
         self.msgs.append(msg)
@@ -79,6 +82,7 @@ class AsyncPool(object):
 
     def close(self):
         self.closed = True
+        self.post_fn(self.usrp)
 
     def join(self):
         pass
