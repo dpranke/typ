@@ -26,6 +26,7 @@ import unittest
 
 
 from typ import json_results
+from typ.host import Host
 from typ.pool import make_pool
 from typ.stats import Stats
 from typ.printer import Printer
@@ -43,21 +44,22 @@ orig_stdout = sys.stdout
 orig_stderr = sys.stderr
 
 
-def main(argv=None):
+def main(argv=None, host=None):
+    host = host or Host()
     try:
         args = parse_args(argv)
         if args.version:
             print_(version())
             return 0
         if args.coverage:
-            return run_under_coverage(argv)
+            return run_under_coverage(argv, host)
         if args.debugger:
             args.jobs = 1
             args.pass_through = True
 
         _setup_process(args)
         try:
-            return run(args)
+            return run(args, host)
         finally:
             _teardown_process(args)
     except KeyboardInterrupt:
@@ -65,7 +67,8 @@ def main(argv=None):
         return 130
 
 
-def run(args):
+def run(args, host=None):
+    host = host or Host()
     started_time = time.time()
 
     stats = Stats(args.status_format, time.time, started_time, args.jobs)
@@ -97,7 +100,8 @@ def run(args):
         return 0
 
     return run_tests_with_retries(args, printer, stats, test_names,
-                                  serial_test_names, skip_test_names)
+                                  serial_test_names, skip_test_names,
+                                  host=host)
 
 
 def _setup_process(args):
@@ -215,8 +219,9 @@ def parse_args(argv):
     return args
 
 
-def run_under_coverage(argv):
+def run_under_coverage(argv, host=None):
     argv = argv or sys.argv
+    host = host or Host()
     if '-c' in argv:
         argv.remove('-c')
     if '-j' in argv:
@@ -224,14 +229,15 @@ def run_under_coverage(argv):
         argv.pop(idx)
         argv.pop(idx)
 
-    subprocess.call(['coverage', 'erase'])
-    res = subprocess.call(['coverage', 'run', '-m', 'typ'] +
+    host.call(['coverage', 'erase'])
+    res, _, _ = host.call(['coverage', 'run', '-m', 'typ'] +
                           ['-j', '1'] + argv[1:])
-    subprocess.call(['coverage', 'report', '--omit=*/typ/*'])
+    host.call(['coverage', 'report', '--omit=*/typ/*'])
     return res
 
 
-def find_tests(args):
+def find_tests(args, host=None):
+    host = host or Host()
     loader = unittest.loader.TestLoader()
     test_names = []
     serial_test_names = []
@@ -293,11 +299,12 @@ def find_tests(args):
 
 
 def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
-                           skip_test_names):
+                           skip_test_names, host=None):
+    host = host or Host()
     all_test_names = test_names
 
     result = run_one_set_of_tests(args, printer, stats, test_names,
-                                  serial_test_names, skip_test_names)
+                                  serial_test_names, skip_test_names, host=host)
     results = [result]
 
     failed_tests = list(json_results.failed_test_names(result))
@@ -322,10 +329,10 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
         retry_limit -= 1
 
     full_results = json_results.full_results(args, all_test_names, results)
-    json_results.write_full_results_if_necessary(args, full_results)
+    json_results.write_full_results_if_necessary(args, full_results, host=host)
 
     err_occurred, err_str = json_results.upload_full_results_if_necessary(
-        args, full_results)
+        args, full_results, host=host)
     if err_occurred:
         for line in err_str.splitlines():
             print_(line)
@@ -335,7 +342,8 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
 
 
 def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
-                         skip_test_names):
+                         skip_test_names, host=None):
+    host = host or Host()
     num_failures = 0
     stats.total = (len(test_names) + len(serial_test_names) +
                    len(skip_test_names))
@@ -345,9 +353,9 @@ def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
     skip_tests(args, printer, stats, result, skip_test_names)
 
     num_failures += run_test_list(args, printer, stats, result,
-                                  test_names, args.jobs)
+                                  test_names, args.jobs, host)
     num_failures += run_test_list(args, printer, stats, result,
-                                  serial_test_names, 1)
+                                  serial_test_names, 1, host)
 
     if not args.quiet:
         if args.timing:
@@ -371,7 +379,8 @@ def skip_tests(args, printer, stats, result, test_names):
         print_test_finished(printer, args, stats, test_name, 0, '', '', 0)
 
 
-def run_test_list(args, printer, stats, result, test_names, jobs):
+def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
+    host = host or Host()
     num_failures = 0
     running_jobs = set()
 

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
-from printer import Printer
+from typ import test_case
+from typ.printer import Printer
 
 
-class TestPrinter(unittest.TestCase):
+class TestPrinter(test_case.TestCase):
     def setUp(self):
         # 'Invalid name' pylint: disable=C0103
         self.out = []

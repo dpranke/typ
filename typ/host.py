@@ -82,9 +82,15 @@ class Host(object):
         self.stdout.write(str(msg) + end)
         self.stdout.flush()
 
-    def read(self, *comps):
+    def read_text_file(self, *comps):
+        return self._read(comps, 'r')
+
+    def read_binary_file(self, *comps):
+        return self._read(comps, 'rb')
+
+    def _read(self, comps, mode):
         path = self.join(*comps)
-        with open(path) as f:
+        with open(path, mode) as f:
             return f.read()
 
     def relpath(self, path, start):
@@ -99,6 +105,12 @@ class Host(object):
     def time(self):
         return time.time()
 
-    def write(self, path, contents):
-        with open(path, 'w') as f:
+    def write_text_file(self, path, contents):
+        return self._write(path, contents, mode='w')
+
+    def write_binary_file(self, path, contents):
+        return self._read(path, contents, mode='wb')
+
+    def _write(self, path, contents, mode):
+        with open(path, mode) as f:
             f.write(contents)

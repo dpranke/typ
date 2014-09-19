@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
-from typ import pool as typ_pool
+from typ import test_case
+from typ.pool import make_pool
 
 def setup_fn(context):
     context['setup'] = True
@@ -27,11 +26,11 @@ def teardown_fn(context):
 def echo_fn(context, msg):
     return '%s/%s/%s' % (context['setup'], context['teardown'], msg)
 
-class TestPool(unittest.TestCase):
+class TestPool(test_case.TestCase):
 
     def run_basic_test(self, jobs):
         context = {'setup': False, 'teardown': False}
-        pool = typ_pool.make_pool(jobs, echo_fn, context, setup_fn, teardown_fn)
+        pool = make_pool(jobs, echo_fn, context, setup_fn, teardown_fn)
         pool.send('hello')
         pool.send('world')
         msg1 = pool.get()

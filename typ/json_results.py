@@ -18,16 +18,16 @@ import unittest
 import urllib2
 
 
-def write_full_results_if_necessary(args, test_results):
+def write_full_results_if_necessary(args, test_results, host=None):
+    host = host or Host()
     if not args.write_full_results_to:
         return
-
-    with open(args.write_full_results_to, 'w') as fp:
-        json.dump(test_results, fp, indent=2)
-        fp.write("\n")
+    host.write_text_file(args.write_full_results_to,
+                         json.dumps(test_results, indent=2) + '\n')
 
 
-def upload_full_results_if_necessary(args, test_results):
+def upload_full_results_if_necessary(args, test_results, host=None):
+    host = host or Host()
     if not args.test_results_server:
         return False, ''
 

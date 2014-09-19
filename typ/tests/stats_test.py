@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 
-from stats import Stats
+from typ import test_case
+from typ.stats import Stats
 
 
-class TestStats(unittest.TestCase):
+class TestStats(test_case.TestCase):
     def test_basic(self):
         s = Stats('foo', None, None, 32)
         self.assertEqual(s.format(), 'foo')

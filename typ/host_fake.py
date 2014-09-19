@@ -123,7 +123,13 @@ class FakeHost(object):
     def print_out(self, msg, end='\n'):
         self.stdout.write(msg + end)
 
-    def read(self, *comps):
+    def read_binary_file(self, *comps):
+        return self._read(comps)
+
+    def read_text_file(self, *comps):
+        return self._read(comps)
+
+    def _read(self, comps):
         return self.files[self.abspath(*comps)]
 
     def relpath(self, path, start):
@@ -144,7 +150,13 @@ class FakeHost(object):
     def time(self):
         return 0
 
-    def write(self, path, contents):
+    def write_binary_file(self, path, contents):
+        self._write(path, contents)
+
+    def write_text_file(self, path, contents):
+        self._write(path, contents)
+
+    def _write(self, path, contents):
         full_path = self.abspath(path)
         self.maybe_mkdir(self.dirname(full_path))
         self.files[full_path] = contents
