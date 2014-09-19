@@ -189,10 +189,17 @@ def parse_args(argv):
     ap.add_argument('-x', '--exclude', metavar='glob', default=[],
                     action='append',
                     help='test globs to exclude')
+    ap.add_argument('--suffixes', metavar='glob', default=[],
+                    action='append',
+                    help=('filename globs to look for '
+                          '(defaults to "*_unittest.py", "*_test.py")'))
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
     args = ap.parse_args(argv)
+
+    if not args.suffixes:
+        args.suffixes = ['*_unittest.py', '*_test.py']
 
     for val in args.metadata:
         if '=' not in val:
@@ -260,25 +267,26 @@ def find_tests(args):
                 if name.startswith('.' + os.sep):
                     name = name[2:]
                 name = name.replace(os.sep, '.')
-                module_suite = loader.loadTestsFromName(name)
+                add_names_from_suite(loader.loadTestsFromName(name))
             elif os.path.isdir(test):
-                module_suite = loader.discover(test, '*_unittest.py',
-                                               args.top_level_dir)
+                for suffix in args.suffixes:
+                    add_names_from_suite(loader.discover(test, suffix,
+                                                         args.top_level_dir))
             else:
                 possible_dir = os.path.relpath(test.replace('.', os.sep),
                                                args.top_level_dir)
                 if os.path.isdir(possible_dir):
-                    module_suite = loader.discover(possible_dir,
-                                                   '*_unittest.py',
-                                                   args.top_level_dir)
+                    for suffix in args.suffixes:
+                        suite = loader.discover(possible_dir, suffix,
+                                                args.top_level_dir)
+                        add_names_from_suite(suite)
                 else:
                     name = possible_dir.replace(os.sep, '.')
-                    module_suite = loader.loadTestsFromName(name)
+                    add_names_from_suite(loader.loadTestsFromName(name))
         except AttributeError as e:
             print_('Error: failed to import "%s": %s' % (name, str(e)),
                    stream=sys.stderr)
 
-        add_names_from_suite(module_suite)
     return test_names, serial_test_names, skip_names
 
 

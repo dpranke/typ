@@ -1,4 +1,4 @@
-# Copyright 2014 Google Inc. All rights reserved.
+# Copyright 2014 Dirk Pranke. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,24 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-contents = """
-import sys
 import unittest
 
-def print_(msg='', end='\n', stream=sys.stdout):
-    stream.write(str(msg) + end)
-    stream.flush()
+from typ import pool
 
+class TestPool(unittest.TestCase):
 
-class FailingTests(unittest.TestCase):
-    def test_fail(self):
-        self.fail('This should fail.')
-
-    def test_prints_to_stdout_and_fails(self):
-        print_('hello, stdout')
-        self.fail('This should fail.')
-
-    def test_prints_to_stderr_and_fails(self):
-        print_('hello, stderr', stream=sys.stderr)
-        self.fail('This should fail.')
-"""
+    def test_basic(self):
+        pass
