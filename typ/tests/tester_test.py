@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+import sys
 
 from typ import tester
+from typ import test_case
 
-class TestTester(unittest.TestCase):
+class TestTester(test_case.MainTestCase):
+    prog = [sys.executable, '-m', 'typ']
 
-    def test_basic(self):
-        pass
+    def test_version(self):
+        self.check('--version', exp_exit=0, exp_stdout='0.2\n')
