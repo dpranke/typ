@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
 from typ import host_fake
 from typ import json_results
 from typ import test_case
+from typ import tester
 
 
 class FakeArgs(object):
@@ -95,3 +98,97 @@ class TestUploadFullResultsIfNecessary(test_case.TestCase):
              '{"foo": "bar"}\r\n'
              '---M-A-G-I-C---B-O-U-N-D-A-R-Y---\r\n'))
         self.assertEqual(headers, {'Content-Type': ctype})
+
+    def test_upload_fails(self):
+        host = host_fake.FakeHost()
+        url = 'http://localhost/testfile/upload'
+        host.fetch_responses[url] = host_fake.FakeResponse('Not Authorized',
+                                                           url, 404)
+        args = FakeArgs(builder_name='fake_builder_name',
+                        master_name='fake_master',
+                        test_results_server='localhost',
+                        test_type='fake_test_type')
+        results = {'foo': 'bar'}
+        res, msg = json_results.upload_full_results_if_necessary(args, results,
+                                                                 host)
+        self.assertEqual(res, True)
+        self.assertEqual(msg, 'Uploading the JSON results failed with '
+                              '404: "Not Authorized"')
+
+
+    def test_upload_raises(self):
+        host = host_fake.FakeHost()
+        url = 'http://localhost/testfile/upload'
+
+        def raiser(*args):
+            raise ValueError('bad arg')
+
+        host.fetch = raiser
+
+        args = FakeArgs(builder_name='fake_builder_name',
+                        master_name='fake_master',
+                        test_results_server='localhost',
+                        test_type='fake_test_type')
+        results = {'foo': 'bar'}
+        res, msg = json_results.upload_full_results_if_necessary(args, results,
+                                                                 host)
+        self.assertEqual(res, True)
+        self.assertEqual(msg, 'Uploading the JSON results raised "bad arg"\n')
+
+
+class TestFullResults(test_case.TestCase):
+    maxDiff = 2048
+
+    def test_basic(self):
+        args = FakeArgs(metadata=['foo=bar'])
+        host = host_fake.FakeHost()
+        test_names = ['foo_test.FooTest.test_fail',
+                      'foo_test.FooTest.test_pass',
+                      'foo_test.FooTest.test_skip']
+        result = tester.TestResult()
+        result.successes = [('foo_test.FooTest.test_pass', '')]
+        result.errors = [('foo_test.FooTest.test_fail', 'failure')]
+
+        full_results = json_results.full_results(args, test_names, [result],
+                                                 host)
+        expected_full_results = {
+            'foo': 'bar',
+            'interrupted': False,
+            'num_failures_by_type': {
+                'FAIL': 1,
+                'PASS': 1,
+                'SKIP': 1},
+            'path_delimiter': '.',
+            'seconds_since_epoch': 0,
+            'tests': {
+                'foo_test': {
+                    'FooTest': {
+                        'test_fail': {
+                            'expected': 'PASS',
+                            'actual': 'FAIL',
+                            'is_unexpected': True},
+                        'test_pass': {
+                            'expected': 'PASS',
+                            'actual': 'PASS'},
+                        'test_skip': {
+                            'expected': 'SKIP',
+                            'actual': 'SKIP'}}}},
+            'version': 3}
+        self.assertEqual(full_results, expected_full_results)
+
+
+class _TestCase(unittest.TestCase):
+    def test_foo(self):
+        pass
+
+class TestAllTestNames(test_case.TestCase):
+    def test_basic(self):
+        suite1 = unittest.TestSuite()
+        suite2 = unittest.TestSuite()
+
+        suite2.addTest(_TestCase('test_foo'))
+        suite1.addTest(suite2)
+
+        test_names = json_results.all_test_names(suite1)
+        self.assertEqual(test_names,
+                         ['typ.tests.json_results_test._TestCase.test_foo'])

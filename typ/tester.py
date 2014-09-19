@@ -198,7 +198,7 @@ def parse_args(argv):
                     action='append',
                     help=('filename globs to look for '
                           '(defaults to "*_unittest.py", "*_test.py")'))
-    ap.add_argument('--omit-coverage', default='*/typ/*',
+    ap.add_argument('--coverage-omit', default='*/typ/*',
                     help='globs to omit in coverage report')
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
@@ -229,8 +229,8 @@ def _run_under_coverage(host, args, argv):
         idx = argv.index('-j')
         argv.pop(idx)
         argv.pop(idx)
-    if '--omit-coverage' in argv:
-        idx = argv.index('--omit-coverage')
+    if '--coverage-omit' in argv:
+        idx = argv.index('--coverage-omit')
         argv.pop(idx)
         argv.pop(idx)
 
@@ -238,8 +238,8 @@ def _run_under_coverage(host, args, argv):
     res, out, err = host.call(['coverage', 'run', '-m', 'typ'] +
                               ['-j', '1'] + argv[1:])
     report_args = ['coverage', 'report']
-    if args.omit_coverage:
-        report_args.append('--omit=' + args.omit_coverage)
+    if args.coverage_omit:
+        report_args.append('--omit=' + args.coverage_omit)
     _, out, _ = host.call(report_args)
     for l in out.splitlines():
         print_(l)

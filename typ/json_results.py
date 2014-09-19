@@ -43,20 +43,20 @@ def upload_full_results_if_necessary(args, test_results, host=None):
 TEST_SEPARATOR = '.'
 
 
-def full_results(args, test_names, results):
+def full_results(args, test_names, results, host=None):
     """Convert the unittest results to the Chromium JSON test result format.
 
     See http://www.chromium.org/developers/the-json-test-results-format
     """
-
+    host = host or Host()
     test_results = {}
     test_results['interrupted'] = False
     test_results['path_delimiter'] = TEST_SEPARATOR
     test_results['version'] = 3
-    test_results['seconds_since_epoch'] = time.time()
+    test_results['seconds_since_epoch'] = host.time()
     for md in args.metadata:
         key, val = md.split('=', 1)
-        full_results[key] = val
+        test_results[key] = val
 
     num_failures = num_failures_after_retries(results)
     sets_of_passing_test_names = map(passing_test_names, results)
@@ -92,7 +92,7 @@ def full_results(args, test_names, results):
             }
             if value['actual'].endswith('FAIL'):
                 value['is_unexpected'] = True
-            _add_path_to_trie(full_results['tests'], test_name, value)
+        _add_path_to_trie(test_results['tests'], test_name, value)
 
     return test_results
 
@@ -140,16 +140,6 @@ def failed_test_names(result):
                                        test.__class__)
         test_names.add(test)
     return test_names
-
-
-def _find_children(parent, potential_children):
-    children = set()
-    parent_name_parts = parent.split('.')
-    for potential_child in potential_children:
-        child_name_parts = potential_child.split('.')
-        if parent_name_parts == child_name_parts[:len(parent_name_parts)]:
-            children.add(potential_child)
-    return children
 
 
 def passing_test_names(result):
