@@ -16,29 +16,34 @@ import unittest
 
 from typ import pool as typ_pool
 
-def setup_fn(usrp):
-    usrp['setup'] = True
+def setup_fn(context):
+    context['setup'] = True
+    return context
 
-def teardown_fn(usrp):
-    usrp['teardown'] = True
+def teardown_fn(context):
+    context['teardown'] = True
+    return context
 
-def echo_fn(usrp, args):
-    return '%s/%s/%s' % (usrp['setup'], usrp['teardown'], args)
+def echo_fn(context, msg):
+    return '%s/%s/%s' % (context['setup'], context['teardown'], msg)
 
 class TestPool(unittest.TestCase):
 
     def run_basic_test(self, jobs):
-        usrp = {'setup': False, 'teardown': False}
-        pool = typ_pool.make_pool(jobs, echo_fn, usrp, setup_fn, teardown_fn)
+        context = {'setup': False, 'teardown': False}
+        pool = typ_pool.make_pool(jobs, echo_fn, context, setup_fn, teardown_fn)
         pool.send('hello')
         pool.send('world')
         msg1 = pool.get()
         msg2 = pool.get()
         pool.close()
-        pool.join()
+        final_contexts = pool.join()
         self.assertEqual(set([msg1, msg2]),
                          set(['True/False/hello',
                               'True/False/world']))
+        expected_context = {'setup': True, 'teardown': True}
+        expected_final_contexts = [expected_context for i in range(jobs)]
+        self.assertEqual(final_contexts, expected_final_contexts)
 
     def test_single_job(self):
         self.run_basic_test(1)

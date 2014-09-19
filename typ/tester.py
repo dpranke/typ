@@ -102,10 +102,12 @@ def run(args):
 
 def _setup_process(args):
     trap_stdio(args.pass_through)
+    return args
 
 
 def _teardown_process(args):  # pylint: disable=W0613
     release_stdio()
+    return args
 
 
 def trap_stdio(should_passthrough):

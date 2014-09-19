@@ -23,14 +23,14 @@ except ImportError:
     from Queue import Empty
 
 
-def make_pool(jobs, callback, usrp, pre_fn, post_fn):
+def make_pool(jobs, callback, context, pre_fn, post_fn):
     if jobs > 1:
-        return ProcessPool(jobs, callback, usrp, pre_fn, post_fn)
-    return AsyncPool(callback, usrp, pre_fn, post_fn)
+        return ProcessPool(jobs, callback, context, pre_fn, post_fn)
+    return AsyncPool(callback, context, pre_fn, post_fn)
 
 
 class ProcessPool(object):
-    def __init__(self, jobs, callback, usrp, pre_fn, post_fn):
+    def __init__(self, jobs, callback, context, pre_fn, post_fn):
         self.jobs = jobs
         self.requests = multiprocessing.Queue()
         self.responses = multiprocessing.Queue()
@@ -38,7 +38,7 @@ class ProcessPool(object):
         self.closed = False
         for worker_num in range(jobs):
             w = multiprocessing.Process(target=_loop,
-                                        args=(worker_num, callback, usrp,
+                                        args=(worker_num, callback, context,
                                               self.requests, self.responses,
                                               pre_fn, post_fn))
             w.start()
@@ -60,47 +60,51 @@ class ProcessPool(object):
         if not self.closed:
             for w in self.workers:
                 w.terminate()
+        final_contexts = []
         for w in self.workers:
+            final_contexts.append(self.responses.get(True))
             w.join()
         self.responses.close()
+        return final_contexts
 
 
 class AsyncPool(object):
-    def __init__(self, callback, usrp, pre_fn, post_fn):
+    def __init__(self, callback, context, pre_fn, post_fn):
         self.callback = callback
-        self.usrp = copy.deepcopy(usrp)
+        self.context = copy.deepcopy(context)
         self.msgs = []
         self.closed = False
         self.post_fn = post_fn
-        pre_fn(self.usrp)
+        self.context_after_pre = pre_fn(self.context)
+        self.final_context = None
 
     def send(self, msg):
         self.msgs.append(msg)
 
     def get(self, block=True, timeout=None):  # unused pylint: disable=W0613
-        return self.callback(self.usrp, self.msgs.pop(0))
+        return self.callback(self.context_after_pre, self.msgs.pop(0))
 
     def close(self):
         self.closed = True
-        self.post_fn(self.usrp)
+        self.final_context = self.post_fn(self.context_after_pre)
 
     def join(self):
-        pass
+        return [self.final_context]
 
 
-def _loop(_worker_num, callback, usrp, requests, responses, setup_process,
+def _loop(_worker_num, callback, context, requests, responses, setup_process,
           teardown_process):
     try:
-        setup_process(usrp)
+        context_after_pre = setup_process(context)
         keep_going = True
         while keep_going:
             keep_going, args = requests.get(block=True)
             if keep_going:
-                resp = callback(usrp, args)
+                resp = callback(context_after_pre, args)
                 responses.put(resp)
     except Empty:
         pass
     except IOError:
         pass
     finally:
-        teardown_process(usrp)
+        responses.put(teardown_process(context_after_pre))
