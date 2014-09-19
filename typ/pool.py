@@ -88,7 +88,8 @@ class AsyncPool(object):
         pass
 
 
-def _loop(_worker_num, callback, usrp, requests, responses, setup_process, teardown_process):
+def _loop(_worker_num, callback, usrp, requests, responses, setup_process,
+          teardown_process):
     try:
         setup_process(usrp)
         keep_going = True

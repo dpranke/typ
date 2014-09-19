@@ -29,7 +29,8 @@ def main():
         try:
             proc.wait()
         except KeyboardInterrupt:
-            # We need a second wait in order to make sure the subprocess exits fully.
+            # We need a second wait in order to make sure the subprocess exits
+            # completely.
             proc.wait()
         return proc.returncode
     else:

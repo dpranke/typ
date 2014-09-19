@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
 import json
 import time
 import unittest
@@ -134,21 +133,22 @@ def num_failures_after_retries(results):
 
 
 def failed_test_names(result):
-  failed_test_names = set()
-  for test, error in result.failures + result.errors:
-      assert isinstance(test, str), 'Unexpected test type: %s' % test.__class__
-      failed_test_names.add(test)
-  return failed_test_names
+    test_names = set()
+    for test, _ in result.failures + result.errors:
+        assert isinstance(test, str), ('Unexpected test type: %s' %
+                                       test.__class__)
+        test_names.add(test)
+    return test_names
 
 
 def _find_children(parent, potential_children):
-  children = set()
-  parent_name_parts = parent.split('.')
-  for potential_child in potential_children:
-    child_name_parts = potential_child.split('.')
-    if parent_name_parts == child_name_parts[:len(parent_name_parts)]:
-      children.add(potential_child)
-  return children
+    children = set()
+    parent_name_parts = parent.split('.')
+    for potential_child in potential_children:
+        child_name_parts = potential_child.split('.')
+        if parent_name_parts == child_name_parts[:len(parent_name_parts)]:
+            children.add(potential_child)
+    return children
 
 
 def passing_test_names(result):

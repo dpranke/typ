@@ -21,4 +21,4 @@ class TestTester(test_case.MainTestCase):
     prog = [sys.executable, '-m', 'typ']
 
     def test_version(self):
-        self.check('--version', exp_exit=0, exp_stdout='0.2\n')
+        self.check('--version', ret=0, out='0.2\n')

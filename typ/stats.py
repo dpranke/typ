@@ -30,6 +30,7 @@ class Stats(object):
         self._times.append(self._time())
 
     def format(self):
+        # Too many statements pylint: disable=R0915
         out = ''
         p = 0
         end = len(self.fmt)

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import subprocess
-import tempfile
 import unittest
+
+from StringIO import StringIO
 
 from typ import host as typ_host
 
@@ -36,11 +36,12 @@ class MainTestCase(unittest.TestCase):
             out_files[f] = host.read(tmpdir, f)
         return out_files
 
-    def assert_files(self, expected_files, actual_files):
+    def assert_files(self, expected_files, actual_files, files_to_ignore=None):
+        files_to_ignore = files_to_ignore or []
         for k, v in expected_files.items():
             self.assertEqual(expected_files[k], v)
         interesting_files = set(actual_files.keys()).difference(
-            self._files_to_ignore())
+            files_to_ignore)
         self.assertEqual(interesting_files, set(expected_files.keys()))
 
     def make_host(self):
@@ -49,9 +50,10 @@ class MainTestCase(unittest.TestCase):
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)
 
-    def check(self, cmd=None, argv=None, stdin=None, stdout=None, stderr=None, env=None,
-              files=None, prog=None, cwd=None, host=None,
-              exp_exit=None, exp_stdout=None, exp_stderr=None, exp_files=None):
+    def check(self, cmd=None, argv=None, stdin=None, env=None, files=None,
+              prog=None, cwd=None, host=None,
+              ret=None, out=None, err=None, exp_files=None):
+        # Too many arguments pylint: disable=R0913
         prog = prog or self.prog
         host = host or self.host or self.make_host()
         stdin_io = StringIO(stdin) if stdin else None
@@ -71,19 +73,19 @@ class MainTestCase(unittest.TestCase):
 
             result = self.call(host, prog + argv, stdin=stdin_io, env=env)
 
-            actual_exit, actual_stdout, actual_stderr = result
+            actual_ret, actual_out, actual_err = result
             actual_files = self._read_files(host, tmpdir)
         finally:
             host.rmtree(tmpdir)
             host.chdir(orig_wd)
 
-        if exp_exit is not None:
-            self.assertEqual(actual_exit, exp_exit)
-        if exp_stdout is not None:
-            self.assertEqual(actual_stdout, exp_stdout)
-        if exp_stderr is not None:
-            self.assertEqual(actual_stderr, exp_stderr)
+        if ret is not None:
+            self.assertEqual(actual_ret, ret)
+        if out is not None:
+            self.assertEqual(actual_out, out)
+        if err is not None:
+            self.assertEqual(actual_err, err)
         if exp_files:
             self.assert_files(exp_files, actual_files)
 
-        return actual_exit, actual_stdout, actual_stderr, actual_files
+        return actual_ret, actual_out, actual_err, actual_files
