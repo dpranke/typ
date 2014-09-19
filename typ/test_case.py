@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
+import shlex
 import unittest
 
 from StringIO import StringIO
@@ -19,7 +21,11 @@ from StringIO import StringIO
 from typ import host as typ_host
 
 
-class MainTestCase(unittest.TestCase):
+class TestCase(unittest.TestCase):
+    typ_context = None
+
+
+class MainTestCase(TestCase):
     prog = None
     host = None
 
@@ -50,7 +56,7 @@ class MainTestCase(unittest.TestCase):
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)
 
-    def check(self, cmd=None, argv=None, stdin=None, env=None, files=None,
+    def check(self, cmd=None, stdin=None, env=None, files=None,
               prog=None, cwd=None, host=None,
               ret=None, out=None, err=None, exp_files=None):
         # Too many arguments pylint: disable=R0913
@@ -58,9 +64,13 @@ class MainTestCase(unittest.TestCase):
         host = host or self.host or self.make_host()
         stdin_io = StringIO(stdin) if stdin else None
 
-        if argv is None:
-            # FIXME: Need something smarter here
-            argv = cmd.split() if cmd else []
+        if cmd is None:
+            argv = []
+        elif not isinstance(cmd, collections.Iterable):
+            # FIXME: is there a better way to handle things on windows?
+            argv = shlex.split(cmd)
+        else:
+            argv = cmd
 
         try:
             orig_wd = host.getcwd()
