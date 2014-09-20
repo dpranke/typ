@@ -42,8 +42,15 @@ class Host(object):
             sys.path.append(absolute_path)
 
     def call(self, argv, stdin=None, env=None):
+        if stdin:
+            stdin_pipe = subprocess.PIPE
+        else:
+            stdin_pipe = None
         proc = subprocess.Popen(argv, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, stdin=stdin, env=env)
+                                stderr=subprocess.PIPE, stdin=stdin_pipe,
+                                env=env)
+        if stdin_pipe:
+            proc.stdin.write(stdin)
         stdout, stderr = proc.communicate()
         return proc.returncode, stdout, stderr
 

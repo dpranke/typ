@@ -15,8 +15,6 @@
 import shlex
 import unittest
 
-from StringIO import StringIO
-
 from typ import host as typ_host
 
 
@@ -33,12 +31,12 @@ class MainTestCase(TestCase):
             dirname = host.dirname(path)
             if dirname:
                 host.maybe_mkdir(dirname)
-            host.write(path, contents)
+            host.write_binary_file(path, contents)
 
     def _read_files(self, host, tmpdir):
         out_files = {}
         for f in host.files_under(tmpdir):
-            out_files[f] = host.read(tmpdir, f)
+            out_files[f] = host.read_binary_file(tmpdir, f)
         return out_files
 
     def assert_files(self, expected_files, actual_files, files_to_ignore=None):
@@ -57,11 +55,11 @@ class MainTestCase(TestCase):
 
     def check(self, cmd=None, stdin=None, env=None, files=None,
               prog=None, cwd=None, host=None,
-              ret=None, out=None, err=None, exp_files=None):
+              ret=None, out=None, err=None, exp_files=None,
+              files_to_ignore=None):
         # Too many arguments pylint: disable=R0913
         prog = prog or self.prog
         host = host or self.host or self.make_host()
-        stdin_io = StringIO(stdin) if stdin else None
         argv = shlex.split(cmd) if isinstance(cmd, basestring) else cmd or []
 
         try:
@@ -73,7 +71,7 @@ class MainTestCase(TestCase):
             if cwd:
                 host.chdir(cwd)
 
-            result = self.call(host, prog + argv, stdin=stdin_io, env=env)
+            result = self.call(host, prog + argv, stdin=stdin, env=env)
 
             actual_ret, actual_out, actual_err = result
             actual_files = self._read_files(host, tmpdir)
@@ -88,6 +86,6 @@ class MainTestCase(TestCase):
         if err is not None:
             self.assertEqual(actual_err, err)
         if exp_files:
-            self.assert_files(exp_files, actual_files)
+            self.assert_files(exp_files, actual_files, files_to_ignore)
 
         return actual_ret, actual_out, actual_err, actual_files
