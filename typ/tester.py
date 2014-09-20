@@ -130,6 +130,7 @@ def run(args, host=None):
 
     test_names, serial_test_names, skip_test_names = find_tests(args)
     if not test_names and not serial_test_names:
+        host.print_('No tests to run.')
         return 1
 
     if args.list_only:
