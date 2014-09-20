@@ -55,3 +55,11 @@ class TestPool(test_case.TestCase):
 
     def test_two_jobs(self):
         self.run_basic_test(2)
+
+    def test_no_close(self):
+        host = Host()
+        context = {'setup': False, 'teardown': False}
+        pool = make_pool(host, 2, echo_fn, context, setup_fn, teardown_fn)
+        final_contexts = pool.join()
+        self.assertEqual(final_contexts, [])
+

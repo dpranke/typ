@@ -60,13 +60,16 @@ class ProcessPool(object):
         self.closed = True
 
     def join(self):
+        final_contexts = []
         if not self.closed:
+            self.requests.close()
             for w in self.workers:
                 w.terminate()
-        final_contexts = []
-        for w in self.workers:
-            final_contexts.append(self.responses.get(True))
-            w.join()
+                w.join()
+        else:
+            for w in self.workers:
+                final_contexts.append(self.responses.get(True))
+                w.join()
         self.responses.close()
         return final_contexts
 
@@ -86,7 +89,8 @@ class AsyncPool(object):
     def send(self, msg):
         self.msgs.append(msg)
 
-    def get(self, block=True, timeout=None):  # unused pylint: disable=W0613
+    def get(self, block=True, timeout=None):
+        # unused pylint: disable=W0613
         return self.callback(self.context_after_pre, self.msgs.pop(0))
 
     def close(self):
@@ -100,7 +104,8 @@ class AsyncPool(object):
 def _loop(requests, responses,
           host, worker_num,
           callback, context,
-          pre_fn, post_fn):
+          pre_fn, post_fn): # pragma: no cover
+    # TODO: Figure out how to get coverage to work w/ subprocesses.
     host = host or Host()
     try:
         context_after_pre = pre_fn(host, worker_num, context)
