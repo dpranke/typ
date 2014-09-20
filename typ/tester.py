@@ -30,9 +30,13 @@ from typ.printer import Printer
 
 
 def version(host=None):
-    host = host or _host()
-    here = host.dirname(host.abspath_to_module(__name__))
-    return host.read_text_file(here, 'VERSION').strip()
+    # TODO: Ideally we'd pull the version information from a file
+    # rather than embed it into the source, but this gets confused when
+    # run under 'coverage'. We can probably switch back to a file when
+    # we can inline coverage calls.
+    return '0.2'
+    # here = host.abspath_to_module(__name__)
+    # return host.read_text_file(here, 'VERSION').strip()
 
 
 DEFAULT_STATUS_FORMAT = '[%f/%t] '
@@ -230,6 +234,7 @@ def parse_args(argv, host=None):
                           '(defaults to "*_unittest.py", "*_test.py")'))
     ap.add_argument('--coverage-omit', default='*/typ/*',
                     help='globs to omit in coverage report')
+    ap.add_argument('--no-trapping', action='store_true')
     ap.add_argument('tests', nargs='*', default=[],
                     help=argparse.SUPPRESS)
 
@@ -428,13 +433,15 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
 
 
 def _setup_process(host, worker_num, args):
-    trap_stdio(args.pass_through)
+    if not args.no_trapping:
+        trap_stdio(args.pass_through)
     return (host, worker_num, args)
 
 
 def _teardown_process(context):
     host, worker_num, args = context
-    release_stdio()
+    if not args.no_trapping:
+        release_stdio()
     return worker_num
 
 
