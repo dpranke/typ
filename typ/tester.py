@@ -16,11 +16,8 @@ import argparse
 import fnmatch
 import inspect
 import io
-import multiprocessing
-import os
 import pdb
 import sys
-import time
 import unittest
 
 
@@ -31,10 +28,10 @@ from typ.stats import Stats
 from typ.printer import Printer
 
 
-def version():
-    here = os.path.abspath(os.path.dirname(__file__))
-    with open(os.path.join(here, 'VERSION')) as fp:
-        return fp.read().strip()
+def version(host=None):
+    host = host or Host()
+    here = host.dirname(host.abspath_to_module(__name__))
+    return host.read_text_file(here, 'VERSION').strip()
 
 
 DEFAULT_STATUS_FORMAT = '[%f/%t] '
@@ -56,11 +53,11 @@ def main(argv=None, host=None):
             args.jobs = 1
             args.pass_through = True
 
-        _setup_process(args)
+        context = _setup_process(host, 0, args)
         try:
             return run(args, host)
         finally:
-            _teardown_process(args)
+            _teardown_process(context)
     except KeyboardInterrupt:
         print_("interrupted, exiting", stream=orig_stderr)
         return 130
@@ -68,27 +65,24 @@ def main(argv=None, host=None):
 
 def run(args, host=None):
     host = host or Host()
-    started_time = time.time()
+    started_time = host.time()
 
-    stats = Stats(args.status_format, time.time, started_time, args.jobs)
+    stats = Stats(args.status_format, host.time, started_time, args.jobs)
     should_overwrite = orig_stdout.isatty() and not args.verbose
     printer = Printer(print_, should_overwrite, cols=args.terminal_width)
 
     if args.top_level_dir:
-        path = os.path.abspath(args.top_level_dir)
-        if path not in sys.path:
-            sys.path.append(path)
+        path = host.abspath(args.top_level_dir)
+        host.add_to_path(path)
     else:
-        top_dir = os.getcwd()
-        while os.path.exists(os.path.join(top_dir, '__init__.py')):
-            top_dir = os.path.dirname(top_dir)
-        if top_dir != os.getcwd() and top_dir not in sys.path:
-            sys.path.append(top_dir)
+        top_dir = host.getcwd()
+        while host.exists(top_dir, '__init__.py'):
+            top_dir = host.dirname(top_dir)
+        if top_dir != host.getcwd():
+            host.add_to_path(top_dir)
 
     for path in args.path:
-        ap = os.path.abspath(path)
-        if ap not in sys.path:
-            sys.path.append(ap)
+        host.add_to_path(path)
 
     test_names, serial_test_names, skip_test_names = find_tests(args)
     if not test_names and not serial_test_names:
@@ -103,16 +97,6 @@ def run(args, host=None):
                                   host=host)
 
 
-def _setup_process(args):
-    trap_stdio(args.pass_through)
-    return args
-
-
-def _teardown_process(args):  # pylint: disable=W0613
-    release_stdio()
-    return args
-
-
 def trap_stdio(should_passthrough):
     sys.stdout = PassThrough(sys.stdout if should_passthrough else None)
     sys.stderr = PassThrough(sys.stderr if should_passthrough else None)
@@ -123,7 +107,8 @@ def release_stdio():
     sys.stderr = orig_stderr
 
 
-def parse_args(argv):
+def parse_args(argv, host=None):
+    host = host or Host()
     ap = argparse.ArgumentParser(prog='typ')
     ap.usage = '%(prog)s [options] [tests...]'
     ap.add_argument('-c', '--coverage', action='store_true',
@@ -147,7 +132,7 @@ def parse_args(argv):
     ap.add_argument('-q', '--quiet', action='store_true', default=False,
                     help='Be as quiet as possible (only print errors).')
     ap.add_argument('-s', '--status-format',
-                    default=os.getenv('NINJA_STATUS', DEFAULT_STATUS_FORMAT),
+                    default=host.getenv('NINJA_STATUS', DEFAULT_STATUS_FORMAT),
                     help=('Format for status updates '
                           '(defaults to NINJA_STATUS env var if set, '
                           '"[%%f/%%t] " otherwise).'))
@@ -173,7 +158,7 @@ def parse_args(argv):
     ap.add_argument('--retry-limit', type=int, default=0,
                     help='Retry each failure up to N times to de-flake things '
                          '(defaults to %(default)d, no retries).')
-    ap.add_argument('--terminal-width', type=int, default=terminal_width(),
+    ap.add_argument('--terminal-width', type=int, default=terminal_width(host),
                     help=('Width of output (defaults to '
                           'current terminal width, %(default)d).'))
     ap.add_argument('--test-results-server', default='',
@@ -221,8 +206,8 @@ def parse_args(argv):
 
 
 def _run_under_coverage(host, args, argv):
-    argv = argv or sys.argv
     host = host or Host()
+    argv = argv or sys.argv
     if '-c' in argv:
         argv.remove('-c')
     if '-j' in argv:
@@ -268,38 +253,37 @@ def find_tests(args, host=None):
 
     if args.file_list:
         if args.file_list == '-':
-            f = sys.stdin
+            s = host.stdin.read()
         else:
-            f = open(args.file_list)
-        tests = [line.strip() for line in f.readlines()]
-        f.close()
+            s = host.read_text_file(args.file_list)
+        tests = [line.strip() for line in s.splitlines()]
     else:
         tests = args.tests or ['.']
 
     for test in tests:
         try:
-            if os.path.isfile(test):
-                name = os.path.relpath(test, args.top_level_dir)
+            if host.isfile(test):
+                name = host.relpath(test, args.top_level_dir)
                 if name.endswith('.py'):
                     name = name[:-3]
-                if name.startswith('.' + os.sep):
+                if name.startswith('.' + host.sep):
                     name = name[2:]
-                name = name.replace(os.sep, '.')
+                name = name.replace(host.sep, '.')
                 add_names_from_suite(loader.loadTestsFromName(name))
-            elif os.path.isdir(test):
+            elif host.isdir(test):
                 for suffix in args.suffixes:
                     add_names_from_suite(loader.discover(test, suffix,
                                                          args.top_level_dir))
             else:
-                possible_dir = os.path.relpath(test.replace('.', os.sep),
-                                               args.top_level_dir)
-                if os.path.isdir(possible_dir):
+                possible_dir = host.relpath(test.replace('.', host.sep),
+                                            args.top_level_dir)
+                if host.isdir(possible_dir):
                     for suffix in args.suffixes:
                         suite = loader.discover(possible_dir, suffix,
                                                 args.top_level_dir)
                         add_names_from_suite(suite)
                 else:
-                    name = possible_dir.replace(os.sep, '.')
+                    name = possible_dir.replace(host.sep, '.')
                     add_names_from_suite(loader.loadTestsFromName(name))
         except AttributeError as e:
             print_('Error: failed to import "%s": %s' % (name, str(e)),
@@ -330,7 +314,7 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
         printer.print_('')
 
     while retry_limit and failed_tests:
-        stats = Stats(args.status_format, time.time, time.time(), args.jobs)
+        stats = Stats(args.status_format, host.time, host.time(), args.jobs)
         stats.total = len(failed_tests)
         result = run_one_set_of_tests(args, printer, stats, failed_tests,
                                       [], [])
@@ -369,7 +353,7 @@ def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
 
     if not args.quiet:
         if args.timing:
-            timing_clause = ' in %.1fs' % (time.time() - stats.started_time)
+            timing_clause = ' in %.1fs' % (host.time() - stats.started_time)
         else:
             timing_clause = ''
         printer.update('%d tests run%s, %d failure%s.' %
@@ -383,10 +367,10 @@ def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
 def skip_tests(args, printer, stats, result, test_names):
     for test_name in test_names:
         stats.started += 1
-        print_test_started(printer, args, stats, test_name)
+        _print_test_started(printer, args, stats, test_name)
         result.addSkip(test_name, '')
         stats.finished += 1
-        print_test_finished(printer, args, stats, test_name, 0, '', '', 0)
+        _print_test_finished(printer, args, stats, test_name, 0, '', '', 0)
 
 
 def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
@@ -394,7 +378,8 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
     num_failures = 0
     running_jobs = set()
 
-    pool = make_pool(jobs, run_test, args, _setup_process, _teardown_process)
+    pool = make_pool(host, jobs, _run_test, args,
+                     _setup_process, _teardown_process)
     try:
         while test_names or running_jobs:
             while test_names and (len(running_jobs) < args.jobs):
@@ -402,7 +387,7 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
                 stats.started += 1
                 pool.send(test_name)
                 running_jobs.add(test_name)
-                print_test_started(printer, args, stats, test_name)
+                _print_test_started(printer, args, stats, test_name)
 
             test_name, res, out, err, took = pool.get()
             running_jobs.remove(test_name)
@@ -412,7 +397,7 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
             else:
                 result.successes.append((test_name, err))
             stats.finished += 1
-            print_test_finished(printer, args, stats, test_name,
+            _print_test_finished(printer, args, stats, test_name,
                                 res, out, err, took)
         pool.close()
     finally:
@@ -421,7 +406,19 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
     return num_failures
 
 
-def run_test(args, test_name):
+def _setup_process(host, worker_num, args):
+    trap_stdio(args.pass_through)
+    return (host, worker_num, args)
+
+
+def _teardown_process(context):
+    host, worker_num, args = context
+    release_stdio()
+    return worker_num
+
+
+def _run_test(context, test_name):
+    host, worker_num, args = context
     if args.dry_run:
         return test_name, 0, '', '', 0
     loader = unittest.loader.TestLoader()
@@ -431,7 +428,7 @@ def run_test(args, test_name):
     except Exception as e:
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
-    start = time.time()
+    start = host.time()
     if args.debugger:
         # Access to a protected member  pylint: disable=W0212
         test_case = suite._tests[0]
@@ -443,7 +440,7 @@ def run_test(args, test_name):
         dbg.runcall(suite.run, result)
     else:
         suite.run(result)
-    took = time.time() - start
+    took = host.time() - start
     if result.failures:
         return (test_name, 1, result.out, result.err + result.failures[0][1],
                 took)
@@ -453,12 +450,12 @@ def run_test(args, test_name):
     return (test_name, 0, result.out, result.err, took)
 
 
-def print_test_started(printer, args, stats, test_name):
+def _print_test_started(printer, args, stats, test_name):
     if not args.quiet and printer.should_overwrite:
         printer.update(stats.format() + test_name, elide=(not args.verbose))
 
 
-def print_test_finished(printer, args, stats, test_name, res, out, err, took):
+def _print_test_finished(printer, args, stats, test_name, res, out, err, took):
     stats.add_time()
     suffix = '%s%s' % (' failed' if res else ' passed',
                          (' %.4fs' % took) if args.timing else '')
@@ -530,44 +527,14 @@ class TestResult(unittest.TestResult):
         self.err = sys.stderr.getvalue()[self.err_pos:]
 
 
-def terminal_width():
-    """Returns sys.maxint if the width cannot be determined."""
-    try:
-        if sys.platform == 'win32':
-            # From http://code.activestate.com/recipes/ \
-            #   440694-determine-size-of-console-window-on-windows/
-            from ctypes import windll, create_string_buffer
-
-            STDERR_HANDLE = -12
-            handle = windll.kernel32.GetStdHandle(STDERR_HANDLE)
-
-            SCREEN_BUFFER_INFO_SZ = 22
-            buf = create_string_buffer(SCREEN_BUFFER_INFO_SZ)
-
-            if windll.kernel32.GetConsoleScreenBufferInfo(handle, buf):
-                import struct
-                fields = struct.unpack("hhhhHhhhhhh", buf.raw)
-                left = fields[5]
-                right = fields[7]
-
-                # Note that we return 1 less than the width since writing
-                # into the rightmost column automatically performs a line feed.
-                return right - left
-            return sys.maxint
-        else:
-            import fcntl
-            import struct
-            import termios
-            packed = fcntl.ioctl(orig_stderr.fileno(),
-                                 termios.TIOCGWINSZ, '\0' * 8)
-            _, columns, _, _ = struct.unpack('HHHH', packed)
-            return columns
-    except Exception:
-        return sys.maxint
+def default_job_count(host=None):
+    host = host or Host()
+    return host.cpu_count()
 
 
-def default_job_count():
-    return multiprocessing.cpu_count()
+def terminal_width(host=None):
+    host = host or Host()
+    return host.terminal_width()
 
 
 if __name__ == '__main__':

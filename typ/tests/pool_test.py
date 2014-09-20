@@ -13,24 +13,30 @@
 # limitations under the License.
 
 from typ import test_case
+from typ.host import Host
 from typ.pool import make_pool
 
-def setup_fn(context):
+
+def setup_fn(host, worker_num, context):
     context['setup'] = True
     return context
+
 
 def teardown_fn(context):
     context['teardown'] = True
     return context
 
+
 def echo_fn(context, msg):
     return '%s/%s/%s' % (context['setup'], context['teardown'], msg)
+
 
 class TestPool(test_case.TestCase):
 
     def run_basic_test(self, jobs):
+        host = Host()
         context = {'setup': False, 'teardown': False}
-        pool = make_pool(jobs, echo_fn, context, setup_fn, teardown_fn)
+        pool = make_pool(host, jobs, echo_fn, context, setup_fn, teardown_fn)
         pool.send('hello')
         pool.send('world')
         msg1 = pool.get()

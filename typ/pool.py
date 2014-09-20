@@ -15,6 +15,8 @@
 import copy
 import multiprocessing
 
+from typ.host import Host
+
 try:
     # This gets compatibility for both Python 2 and Python 3.
     # import failure ... pylint: disable=F0401
@@ -23,14 +25,14 @@ except ImportError:
     from Queue import Empty
 
 
-def make_pool(jobs, callback, context, pre_fn, post_fn):
-    if jobs > 1:
-        return ProcessPool(jobs, callback, context, pre_fn, post_fn)
-    return AsyncPool(callback, context, pre_fn, post_fn)
+def make_pool(host, jobs, callback, context, pre_fn, post_fn):
+    cls = ProcessPool if jobs > 1 else AsyncPool
+    return cls(host, jobs, callback, context, pre_fn, post_fn)
 
 
 class ProcessPool(object):
-    def __init__(self, jobs, callback, context, pre_fn, post_fn):
+    def __init__(self, host, jobs, callback, context, pre_fn, post_fn):
+        self.host = host
         self.jobs = jobs
         self.requests = multiprocessing.Queue()
         self.responses = multiprocessing.Queue()
@@ -38,8 +40,9 @@ class ProcessPool(object):
         self.closed = False
         for worker_num in range(jobs):
             w = multiprocessing.Process(target=_loop,
-                                        args=(worker_num, callback, context,
-                                              self.requests, self.responses,
+                                        args=(self.requests, self.responses,
+                                              host.for_mp(), worker_num,
+                                              callback, context,
                                               pre_fn, post_fn))
             w.start()
             self.workers.append(w)
@@ -69,13 +72,15 @@ class ProcessPool(object):
 
 
 class AsyncPool(object):
-    def __init__(self, callback, context, pre_fn, post_fn):
+    def __init__(self, host, jobs, callback, context, pre_fn, post_fn):
+        self.host = host or Host()
+        self.jobs = jobs
         self.callback = callback
         self.context = copy.deepcopy(context)
         self.msgs = []
         self.closed = False
         self.post_fn = post_fn
-        self.context_after_pre = pre_fn(self.context)
+        self.context_after_pre = pre_fn(self.host, 1, self.context)
         self.final_context = None
 
     def send(self, msg):
@@ -92,10 +97,13 @@ class AsyncPool(object):
         return [self.final_context]
 
 
-def _loop(_worker_num, callback, context, requests, responses, setup_process,
-          teardown_process):
+def _loop(requests, responses,
+          host, worker_num,
+          callback, context,
+          pre_fn, post_fn):
+    host = host or Host()
     try:
-        context_after_pre = setup_process(context)
+        context_after_pre = pre_fn(host, worker_num, context)
         keep_going = True
         while keep_going:
             keep_going, args = requests.get(block=True)
@@ -107,4 +115,4 @@ def _loop(_worker_num, callback, context, requests, responses, setup_process,
     except IOError:
         pass
     finally:
-        responses.put(teardown_process(context_after_pre))
+        responses.put(post_fn(context_after_pre))

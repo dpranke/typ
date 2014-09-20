@@ -25,6 +25,7 @@ class FakeHost(object):
     python_interpreter = 'python'
 
     def __init__(self):
+        self.stdin = StringIO()
         self.stdout = StringIO()
         self.stderr = StringIO()
         self.sep = '/'
@@ -44,6 +45,15 @@ class FakeHost(object):
         if relpath.startswith('/'):
             return relpath
         return self.join(self.cwd, relpath)
+
+    def abspath_to_module(self, name):
+        # __file__ is always an absolute path.
+        return sys.modules[module_name].__file__
+
+    def add_to_path(self, path):
+        absolute_path = self.abspath(*comps)
+        if not absolute_path in sys.path:
+            sys.path.append(absolute_path)
 
     def call(self, cmd_str):
         self.cmds.append(cmd_str)
@@ -89,6 +99,15 @@ class FakeHost(object):
     def getenv(self, key, default=None):
         assert key
         return default
+
+    def for_mp(self):
+        return self
+
+    def isdir(self, path):
+        return self.normpath(path) in self.dirs
+
+    def isfile(self, path):
+        return path in self.files and self.files[path] is not None
 
     def join(self, *comps):
         p = ''
@@ -148,6 +167,9 @@ class FakeHost(object):
             if f.startswith(path):
                 self.files[f] = None
                 self.written_files[f] = None
+
+    def terminal_width(self):
+        return 80
 
     def time(self):
         return 0
