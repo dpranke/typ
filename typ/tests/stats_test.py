@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
 
-from typ import test_case
 from typ.stats import Stats
 
 
-class TestStats(test_case.TestCase):
+class TestStats(unittest.TestCase):
     def test_basic(self):
         s = Stats('foo', None, None, 32)
         self.assertEqual(s.format(), 'foo')
@@ -42,9 +42,10 @@ class TestStats(test_case.TestCase):
         self.assertEqual(s.format(), '[0.000]')
 
     def test_current_rate(self):
-        times = [0.1]
-        s = Stats('[%c]', lambda: times.pop(0), 0, 32)
+        times = [0.1, 0.2]
+        s = Stats('[%c]', lambda: times.pop(0), 0, 1)
         self.assertEquals(s.format(), '[-]')
+        s.add_time()
         s.add_time()
         self.assertEquals(s.format(), '[ 10.0]')
 
