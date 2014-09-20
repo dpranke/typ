@@ -103,12 +103,10 @@ class Host(object):
     def mtime(self, *comps):
         return os.stat(self.join(*comps)).st_mtime
 
-    def print_err(self, msg, end='\n'):
-        self.stderr.write(str(msg) + end)
-
-    def print_out(self, msg, end='\n'):
-        self.stdout.write(str(msg) + end)
-        self.stdout.flush()
+    def print_(self, msg='', end='\n', stream=None):
+        stream = stream or self.stdout
+        stream.write(str(msg) + end)
+        stream.flush()
 
     def read_text_file(self, *comps):
         return self._read(comps, 'r')
@@ -149,7 +147,7 @@ class Host(object):
     def terminal_width(self):
         """Returns sys.maxint if the width cannot be determined."""
         try:
-            if sys.platform == 'win32':
+            if sys.platform == 'win32': # pragma: no cover
                 # From http://code.activestate.com/recipes/ \
                 #   440694-determine-size-of-console-window-on-windows/
                 from ctypes import windll, create_string_buffer
@@ -174,9 +172,10 @@ class Host(object):
                 import fcntl
                 import struct
                 import termios
-                packed = fcntl.ioctl(orig_stderr.fileno(),
+                packed = fcntl.ioctl(self.stderr.fileno(),
                                     termios.TIOCGWINSZ, '\0' * 8)
                 _, columns, _, _ = struct.unpack('HHHH', packed)
                 return columns
-        except Exception:
+        except Exception as e: # pragma: no cover
+            # TODO: Figure out how to test this and make coverage see it.
             return sys.maxint

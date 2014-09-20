@@ -62,8 +62,9 @@ class MainTestCase(TestCase):
         host = host or self.host or self.make_host()
         argv = shlex.split(cmd) if isinstance(cmd, basestring) else cmd or []
 
+        tmpdir = None
+        orig_wd = host.getcwd()
         try:
-            orig_wd = host.getcwd()
             tmpdir = host.mkdtemp()
             host.chdir(tmpdir)
             if files:
@@ -76,7 +77,8 @@ class MainTestCase(TestCase):
             actual_ret, actual_out, actual_err = result
             actual_files = self._read_files(host, tmpdir)
         finally:
-            host.rmtree(tmpdir)
+            if tmpdir:
+                host.rmtree(tmpdir)
             host.chdir(orig_wd)
 
         if ret is not None:

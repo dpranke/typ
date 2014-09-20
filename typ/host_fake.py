@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import shlex
+import sys
 
 # FIXME: make this work w/ python3.
 from StringIO import StringIO
@@ -46,29 +47,18 @@ class FakeHost(object):
             return relpath
         return self.join(self.cwd, relpath)
 
-    def abspath_to_module(self, name):
+    def abspath_to_module(self, module_name):
         # __file__ is always an absolute path.
         return sys.modules[module_name].__file__
 
-    def add_to_path(self, path):
+    def add_to_path(self, *comps):
         absolute_path = self.abspath(*comps)
         if not absolute_path in sys.path:
             sys.path.append(absolute_path)
 
-    def call(self, cmd_str):
-        self.cmds.append(cmd_str)
-        args = shlex.split(cmd_str)
-        if args[0] == 'echo' and args[-2] == '>':
-            out = ' '.join(args[1:len(args) - 2]) + '\n'
-            self._write(self.abspath(args[-1]), out)
-            return 0, '', ''
-        if args[0] == 'cat' and args[-2] == '>':
-            out = ''
-            for f in args[1:len(args) - 2]:
-                out += self._read(f)
-            self._write(self.abspath(args[-1]), out)
-            return 0, '', ''
-        return 1, '', ''
+    def call(self, argv, stdin=None, env=None):
+        self.cmds.append(argv)
+        return 0, '', 'Python 2.7.5\n'
 
     def chdir(self, *comps):
         path = self.join(*comps)
@@ -77,14 +67,15 @@ class FakeHost(object):
         self.cwd = path
 
     def cpu_count(self):
-        return 2
+        return 1
 
     def dirname(self, path):
         return '/'.join(path.split('/')[:-1])
 
     def exists(self, *comps):
-        path = self.join(self.cwd, *comps)
-        return path in self.files or path in self.dirs
+        path = self.abspath(*comps)
+        return ((path in self.files and self.files[path] is not None) or
+                path in self.dirs)
 
     def files_under(self, top):
         files = []
@@ -103,10 +94,12 @@ class FakeHost(object):
     def for_mp(self):
         return self
 
-    def isdir(self, path):
-        return self.normpath(path) in self.dirs
+    def isdir(self, *comps):
+        path = self.abspath(*comps)
+        return path in self.dirs
 
-    def isfile(self, path):
+    def isfile(self, *comps):
+        path = self.abspath(*comps)
         return path in self.files and self.files[path] is not None
 
     def join(self, *comps):
@@ -123,7 +116,7 @@ class FakeHost(object):
         return p
 
     def maybe_mkdir(self, *comps):
-        path = self.join(*comps)
+        path = self.abspath(self.join(*comps))
         if not path in self.dirs:
             self.dirs.add(path)
 
@@ -133,16 +126,16 @@ class FakeHost(object):
         curno = self.current_tmpno
         self.current_tmpno += 1
         self.last_tmpdir = self.join(dir, '%s_%u_%s' % (prefix, curno, suffix))
+        self.dirs.add(self.last_tmpdir)
         return self.last_tmpdir
 
     def mtime(self, *comps):
         return self.mtimes.get(self.join(*comps), 0)
 
-    def print_err(self, msg, end='\n'):
-        self.stderr.write(msg + end)
-
-    def print_out(self, msg, end='\n'):
-        self.stdout.write(msg + end)
+    def print_(self, msg='', end='\n', stream=None):
+        stream = stream or self.stdout
+        stream.write(str(msg) + end)
+        stream.flush()
 
     def read_binary_file(self, *comps):
         return self._read(comps)
@@ -167,6 +160,7 @@ class FakeHost(object):
             if f.startswith(path):
                 self.files[f] = None
                 self.written_files[f] = None
+        self.dirs.remove(path)
 
     def terminal_width(self):
         return 80
