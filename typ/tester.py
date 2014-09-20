@@ -398,6 +398,7 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
     num_failures = 0
     running_jobs = set()
 
+    jobs = min(len(test_names), jobs)
     pool = make_pool(host, jobs, _run_test, args,
                      _setup_process, _teardown_process)
     try:
