@@ -33,8 +33,7 @@ class Host(object):
         return os.path.abspath(self.join(*comps))
 
     def abspath_to_module(self, module_name):
-        # __file__ is always an absolute path.
-        return sys.modules[module_name].__file__
+        return self.abspath(sys.modules[module_name].__file__)
 
     def add_to_path(self, *comps):
         absolute_path = self.abspath(*comps)
