@@ -16,8 +16,73 @@ import sys
 
 from typ import test_case
 
-class TestTester(test_case.MainTestCase):
-    prog = [sys.executable, '-m', 'typ']
+PASSING_TEST = """
+import unittest
+class PassingTest(unittest.TestCase):
+    def test_pass(self):
+        pass
+"""
 
+FAILING_TEST = """
+import unittest
+class FailingTest(unittest.TestCase):
+    def test_fail(self):
+        self.fail()
+"""
+
+
+class TestsMixin(object):
     def test_version(self):
         self.check('--version', ret=0, out='0.2\n')
+
+    def test_find(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-l'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'pass_test'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'pass_test.py'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', '.'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'pass_test.PassingTest.test_pass'], files=files,
+                   ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+
+    def test_fail(self):
+        files = {'fail_test.py': FAILING_TEST}
+        self.check([], files=files, ret=1)
+
+    def test_retry_limit(self):
+        files = {'fail_test.py': FAILING_TEST}
+        ret, out, err, _ = self.check(['--retry-limit', '2'], files=files)
+        self.assertEqual(ret, 1)
+        self.assertIn('Retrying failed tests', out)
+        lines = out.splitlines()
+        self.assertEqual(len([l for l in lines if 'test_fail failed:' in l]),
+                         3)
+
+    def test_skip(self):
+        files = {'fail_test.py': FAILING_TEST}
+        self.check(['-x', '*test_fail*'], files=files, ret=1,
+                   out='No tests to run.\n')
+
+    def test_serial(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['--serial', '*test_pass*'], files=files, ret=0)
+
+    def test_dryrun(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-n'], files=files, ret=0)
+
+    def test_debugger(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-d'], stdin='quit()\n', files=files, ret=0)
+
+    def test_coverage(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-c'], files=files, ret=0)
+
+
+class TestTester(TestsMixin, test_case.MainTestCase):
+    prog = [sys.executable, '-m', 'typ']
