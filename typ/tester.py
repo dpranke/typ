@@ -63,6 +63,25 @@ def main(argv=None, host=None):
         return 130
 
 
+def _win_main(host=None):
+    # This function is called from __main__.py when running
+    # 'python -m typ' on windows: in order to use multiprocessing on windows,
+    # we need to ensure that the 'main' module is importable,
+    # and __main__.py isn't.
+    # This code instead spawns a subprocess and invokes tester.py directly;
+    # We don't want to always spawn a subprocess, because that is more
+    # heavyweight than it needs to be on other platforms.
+    import subprocess
+    proc = subprocess.Popen([sys.executable, __file__] + sys.argv[1:])
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        # We may need a second wait in order to make sure the subprocess exits
+        # completely.
+        proc.wait()
+    return proc.returncode
+
+
 def run(args, host=None):
     host = host or Host()
     started_time = host.time()

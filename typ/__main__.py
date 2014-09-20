@@ -12,29 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import sys
+
+from typ import tester
 
 
 def main():
-    if sys.platform == 'win32':
-        # In order to use multiprocessing on windows, we need to ensure
-        # that the 'main' module is importable, and __main__.py isn't.
-        # This code instead spawns a subprocess and invokes the main routine
-        # in tester.py, which *is* importable.
-        typ_dir = os.path.dirname(os.path.abspath(__file__))
-        tester_path = os.path.join(typ_dir, 'tester.py')
-        import subprocess
-        proc = subprocess.Popen([sys.executable, tester_path] + sys.argv[1:])
-        try:
-            proc.wait()
-        except KeyboardInterrupt:
-            # We need a second wait in order to make sure the subprocess exits
-            # completely.
-            proc.wait()
-        return proc.returncode
+    if sys.platform == 'win32': # pragma: no cover
+        return _win_main()
     else:
-        from typ import tester
         return tester.main()
 
 
