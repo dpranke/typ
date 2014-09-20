@@ -38,6 +38,16 @@ class TestStats(test_case.TestCase):
         s = Stats('[%e]', lambda: 0.4, 0, 32)
         self.assertEqual(s.format(), '[0.400]')
 
+        s = Stats('[%e]', lambda: 0, 0, 32)
+        self.assertEqual(s.format(), '[0.000]')
+
+    def test_current_rate(self):
+        times = [0.1]
+        s = Stats('[%c]', lambda: times.pop(0), 0, 32)
+        self.assertEquals(s.format(), '[-]')
+        s.add_time()
+        self.assertEquals(s.format(), '[ 10.0]')
+
     def test_overall_rate(self):
         times = [0, 5]
         s = Stats('[%o]', lambda: times.pop(0), 0, 32)
@@ -54,3 +64,8 @@ class TestStats(test_case.TestCase):
     def test_unrecognized_escape(self):
         s = Stats('%x', None, None, 32)
         self.assertEqual(s.format(), '%x')
+
+    def test_remaining(self):
+        s = Stats('%u', None, None, 32)
+        s.total = 2
+        self.assertEqual(s.format(), '2')

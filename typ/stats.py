@@ -23,6 +23,7 @@ class Stats(object):
         self._times = []
         self._size = size
         self._time = time_fn
+        self._times.append(self.started_time)
 
     def add_time(self):
         if len(self._times) > self._size:
@@ -39,20 +40,15 @@ class Stats(object):
             if c == '%' and p < end - 1:
                 cn = self.fmt[p + 1]
                 if cn == 'c':
-                    if self._times:
-                        elapsed = self._times[-1] - self._times[0]
-                    else:
-                        elapsed = 0
+                    elapsed = self._times[-1] - self._times[0]
                     if elapsed > 0:
-                        out += '%5.1f' % (len(self._times) / elapsed)
+                        out += '%5.1f' % ((len(self._times) - 1)/ elapsed)
                     else:
                         out += '-'
                 elif cn == 'e':
                     now = self._time()
-                    if now > self.started_time:
-                        out += '%-5.3f' % (self._time() - self.started_time)
-                    else:
-                        out += '-'
+                    assert now >= self.started_time
+                    out += '%-5.3f' % (now - self.started_time)
                 elif cn == 'f':
                     out += str(self.finished)
                 elif cn == 'o':
