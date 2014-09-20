@@ -17,6 +17,7 @@ import fnmatch
 import inspect
 import io
 import pdb
+import subprocess
 import sys
 import unittest
 
@@ -42,13 +43,14 @@ orig_stderr = sys.stderr
 
 def main(argv=None, host=None):
     host = host or Host()
+    argv = argv or sys.argv[1:]
     try:
         args = parse_args(argv)
         if args.version:
             print_(version())
             return 0
         if args.coverage:
-            return _run_under_coverage(host, args, argv)
+            return _run_under_coverage(argv, args.coverage_omit)
         if args.debugger:
             args.jobs = 1
             args.pass_through = True
@@ -80,6 +82,28 @@ def _win_main(host=None):
         # completely.
         proc.wait()
     return proc.returncode
+
+
+def _run_under_coverage(argv, coverage_omit):
+    # TODO: import coverage and run in-line.
+    if '-c' in argv:
+        argv.remove('-c')
+    if '-j' in argv:
+        idx = argv.index('-j')
+        argv.pop(idx)
+        argv.pop(idx)
+    if '--coverage-omit' in argv:
+        idx = argv.index('--coverage-omit')
+        argv.pop(idx)
+        argv.pop(idx)
+
+    subprocess.call(['coverage', 'erase'])
+    res = subprocess.call(['coverage', 'run', '-m', 'typ', '-j', '1'] + argv)
+    print_('')
+
+    report_args = ['--omit', coverage_omit] if coverage_omit else []
+    subprocess.call(['coverage', 'report'] + report_args)
+    return res
 
 
 def run(args, host=None):
@@ -223,31 +247,6 @@ def parse_args(argv, host=None):
 
     return args
 
-
-def _run_under_coverage(host, args, argv):
-    host = host or Host()
-    argv = argv or sys.argv
-    if '-c' in argv:
-        argv.remove('-c')
-    if '-j' in argv:
-        idx = argv.index('-j')
-        argv.pop(idx)
-        argv.pop(idx)
-    if '--coverage-omit' in argv:
-        idx = argv.index('--coverage-omit')
-        argv.pop(idx)
-        argv.pop(idx)
-
-    host.call(['coverage', 'erase'])
-    res, out, err = host.call(['coverage', 'run', '-m', 'typ'] +
-                              ['-j', '1'] + argv[1:])
-    report_args = ['coverage', 'report']
-    if args.coverage_omit:
-        report_args.append('--omit=' + args.coverage_omit)
-    _, out, _ = host.call(report_args)
-    for l in out.splitlines():
-        print_(l)
-    return res
 
 
 def find_tests(args, host=None):
