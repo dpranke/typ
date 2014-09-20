@@ -30,7 +30,7 @@ from typ.printer import Printer
 
 
 def version(host=None):
-    host = host or Host()
+    host = host or _host()
     here = host.dirname(host.abspath_to_module(__name__))
     return host.read_text_file(here, 'VERSION').strip()
 
@@ -42,12 +42,12 @@ orig_stderr = sys.stderr
 
 
 def main(argv=None, host=None):
-    host = host or Host()
+    host = host or _host()
     argv = argv or sys.argv[1:]
     try:
         args = parse_args(argv)
         if args.version:
-            print_(version())
+            host.print_(version())
             return 0
         if args.coverage:
             return _run_under_coverage(argv, args.coverage_omit)
@@ -61,7 +61,7 @@ def main(argv=None, host=None):
         finally:
             _teardown_process(context)
     except KeyboardInterrupt:
-        print_("interrupted, exiting", stream=orig_stderr)
+        host.print_("interrupted, exiting", stream=orig_stderr)
         return 130
 
 
@@ -99,7 +99,8 @@ def _run_under_coverage(argv, coverage_omit):
 
     subprocess.call(['coverage', 'erase'])
     res = subprocess.call(['coverage', 'run', '-m', 'typ', '-j', '1'] + argv)
-    print_('')
+    sys.stdout.write('\n')
+    sys.stdout.flush()
 
     report_args = ['--omit', coverage_omit] if coverage_omit else []
     subprocess.call(['coverage', 'report'] + report_args)
@@ -107,12 +108,12 @@ def _run_under_coverage(argv, coverage_omit):
 
 
 def run(args, host=None):
-    host = host or Host()
+    host = host or _host()
     started_time = host.time()
 
     stats = Stats(args.status_format, host.time, started_time, args.jobs)
     should_overwrite = orig_stdout.isatty() and not args.verbose
-    printer = Printer(print_, should_overwrite, cols=args.terminal_width)
+    printer = Printer(host.print_, should_overwrite, cols=args.terminal_width)
 
     if args.top_level_dir:
         path = host.abspath(args.top_level_dir)
@@ -132,7 +133,7 @@ def run(args, host=None):
         return 1
 
     if args.list_only:
-        print_('\n'.join(sorted(test_names + serial_test_names)))
+        host.print_('\n'.join(sorted(test_names + serial_test_names)))
         return 0
 
     return run_tests_with_retries(args, printer, stats, test_names,
@@ -151,7 +152,7 @@ def release_stdio():
 
 
 def parse_args(argv, host=None):
-    host = host or Host()
+    host = host or _host()
     ap = argparse.ArgumentParser(prog='typ')
     ap.usage = '%(prog)s [options] [tests...]'
     ap.add_argument('-c', '--coverage', action='store_true',
@@ -250,7 +251,7 @@ def parse_args(argv, host=None):
 
 
 def find_tests(args, host=None):
-    host = host or Host()
+    host = host or _host()
     loader = unittest.loader.TestLoader()
     test_names = []
     serial_test_names = []
@@ -304,15 +305,15 @@ def find_tests(args, host=None):
                     name = possible_dir.replace(host.sep, '.')
                     add_names_from_suite(loader.loadTestsFromName(name))
         except AttributeError as e:
-            print_('Error: failed to import "%s": %s' % (name, str(e)),
-                   stream=sys.stderr)
+            host.print_('Error: failed to import "%s": %s' % (name, str(e)),
+                        stream=host.stderr)
 
     return test_names, serial_test_names, skip_names
 
 
 def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
                            skip_test_names, host=None):
-    host = host or Host()
+    host = host or _host()
     all_test_names = test_names
 
     result = run_one_set_of_tests(args, printer, stats, test_names,
@@ -347,7 +348,7 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
         args, full_results, host=host)
     if err_occurred:
         for line in err_str.splitlines():
-            print_(line)
+            host.print_(line)
         return 1
 
     return json_results.exit_code_from_full_results(full_results)
@@ -355,7 +356,7 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
 
 def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
                          skip_test_names, host=None):
-    host = host or Host()
+    host = host or _host()
     num_failures = 0
     stats.total = (len(test_names) + len(serial_test_names) +
                    len(skip_test_names))
@@ -377,7 +378,7 @@ def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
         printer.update('%d tests run%s, %d failure%s.' %
                        (stats.finished, timing_clause, num_failures,
                         '' if num_failures == 1 else 's'))
-        print_()
+        host.print_()
 
     return result
 
@@ -392,7 +393,7 @@ def skip_tests(args, printer, stats, result, test_names):
 
 
 def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
-    host = host or Host()
+    host = host or _host()
     num_failures = 0
     running_jobs = set()
 
@@ -482,9 +483,9 @@ def _print_test_finished(printer, args, stats, test_name, res, out, err, took):
             suffix += ':\n'
         printer.update(stats.format() + test_name + suffix, elide=False)
         for l in out.splitlines():
-            print_('  %s' % l)
+            printer.print_('  %s' % l)
         for l in err.splitlines():
-            print_('  %s' % l)
+            printer.print_('  %s' % l)
     elif not args.quiet:
         if args.verbose > 1 and (out or err):
             suffix += ':\n'
@@ -492,14 +493,16 @@ def _print_test_finished(printer, args, stats, test_name, res, out, err, took):
                        elide=(not args.verbose))
         if args.verbose > 1:
             for l in out.splitlines():
-                print_('  %s' % l)
+                printer.print_('  %s' % l)
             for l in err.splitlines():
-                print_('  %s' % l)
+                printer.print_('  %s' % l)
 
 
-def print_(msg='', end='\n', stream=orig_stdout):
-    stream.write(str(msg) + end)
-    stream.flush()
+def _host():
+    h = Host()
+    h.stdout = orig_stdout
+    h.stderr = orig_stderr
+    return h
 
 
 class PassThrough(io.StringIO):
@@ -546,12 +549,12 @@ class TestResult(unittest.TestResult):
 
 
 def default_job_count(host=None):
-    host = host or Host()
+    host = host or _host()
     return host.cpu_count()
 
 
 def terminal_width(host=None):
-    host = host or Host()
+    host = host or _host()
     return host.terminal_width()
 
 
