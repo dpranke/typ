@@ -58,7 +58,7 @@ class MainTestCase(TestCase):
               ret=None, out=None, err=None, exp_files=None,
               files_to_ignore=None):
         # Too many arguments pylint: disable=R0913
-        prog = prog or self.prog
+        prog = prog or self.prog or []
         host = host or self.host or self.make_host()
         argv = shlex.split(cmd) if isinstance(cmd, basestring) else cmd or []
 
