@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import StringIO
 import sys
 
+from typ import tester
 from typ import test_case
 
 PASSING_TEST = """
@@ -34,20 +36,6 @@ class FailingTest(unittest.TestCase):
 class TestsMixin(object):
     def test_version(self):
         self.check('--version', ret=0, out='0.2\n')
-
-    def test_find(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['-l'], files=files, ret=0,
-                   out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', 'pass_test'], files=files, ret=0,
-                   out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', 'pass_test.py'], files=files, ret=0,
-                   out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', '.'], files=files, ret=0,
-                   out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', 'pass_test.PassingTest.test_pass'], files=files,
-                   ret=0,
-                   out='pass_test.PassingTest.test_pass\n')
 
     def test_fail(self):
         files = {'fail_test.py': FAILING_TEST}
@@ -75,6 +63,24 @@ class TestsMixin(object):
         files = {'pass_test.py': PASSING_TEST}
         self.check(['-n'], files=files, ret=0)
 
+    def test_find(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-l'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'pass_test'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'pass_test.py'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'pass_test.PassingTest.test_pass'], files=files,
+                   ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', '.'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+
+
+class TestTester(TestsMixin, test_case.MainTestCase):
+    prog = [sys.executable, '-m', 'typ']
+
     def test_debugger(self):
         files = {'pass_test.py': PASSING_TEST}
         self.check(['-d'], stdin='quit()\n', files=files, ret=0)
@@ -83,6 +89,20 @@ class TestsMixin(object):
         files = {'pass_test.py': PASSING_TEST}
         self.check(['-c'], files=files, ret=0)
 
+    def test_find(self):
+        super(TestTester, self).test_find()
+        files = {'pass_test.py': PASSING_TEST}
 
-class TestTester(TestsMixin, test_case.MainTestCase):
-    prog = [sys.executable, '-m', 'typ']
+
+# class TestMain(TestsMixin, test_case.MainTestCase):
+class TestMain(TestsMixin):
+    def call(self, host, argv, stdin, env):
+        host.stdin = StringIO.StringIO(stdin)
+        host.stdout = StringIO.StringIO()
+        host.stderr = StringIO.StringIO()
+        orig_sys_path = sys.path[:]
+        try:
+            ret = tester.main(['--no-trapping'] + argv, host)
+            return ret, host.stdout.getvalue(), host.stderr.getvalue()
+        finally:
+            sys.path = orig_sys_path
