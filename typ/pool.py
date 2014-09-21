@@ -101,10 +101,8 @@ class AsyncPool(object):
         return [self.final_context]
 
 
-def _loop(requests, responses,
-          host, worker_num,
-          callback, context,
-          pre_fn, post_fn): # pragma: no cover
+def _loop(requests, responses, host, worker_num,
+          callback, context, pre_fn, post_fn): # pragma: no cover
     # TODO: Figure out how to get coverage to work w/ subprocesses.
     host = host or Host()
     try:
