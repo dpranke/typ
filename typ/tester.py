@@ -45,8 +45,10 @@ orig_stdout = sys.stdout
 orig_stderr = sys.stderr
 
 
-def main(argv=None, host=None):
+def main(argv=None, host=None, loader=None):
     host = host or _host()
+    loader = loader or _loader()
+
     argv = argv or sys.argv[1:]
     try:
         args = parse_args(argv)
@@ -59,9 +61,9 @@ def main(argv=None, host=None):
             args.jobs = 1
             args.pass_through = True
 
-        context = _setup_process(host, 0, args)
+        context = _setup_process(host, 0, (args, loader))
         try:
-            return run(args, host)
+            return run(args, host, loader)
         finally:
             _teardown_process(context)
     except KeyboardInterrupt:
@@ -111,8 +113,10 @@ def _run_under_coverage(argv, coverage_omit):
     return res
 
 
-def run(args, host=None):
+def run(args, host=None, loader=None):
     host = host or _host()
+    loader = loader or _loader()
+
     started_time = host.time()
 
     stats = Stats(args.status_format, host.time, started_time, args.jobs)
@@ -132,7 +136,8 @@ def run(args, host=None):
     for path in args.path:
         host.add_to_path(path)
 
-    test_names, serial_test_names, skip_test_names = find_tests(args)
+    test_names, serial_test_names, skip_test_names = find_tests(args, host,
+                                                                loader)
     if not test_names and not serial_test_names:
         host.print_('No tests to run.')
         return 1
@@ -143,7 +148,7 @@ def run(args, host=None):
 
     return run_tests_with_retries(args, printer, stats, test_names,
                                   serial_test_names, skip_test_names,
-                                  host=host)
+                                  host=host, loader=loader)
 
 
 def trap_stdio(should_passthrough):
@@ -256,9 +261,9 @@ def parse_args(argv, host=None):
 
 
 
-def find_tests(args, host=None):
+def find_tests(args, host=None, loader=None):
     host = host or _host()
-    loader = unittest.loader.TestLoader()
+    loader = loader or _loader()
     test_names = []
     serial_test_names = []
     skip_names = []
@@ -318,12 +323,14 @@ def find_tests(args, host=None):
 
 
 def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
-                           skip_test_names, host=None):
+                           skip_test_names, host=None, loader=None):
     host = host or _host()
+    loader = loader or _loader()
     all_test_names = test_names
 
     result = run_one_set_of_tests(args, printer, stats, test_names,
-                                  serial_test_names, skip_test_names, host=host)
+                                  serial_test_names, skip_test_names,
+                                  host=host, loader=loader)
     results = [result]
 
     failed_tests = list(json_results.failed_test_names(result))
@@ -342,7 +349,7 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
         stats = Stats(args.status_format, host.time, host.time(), args.jobs)
         stats.total = len(failed_tests)
         result = run_one_set_of_tests(args, printer, stats, failed_tests,
-                                      [], [])
+                                      [], [], host=host, loader=loader)
         results.append(result)
         failed_tests = list(json_results.failed_test_names(result))
         retry_limit -= 1
@@ -361,8 +368,9 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
 
 
 def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
-                         skip_test_names, host=None):
+                         skip_test_names, host=None, loader=None):
     host = host or _host()
+    loader = loader or _loader()
     num_failures = 0
     stats.total = (len(test_names) + len(serial_test_names) +
                    len(skip_test_names))
@@ -372,9 +380,9 @@ def run_one_set_of_tests(args, printer, stats, test_names, serial_test_names,
     skip_tests(args, printer, stats, result, skip_test_names)
 
     num_failures += run_test_list(args, printer, stats, result,
-                                  test_names, args.jobs, host)
+                                  test_names, args.jobs, host, loader)
     num_failures += run_test_list(args, printer, stats, result,
-                                  serial_test_names, 1, host)
+                                  serial_test_names, 1, host, loader)
 
     if not args.quiet:
         if args.timing:
@@ -398,13 +406,15 @@ def skip_tests(args, printer, stats, result, test_names):
         _print_test_finished(printer, args, stats, test_name, 0, '', '', 0)
 
 
-def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
+def run_test_list(args, printer, stats, result, test_names, jobs,
+                  host=None, loader=None):
     host = host or _host()
+    loader = loader or _loader
     num_failures = 0
     running_jobs = set()
 
     jobs = min(len(test_names), jobs)
-    pool = make_pool(host, jobs, _run_test, args,
+    pool = make_pool(host, jobs, _run_test, (args, loader),
                      _setup_process, _teardown_process)
     try:
         while test_names or running_jobs:
@@ -432,24 +442,24 @@ def run_test_list(args, printer, stats, result, test_names, jobs, host=None):
     return num_failures
 
 
-def _setup_process(host, worker_num, args):
+def _setup_process(host, worker_num, args_and_loader):
+    args, loader = args_and_loader
     if not args.no_trapping:
         trap_stdio(args.pass_through)
-    return (host, worker_num, args)
+    return (host, worker_num, args_and_loader)
 
 
 def _teardown_process(context):
-    host, worker_num, args = context
+    host, worker_num, (args, loader) = context
     if not args.no_trapping:
         release_stdio()
     return worker_num
 
 
 def _run_test(context, test_name):
-    host, worker_num, args = context
+    host, worker_num, (args, loader) = context
     if args.dry_run:
         return test_name, 0, '', '', 0
-    loader = unittest.loader.TestLoader()
     result = TestResult(pass_through=args.pass_through)
     try:
         suite = loader.loadTestsFromName(test_name)
@@ -512,6 +522,10 @@ def _host():
     h.stdout = orig_stdout
     h.stderr = orig_stderr
     return h
+
+
+def _loader():
+    return unittest.loader.TestLoader()
 
 
 class PassThrough(io.StringIO):
