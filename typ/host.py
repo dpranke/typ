@@ -40,6 +40,9 @@ class Host(object):
         if not absolute_path in sys.path:
             sys.path.append(absolute_path)
 
+    def basename(self, path):
+        return os.path.basename(path)
+
     def call(self, argv, stdin=None, env=None):
         if stdin:
             stdin_pipe = subprocess.PIPE
@@ -126,6 +129,9 @@ class Host(object):
 
     def rmtree(self, path):
         shutil.rmtree(path, ignore_errors=True)
+
+    def splitext(self, path):
+        return os.path.splitext(path)
 
     def time(self):
         return time.time()

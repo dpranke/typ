@@ -89,6 +89,18 @@ class TestHost(unittest.TestCase):
         h = self.host()
         self.assertNotEqual(h.getenv('PATH', ''), None)
 
+    def test_basename(self):
+        h = self.host()
+        self.assertEqual(h.basename('foo.txt'), 'foo.txt')
+        self.assertEqual(h.basename('foo/bar.txt'), 'bar.txt')
+
+    def test_splitext(self):
+        h = self.host()
+        self.assertEqual(h.splitext('foo'), ('foo', ''))
+        self.assertEqual(h.splitext('foo.txt'), ('foo', '.txt'))
+        self.assertEqual(h.splitext('foo/bar'), ('foo/bar', ''))
+        self.assertEqual(h.splitext('foo/bar.txt'), ('foo/bar', '.txt'))
+
     def test_print(self):
         h = self.host()
 

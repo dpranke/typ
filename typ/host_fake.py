@@ -56,6 +56,9 @@ class FakeHost(object):
         if not absolute_path in sys.path:
             sys.path.append(absolute_path)
 
+    def basename(self, path):
+        return path.split(self.sep)[-1]
+
     def call(self, argv, stdin=None, env=None):
         self.cmds.append(argv)
         return 0, '', 'Python 2.7.5\n'
@@ -164,6 +167,12 @@ class FakeHost(object):
 
     def terminal_width(self):
         return 80
+
+    def splitext(self, path):
+        idx = self.rfind('.')
+        if idx == -1:
+            return (path, '')
+        return (path[:idx], path[idx:])
 
     def time(self):
         return 0
