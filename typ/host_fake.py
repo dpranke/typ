@@ -169,7 +169,7 @@ class FakeHost(object):
         return 80
 
     def splitext(self, path):
-        idx = self.rfind('.')
+        idx = path.rfind('.')
         if idx == -1:
             return (path, '')
         return (path[:idx], path[idx:])
