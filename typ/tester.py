@@ -30,13 +30,7 @@ from typ.printer import Printer
 
 
 def version(host=None):
-    # TODO: Ideally we'd pull the version information from a file
-    # rather than embed it into the source, but this gets confused when
-    # run under 'coverage'. We can probably switch back to a file when
-    # we can inline coverage calls.
-    return '0.2'
-    # here = host.abspath_to_module(__name__)
-    # return host.read_text_file(here, 'VERSION').strip()
+    return '0.3'
 
 
 DEFAULT_STATUS_FORMAT = '[%f/%t] '

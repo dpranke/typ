@@ -18,9 +18,11 @@ from setuptools import setup
 import setuptools
 
 here = os.path.abspath(os.path.dirname(__file__))
+if not here in sys.path:
+    sys.path.insert(0, here)
 
-with open(os.path.join(here, 'typ', 'VERSION')) as fp:
-    version = fp.read().strip()
+from typ import tester
+version = tester.version()
 
 with open(os.path.join(here, 'README.md')) as fp:
     readme = fp.read().strip()

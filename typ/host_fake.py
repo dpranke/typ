@@ -47,10 +47,6 @@ class FakeHost(object):
             return relpath
         return self.join(self.cwd, relpath)
 
-    def abspath_to_module(self, module_name):
-        # __file__ is always an absolute path.
-        return sys.modules[module_name].__file__
-
     def add_to_path(self, *comps):
         absolute_path = self.abspath(*comps)
         if not absolute_path in sys.path:

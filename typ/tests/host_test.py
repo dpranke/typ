@@ -69,10 +69,6 @@ class TestHost(unittest.TestCase):
         finally:
             h.chdir(orig_cwd)
 
-    def test_abspath_to_module(self):
-        h = self.host()
-        self.assertNotEqual(h.abspath_to_module('typ.tests.host_test'), '')
-
     def test_terminal_width(self):
         h = self.host()
         self.assertGreaterEqual(h.terminal_width(), 0)
