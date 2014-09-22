@@ -316,7 +316,7 @@ def find_tests(args, host=None, loader=None):
                     name = possible_dir.replace(host.sep, '.')
                     add_names_from_suite(loader.loadTestsFromName(name))
         except AttributeError as e:
-            host.print_('Error: failed to import "%s": %s' % (name, str(e)),
+            host.print_('Error: failed to import "%s": %s' % (test, str(e)),
                         stream=host.stderr)
 
     return test_names, serial_test_names, skip_names
