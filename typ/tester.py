@@ -104,15 +104,13 @@ def run(args, host=None, loader=None):
     should_overwrite = orig_stdout.isatty() and not args.verbose
     printer = Printer(host.print_, should_overwrite, cols=args.terminal_width)
 
-    if args.top_level_dir:
-        path = host.abspath(args.top_level_dir)
-        host.add_to_path(path)
-    else:
+    if not args.top_level_dir:
         top_dir = host.getcwd()
         while host.exists(top_dir, '__init__.py'):
             top_dir = host.dirname(top_dir)
-        if top_dir != host.getcwd():
-            host.add_to_path(top_dir)
+        args.top_level_dir = top_dir
+
+    host.add_to_path(args.top_level_dir)
 
     for path in args.path:
         host.add_to_path(path)
@@ -211,7 +209,7 @@ def parse_args(argv, host=None):
     ap.add_argument('--test-type',
                     help=('Name of test type to include in the uploaded data '
                           '(e.g., "telemetry_unittests").'))
-    ap.add_argument('--top-level-dir', default='.',
+    ap.add_argument('--top-level-dir', default=None,
                     help=('Top directory of project '
                           '(used when running subdirs).'))
     ap.add_argument('--write-full-results-to', metavar='FILENAME',
@@ -285,8 +283,6 @@ def find_tests(args, host=None, loader=None):
                 name = host.relpath(test, args.top_level_dir)
                 if name.endswith('.py'):
                     name = name[:-3]
-                if name.startswith('.' + host.sep):
-                    name = name[2:]
                 name = name.replace(host.sep, '.')
                 add_names_from_suite(loader.loadTestsFromName(name))
             elif host.isdir(test):
@@ -294,16 +290,16 @@ def find_tests(args, host=None, loader=None):
                     add_names_from_suite(loader.discover(test, suffix,
                                                          args.top_level_dir))
             else:
-                possible_dir = host.relpath(test.replace('.', host.sep),
-                                            args.top_level_dir)
-                if host.isdir(possible_dir):
+                possible_dir = test.replace('.', host.sep)
+                if host.isdir(host.join(args.top_level_dir, possible_dir)):
                     for suffix in args.suffixes:
-                        suite = loader.discover(possible_dir, suffix,
+                        suite = loader.discover(host.join(args.top_level_dir,
+                                                          possible_dir),
+                                                suffix,
                                                 args.top_level_dir)
                         add_names_from_suite(suite)
                 else:
-                    name = possible_dir.replace(host.sep, '.')
-                    add_names_from_suite(loader.loadTestsFromName(name))
+                    add_names_from_suite(loader.loadTestsFromName(test))
         except AttributeError as e:
             host.print_('Error: failed to import "%s": %s' % (test, str(e)),
                         stream=host.stderr)

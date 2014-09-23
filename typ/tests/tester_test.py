@@ -39,8 +39,9 @@ class FailingTest(unittest.TestCase):
 
 
 class FakeTestLoader(object):
-    def __init__(self, host):
+    def __init__(self, host, orig_sys_path):
         self.host = host
+        self.orig_sys_path = orig_sys_path
 
     def discover(self, start_dir, pattern='test*.py', top_level_dir=None):
         h = self.host
@@ -49,12 +50,14 @@ class FakeTestLoader(object):
                           fnmatch.fnmatch(h.basename(f), pattern)]
         suite = unittest.TestSuite()
         for f in matching_files:
-            suite.addTests(self._loadTestsFromFile(f))
+            suite.addTests(self._loadTestsFromFile(h.join(start_dir, f),
+                                                   top_level_dir))
         return suite
 
-    def _loadTestsFromFile(self, path):
+    def _loadTestsFromFile(self, path, top_level_dir='.'):
         h = self.host
-        module_name = (h.splitext(path)[0]).replace(h.sep, '.')
+        rpath = h.relpath(path, top_level_dir)
+        module_name = (h.splitext(rpath)[0]).replace(h.sep, '.')
         class_name = ''
         suite = unittest.TestSuite()
         for l in h.read_text_file(path).splitlines():
@@ -80,34 +83,50 @@ class FakeTestLoader(object):
             if h.isfile(path + '.py'):
                 # module
                 return self._loadTestsFromFile(path + '.py')
-        elif len(comps) == 2:
+        if len(comps) == 2:
             if h.isfile(comps[0] + '.py'):
                 # module + class
                 suite = self._loadTestsFromFile(comps[0] + '.py')
                 return unittest.TestSuite([t for t in suite._tests if
                                            t.id().startswith(name)])
-        else:
-            module_name = '.'.join(comps[:-2])
-            fname = module_name.replace('.', h.sep) + '.py'
 
-            if h.isfile(fname):
+            for d in [d for d in sys.path if d not in self.orig_sys_path]:
+                path = h.join(d, comps[0], comps[1] + '.py')
+                if h.isfile(path):
+                    # package + module
+                    suite = self._loadTestsFromFile(path, d)
+                    return unittest.TestSuite([t for t in suite._tests if
+                                                t.id().startswith(name)])
+                if h.isdir(d, comps[0], comps[1]):
+                    # package
+                    return self.discover(path)
+
+            # no match
+            return unittest.TestSuite()
+
+        module_name = '.'.join(comps[:-2])
+        fname = module_name.replace('.', h.sep) + '.py'
+
+        for d in [d for d in sys.path if d not in self.orig_sys_path]:
+            path = h.join(d, fname)
+            if h.isfile(path):
                 # module + class + method
-                suite = self._loadTestsFromFile(fname)
+                suite = self._loadTestsFromFile(path, d)
                 return unittest.TestSuite([t for t in suite._tests if
-                                           t.id() == name])
-            if h.isdir(fname):
+                                            t.id() == name])
+            if h.isdir(d, comps[0], comps[1]):
                 # package
-                return self.discover(fname)
+                return self.discover(h.join(d, comps[0], comps[1]))
 
             fname = module_name.replace('.', h.sep) + '.' + comps[-2] + '.py'
-            if h.isfile(fname):
+            if h.isfile(h.join(d, fname)):
                 # module + class
-                suite = self._loadTestsFromFile(comps[0] + '.py')
+                suite = self._loadTestsFromFile(comps[0] + '.py', d)
                 return unittest.TestSuite([t for t in suite._tests if
-                                           t.id().startswith(name)])
-            else:
-                # no match
-                return unittest.TestSuite()
+                                            t.id().startswith(name)])
+
+        # no match
+        return unittest.TestSuite()
 
 
 class FakeTestCase(unittest.TestCase):
@@ -145,6 +164,18 @@ class TestsMixin(object):
         files = {'fail_test.py': FAILING_TEST}
         self.check([], files=files, ret=1)
 
+    def test_file_list(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-f', '-'], files=files, stdin='pass_test\n', ret=0)
+        self.check(['-f', '-'], files=files, stdin='pass_test.PassingTest\n',
+                   ret=0)
+        self.check(['-f', '-'], files=files,
+                   stdin='pass_test.PassingTest.test_pass\n',
+                   ret=0)
+        files = {'pass_test.py': PASSING_TEST,
+                 'test_list.txt': 'pass_test.PassingTest.test_pass\n'}
+        self.check(['-f', 'test_list.txt'], files=files, ret=0)
+
     def test_find(self):
         files = {'pass_test.py': PASSING_TEST}
         self.check(['-l'], files=files, ret=0,
@@ -153,11 +184,28 @@ class TestsMixin(object):
                    out='pass_test.PassingTest.test_pass\n')
         self.check(['-l', 'pass_test.py'], files=files, ret=0,
                    out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', './pass_test.py'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
+        self.check(['-l', '.'], files=files, ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
         self.check(['-l', 'pass_test.PassingTest.test_pass'], files=files,
                    ret=0,
                    out='pass_test.PassingTest.test_pass\n')
         self.check(['-l', '.'], files=files, ret=0,
                    out='pass_test.PassingTest.test_pass\n')
+
+    def test_find_from_subdirs(self):
+        files = {
+            'foo/__init__.py': '',
+            'foo/pass_test.py': PASSING_TEST,
+            'bar/__init__.py': '',
+            'bar/tmp': '',
+
+        }
+        self.check(['-l', '../foo/pass_test.py'], files=files, cwd='bar',
+                   ret=0, out='foo.pass_test.PassingTest.test_pass\n')
+        self.check(['-l', 'foo'], files=files, cwd='bar',
+                   ret=0, out='foo.pass_test.PassingTest.test_pass\n')
 
     def test_help(self):
         self.check(['--help'], ret=0)
@@ -187,8 +235,7 @@ class TestsMixin(object):
         self.check('--version', ret=0, out=(tester.version() + '\n'))
 
 
-class TestTester(TestsMixin, test_case.MainTestCase):
-# class TestTester(TestsMixin):
+class TestCli(TestsMixin, test_case.MainTestCase):
     prog = [sys.executable, '-m', 'typ']
 
     def test_debugger(self):
@@ -200,15 +247,13 @@ class TestTester(TestsMixin, test_case.MainTestCase):
         self.check(['-c'], files=files, ret=0)
 
 
-
 class TestMain(TestsMixin, test_case.MainTestCase):
-# class TestMain(TestsMixin):
     def call(self, host, argv, stdin, env):
         host.stdin = StringIO.StringIO(stdin)
         host.stdout = StringIO.StringIO()
         host.stderr = StringIO.StringIO()
         orig_sys_path = sys.path[:]
-        loader = FakeTestLoader(host)
+        loader = FakeTestLoader(host, orig_sys_path)
         try:
             ret = tester.main(['--no-trapping'] + argv, host, loader)
             return ret, host.stdout.getvalue(), host.stderr.getvalue()
