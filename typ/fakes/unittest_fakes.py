@@ -134,3 +134,5 @@ class FakeTestCase(unittest.TestCase):
     def _run(self):
         if 'fail' in self._testMethodName:
             self.fail()
+        if 'interrupt' in self._testMethodName:
+            raise KeyboardInterrupt()

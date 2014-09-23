@@ -94,6 +94,14 @@ class TestsMixin(object):
     def test_help(self):
         self.check(['--help'], ret=0)
 
+    def test_interrupt(self):
+        files = {'interrupt_test.py': ('import unittest\n'
+                                       'class Foo(unittest.TestCase):\n'
+                                       '    def test_interrupt(self):\n'
+                                       '        raise KeyboardInterrupt()\n')}
+        self.check(['-j', '1'], files=files, ret=130,
+                   err='interrupted, exiting\n')
+
     def test_missing_builder_name(self):
         self.check(['--test-results-server', 'localhost'], ret=2)
 

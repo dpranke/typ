@@ -71,7 +71,7 @@ def main(argv=None, host=None, loader=None):
         finally:
             _teardown_process(context)
     except KeyboardInterrupt:
-        host.print_("interrupted, exiting", stream=orig_stderr)
+        host.print_("interrupted, exiting", stream=host.stderr)
         return 130
 
 
