@@ -30,7 +30,7 @@ from typ.stats import Stats
 from typ.printer import Printer
 
 
-def version(host=None):
+def version():
     return '0.3'
 
 
@@ -75,7 +75,7 @@ def main(argv=None, host=None, loader=None):
         return 130
 
 
-def _win_main(host=None): # pragma: no cover
+def spawn_main(): # pragma: no cover
     # This function is called from __main__.py when running
     # 'python -m typ' on windows: in order to use multiprocessing on windows,
     # we need to ensure that the 'main' module is importable,
@@ -83,7 +83,6 @@ def _win_main(host=None): # pragma: no cover
     # This code instead spawns a subprocess and invokes tester.py directly;
     # We don't want to always spawn a subprocess, because that is more
     # heavyweight than it needs to be on other platforms.
-    import subprocess
     proc = subprocess.Popen([sys.executable, __file__] + sys.argv[1:])
     try:
         proc.wait()
@@ -428,21 +427,21 @@ def run_test_list(args, printer, stats, result, test_names, jobs,
 
 
 def _setup_process(host, worker_num, args_and_loader):
-    args, loader = args_and_loader
+    args, _ = args_and_loader
     if not args.no_trapping:
         trap_stdio(args.pass_through)
     return (host, worker_num, args_and_loader)
 
 
 def _teardown_process(context):
-    host, worker_num, (args, loader) = context
+    _, worker_num, (args, _) = context
     if not args.no_trapping:
         release_stdio()
     return worker_num
 
 
 def _run_test(context, test_name):
-    host, worker_num, (args, loader) = context
+    host, _, (args, loader) = context
     if args.dry_run:
         return test_name, 0, '', '', 0
     result = TestResult(pass_through=args.pass_through)

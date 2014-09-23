@@ -118,9 +118,8 @@ class TestUploadFullResultsIfNecessary(test_case.TestCase):
 
     def test_upload_raises(self):
         host = host_fake.FakeHost()
-        url = 'http://localhost/testfile/upload'
 
-        def raiser(*args):
+        def raiser(*args):  # pylint: disable=W0613
             raise ValueError('bad arg')
 
         host.fetch = raiser

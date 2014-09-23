@@ -19,6 +19,10 @@ import unittest
 
 
 class FakeTestLoader(object):
+    # invalid names pylint: disable=C0103
+    # protected member _tests pylint: disable=W0212
+    # unused args pylint: disable=W0613
+
     def __init__(self, host, orig_sys_path):
         self.host = host
         self.orig_sys_path = orig_sys_path
@@ -87,7 +91,7 @@ class FakeTestLoader(object):
         module_name = '.'.join(comps[:-2])
         fname = module_name.replace('.', h.sep) + '.py'
 
-        for d in [d for d in sys.path if d not in self.orig_sys_path]:
+        for d in [p for p in sys.path if p not in self.orig_sys_path]:
             path = h.join(d, fname)
             if h.isfile(path):
                 # module + class + method

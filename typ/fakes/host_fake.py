@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import shlex
 import sys
 
 # FIXME: make this work w/ python3.
@@ -22,6 +21,7 @@ from StringIO import StringIO
 class FakeHost(object):
     # "too many instance attributes" pylint: disable=R0902
     # "redefining built-in" pylint: disable=W0622
+    # "unused arg" pylint: disable=W0613
 
     python_interpreter = 'python'
 

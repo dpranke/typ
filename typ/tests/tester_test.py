@@ -99,7 +99,7 @@ class TestsMixin(object):
 
     def test_retry_limit(self):
         files = {'fail_test.py': FAILING_TEST}
-        ret, out, err, _ = self.check(['--retry-limit', '2'], files=files)
+        ret, out, _, _ = self.check(['--retry-limit', '2'], files=files)
         self.assertEqual(ret, 1)
         self.assertIn('Retrying failed tests', out)
         lines = out.splitlines()

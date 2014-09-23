@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import time
 import unittest
 
 from typ.host import Host

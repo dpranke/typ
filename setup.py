@@ -16,7 +16,6 @@ import os
 import sys
 
 from setuptools import setup
-import setuptools
 
 here = os.path.abspath(os.path.dirname(__file__))
 if not here in sys.path:

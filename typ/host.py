@@ -167,7 +167,8 @@ class Host(object):
                     right = fields[7]
 
                     # Note that we return 1 less than the width since writing
-                    # into the rightmost column automatically performs a line feed.
+                    # into the rightmost column automatically performs a
+                    # line feed.
                     return right - left
                 return sys.maxint
             else:
@@ -178,6 +179,6 @@ class Host(object):
                                     termios.TIOCGWINSZ, '\0' * 8)
                 _, columns, _, _ = struct.unpack('HHHH', packed)
                 return columns
-        except Exception as e: # pragma: no cover
+        except Exception: # pragma: no cover
             # TODO: Figure out how to test this and make coverage see it.
             return sys.maxint

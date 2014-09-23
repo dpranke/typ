@@ -17,7 +17,7 @@ from typ.host import Host
 from typ.pool import make_pool
 
 
-def setup_fn(host, worker_num, context):
+def setup_fn(host, worker_num, context): # pylint: disable=W0613
     context['setup'] = True
     return context
 

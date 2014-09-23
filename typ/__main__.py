@@ -19,7 +19,7 @@ from typ import tester
 
 def main():
     if sys.platform == 'win32': # pragma: no cover
-        return _win_main()
+        return tester.spawn_main()
     else:
         return tester.main()
 
