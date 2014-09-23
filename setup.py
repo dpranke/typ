@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 
 from setuptools import setup
 import setuptools
@@ -32,7 +33,7 @@ readme_lines = readme.splitlines()
 setup(
     name='typ',
     packages=['typ'],
-    package_data={'': ['VERSION', '../README.md']},
+    package_data={'': ['../README.md']},
     entry_points={
         'console_scripts': [
             'typ=typ.__main__:main',
