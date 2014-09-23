@@ -47,7 +47,9 @@ def main(argv=None, host=None, loader=None):
     argv = argv or sys.argv[1:]
     cov = None
     try:
-        args = parse_args(argv)
+        exit_status, args = parse_args(argv, host)
+        if exit_status is not None:
+            return exit_status
         if args.version:
             host.print_(version())
             return 0
@@ -142,7 +144,16 @@ def release_stdio():
 
 def parse_args(argv, host=None):
     host = host or _host()
-    ap = argparse.ArgumentParser(prog='typ')
+
+    class ArgumentParser(argparse.ArgumentParser):
+        exit_status = None
+
+        def exit(self, status=0, message=None):
+            self.exit_status = status
+            if message:
+                host.print_(message, stream=host.stderr)
+
+    ap = ArgumentParser(prog='typ')
     ap.usage = '%(prog)s [options] [tests...]'
     ap.add_argument('-c', '--coverage', action='store_true',
                     help='produce coverage information')
@@ -236,8 +247,7 @@ def parse_args(argv, host=None):
         ap.error('Error: --builder-name, --master-name, and --test-type '
                  'must be specified along with --test-result-server.')
 
-    return args
-
+    return ap.exit_status, args
 
 
 def find_tests(args, host=None, loader=None):

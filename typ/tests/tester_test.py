@@ -134,6 +134,9 @@ class FakeTestCase(unittest.TestCase):
 
 
 class TestsMixin(object):
+    def test_bad_metadata(self):
+        self.check(['--metadata', 'foo'], ret=2)
+
     def test_dryrun(self):
         files = {'pass_test.py': PASSING_TEST}
         self.check(['-n'], files=files, ret=0)
@@ -155,6 +158,12 @@ class TestsMixin(object):
                    out='pass_test.PassingTest.test_pass\n')
         self.check(['-l', '.'], files=files, ret=0,
                    out='pass_test.PassingTest.test_pass\n')
+
+    def test_help(self):
+        self.check(['--help'], ret=0)
+
+    def test_missing_builder_name(self):
+        self.check(['--test-results-server', 'localhost'], ret=2)
 
     def test_retry_limit(self):
         files = {'fail_test.py': FAILING_TEST}
@@ -181,15 +190,6 @@ class TestsMixin(object):
 class TestTester(TestsMixin, test_case.MainTestCase):
 # class TestTester(TestsMixin):
     prog = [sys.executable, '-m', 'typ']
-
-    def test_bad_metadata(self):
-        self.check(['--metadata', 'foo'], ret=2)
-
-    def test_help(self):
-        self.check(['--help'], ret=0)
-
-    def test_missing_builder_name(self):
-        self.check(['--test-results-result', 'localhost'], ret=2)
 
     def test_debugger(self):
         files = {'pass_test.py': PASSING_TEST}
