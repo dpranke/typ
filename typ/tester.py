@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import coverage
 import fnmatch
 import inspect
 import io
@@ -44,20 +45,27 @@ def main(argv=None, host=None, loader=None):
     loader = loader or _loader()
 
     argv = argv or sys.argv[1:]
+    cov = None
     try:
         args = parse_args(argv)
         if args.version:
             host.print_(version())
             return 0
         if args.coverage:
-            return _run_under_coverage(argv, args.coverage_omit)
+            cov = coverage.coverage()
+            cov.start()
+            args.jobs = 1
         if args.debugger:
             args.jobs = 1
             args.pass_through = True
 
         context = _setup_process(host, 0, (args, loader))
         try:
-            return run(args, host, loader)
+            ret = run(args, host, loader)
+            if cov:
+                cov.stop()
+                cov.report(show_missing=False, omit=args.coverage_omit)
+            return ret
         finally:
             _teardown_process(context)
     except KeyboardInterrupt:
@@ -82,29 +90,6 @@ def _win_main(host=None):
         # completely.
         proc.wait()
     return proc.returncode
-
-
-def _run_under_coverage(argv, coverage_omit):
-    # TODO: import coverage and run in-line.
-    if '-c' in argv:
-        argv.remove('-c')
-    if '-j' in argv:
-        idx = argv.index('-j')
-        argv.pop(idx)
-        argv.pop(idx)
-    if '--coverage-omit' in argv:
-        idx = argv.index('--coverage-omit')
-        argv.pop(idx)
-        argv.pop(idx)
-
-    subprocess.call(['coverage', 'erase'])
-    res = subprocess.call(['coverage', 'run', '-m', 'typ', '-j', '1'] + argv)
-    sys.stdout.write('\n')
-    sys.stdout.flush()
-
-    report_args = ['--omit', coverage_omit] if coverage_omit else []
-    subprocess.call(['coverage', 'report'] + report_args)
-    return res
 
 
 def run(args, host=None, loader=None):
