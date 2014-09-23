@@ -14,7 +14,7 @@
 
 import unittest
 
-from typ import host_fake
+from typ.fakes import host_fake
 from typ import json_results
 from typ import test_case
 from typ import tester

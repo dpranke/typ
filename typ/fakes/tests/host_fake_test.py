@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import unittest
 
 from typ.tests import host_test
-from typ.host_fake import FakeHost
+from typ.fakes.host_fake import FakeHost
 
 
 class TestFakeHost(host_test.TestHost):
