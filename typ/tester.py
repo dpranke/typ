@@ -53,18 +53,18 @@ def main(argv=None, host=None, loader=None):
         if args.version:
             host.print_(version())
             return 0
-        if args.coverage:
+        if args.coverage: # pragma: no cover
             cov = coverage.coverage()
             cov.start()
             args.jobs = 1
-        if args.debugger:
+        if args.debugger: # pragma: no cover
             args.jobs = 1
             args.pass_through = True
 
         context = _setup_process(host, 0, (args, loader))
         try:
             ret = run(args, host, loader)
-            if cov:
+            if cov: # pragma: no cover
                 cov.stop()
                 cov.report(show_missing=False, omit=args.coverage_omit)
             return ret
@@ -75,7 +75,7 @@ def main(argv=None, host=None, loader=None):
         return 130
 
 
-def _win_main(host=None):
+def _win_main(host=None): # pragma: no cover
     # This function is called from __main__.py when running
     # 'python -m typ' on windows: in order to use multiprocessing on windows,
     # we need to ensure that the 'main' module is importable,
@@ -456,7 +456,7 @@ def _run_test(context, test_name):
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
     start = host.time()
-    if args.debugger:
+    if args.debugger: # pragma: no cover
         # Access to a protected member  pylint: disable=W0212
         test_case = suite._tests[0]
         test_func = getattr(test_case, test_case._testMethodName)
@@ -570,5 +570,5 @@ def terminal_width(host=None):
     return host.terminal_width()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     sys.exit(main())
