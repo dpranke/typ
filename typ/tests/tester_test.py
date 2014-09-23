@@ -134,34 +134,13 @@ class FakeTestCase(unittest.TestCase):
 
 
 class TestsMixin(object):
-    def test_version(self):
-        self.check('--version', ret=0, out=(tester.version() + '\n'))
+    def test_dryrun(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['-n'], files=files, ret=0)
 
     def test_fail(self):
         files = {'fail_test.py': FAILING_TEST}
         self.check([], files=files, ret=1)
-
-    def test_retry_limit(self):
-        files = {'fail_test.py': FAILING_TEST}
-        ret, out, err, _ = self.check(['--retry-limit', '2'], files=files)
-        self.assertEqual(ret, 1)
-        self.assertIn('Retrying failed tests', out)
-        lines = out.splitlines()
-        self.assertEqual(len([l for l in lines if 'test_fail failed:' in l]),
-                         3)
-
-    def test_skip(self):
-        files = {'fail_test.py': FAILING_TEST}
-        self.check(['-x', '*test_fail*'], files=files, ret=1,
-                   out='No tests to run.\n')
-
-    def test_serial(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['--serial', '*test_pass*'], files=files, ret=0)
-
-    def test_dryrun(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['-n'], files=files, ret=0)
 
     def test_find(self):
         files = {'pass_test.py': PASSING_TEST}
@@ -177,9 +156,30 @@ class TestsMixin(object):
         self.check(['-l', '.'], files=files, ret=0,
                    out='pass_test.PassingTest.test_pass\n')
 
+    def test_retry_limit(self):
+        files = {'fail_test.py': FAILING_TEST}
+        ret, out, err, _ = self.check(['--retry-limit', '2'], files=files)
+        self.assertEqual(ret, 1)
+        self.assertIn('Retrying failed tests', out)
+        lines = out.splitlines()
+        self.assertEqual(len([l for l in lines if 'test_fail failed:' in l]),
+                         3)
 
-# class TestTester(TestsMixin, test_case.MainTestCase):
-class TestTester(TestsMixin):
+    def test_serial(self):
+        files = {'pass_test.py': PASSING_TEST}
+        self.check(['--serial', '*test_pass*'], files=files, ret=0)
+
+    def test_skip(self):
+        files = {'fail_test.py': FAILING_TEST}
+        self.check(['-x', '*test_fail*'], files=files, ret=1,
+                   out='No tests to run.\n')
+
+    def test_version(self):
+        self.check('--version', ret=0, out=(tester.version() + '\n'))
+
+
+class TestTester(TestsMixin, test_case.MainTestCase):
+# class TestTester(TestsMixin):
     prog = [sys.executable, '-m', 'typ']
 
     def test_debugger(self):
@@ -190,9 +190,6 @@ class TestTester(TestsMixin):
         files = {'pass_test.py': PASSING_TEST}
         self.check(['-c'], files=files, ret=0)
 
-    def test_find(self):
-        super(TestTester, self).test_find()
-        files = {'pass_test.py': PASSING_TEST}
 
 
 class TestMain(TestsMixin, test_case.MainTestCase):
