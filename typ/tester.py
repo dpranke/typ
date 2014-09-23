@@ -114,8 +114,12 @@ def run(args, host=None, loader=None):
     for path in args.path:
         host.add_to_path(path)
 
-    test_names, serial_test_names, skip_test_names = find_tests(args, host,
-                                                                loader)
+    ret, test_names, serial_test_names, skip_test_names = find_tests(args,
+                                                                     host,
+                                                                     loader)
+    if ret:
+        return ret
+
     if not test_names and not serial_test_names:
         host.print_('No tests to run.')
         return 1
@@ -276,6 +280,7 @@ def find_tests(args, host=None, loader=None):
     else:
         tests = args.tests or ['.']
 
+    ret = 0
     for test in tests:
         try:
             if host.isfile(test):
@@ -300,10 +305,15 @@ def find_tests(args, host=None, loader=None):
                 else:
                     add_names_from_suite(loader.loadTestsFromName(test))
         except AttributeError as e:
-            host.print_('Error: failed to import "%s": %s' % (test, str(e)),
+            host.print_('Failed to load "%s": %s' % (test, str(e)),
                         stream=host.stderr)
+            ret = 1
+        except ImportError as e:
+            host.print_('Failed to load "%s": %s' % (test, str(e)),
+                        stream=host.stderr)
+            ret = 1
 
-    return test_names, serial_test_names, skip_names
+    return ret, test_names, serial_test_names, skip_names
 
 
 def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,

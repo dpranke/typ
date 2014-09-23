@@ -74,17 +74,25 @@ class FakeTestLoader(object):
                 if h.isfile(path):
                     # module
                     suite = self._loadTestsFromFile(path, d)
-                    return unittest.TestSuite([t for t in suite._tests if
-                                                t.id().startswith(name)])
+                    matching_tests = [t for t in suite._tests if
+                                      t.id().startswith(name)]
+                    if not matching_tests:
+                        raise AttributeError()
+                    return unittest.TestSuite(matching_tests)
                 if h.isdir(d, path):
                     # package
                     return self.discover(path)
+            raise ImportError()
+
         if len(comps) == 2:
             if h.isfile(comps[0] + '.py'):
                 # module + class
                 suite = self._loadTestsFromFile(comps[0] + '.py')
-                return unittest.TestSuite([t for t in suite._tests if
-                                           t.id().startswith(name)])
+                matching_tests = [t for t in suite._tests if
+                                  t.id().startswith(name)]
+                if not matching_tests:
+                    raise AttributeError()
+                return unittest.TestSuite(matching_tests)
 
             for d in test_path_dirs:
                 path = h.join(d, comps[0], comps[1] + '.py')
@@ -98,7 +106,7 @@ class FakeTestLoader(object):
                     return self.discover(path)
 
             # no match
-            return unittest.TestSuite()
+            raise ImportError()
 
         module_name = '.'.join(comps[:-2])
         fname = module_name.replace('.', h.sep) + '.py'

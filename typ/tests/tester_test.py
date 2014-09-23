@@ -97,6 +97,12 @@ class TestsMixin(object):
     def test_help(self):
         self.check(['--help'], ret=0)
 
+    def test_import_failure(self):
+        self.check(['-l', 'foo'], ret=1, out='')
+
+        files = {'foo.py': 'import unittest'}
+        self.check(['-l', 'foo.bar'], files=files, ret=1, out='')
+
     def test_interrupt(self):
         files = {'interrupt_test.py': ('import unittest\n'
                                        'class Foo(unittest.TestCase):\n'
