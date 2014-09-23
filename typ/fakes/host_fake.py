@@ -61,7 +61,7 @@ class FakeHost(object):
 
     def chdir(self, *comps):
         path = self.join(*comps)
-        if not path.startswith('/'):
+        if not path.startswith('/'): # pragma: no cover
             path = self.join(self.cwd, path)
         self.cwd = path
 
@@ -104,7 +104,7 @@ class FakeHost(object):
     def join(self, *comps):
         p = ''
         for c in comps:
-            if c in ('', '.'):
+            if c in ('', '.'): # pragma: no cover
                 continue
             elif c.startswith('/'):
                 p = c
@@ -185,13 +185,13 @@ class FakeHost(object):
         self.files[full_path] = contents
         self.written_files[full_path] = contents
 
-    def fetch(self, url, data=None, headers=None):
+    def fetch(self, url, data=None, headers=None): # pragma: no cover
         resp = self.fetch_responses.get(url, FakeResponse('', url))
         self.fetches.append((url, data, headers, resp))
         return resp
 
 
-class FakeResponse(StringIO):
+class FakeResponse(StringIO): # pragma: no cover
     def __init__(self, response, url, code=200):
         StringIO.__init__(self, response)
         self._url = url

@@ -51,12 +51,12 @@ class FakeTestLoader(object):
             m = re.match('.+def (.+)\(', l)
             if m:
                 method_name = m.group(1)
-                tc = FakeTestCase('%s.%s.%s' % (module_name, class_name,
-                                                method_name))
+                tc = FakeTestCase(h, '%s.%s.%s' % (module_name, class_name,
+                                                   method_name))
                 suite.addTest(tc)
         return suite
 
-    def loadTestsFromName(self, name, module=None):
+    def loadTestsFromName(self, name, module=None): # pragma: no cover
         h = self.host
         comps = name.split('.')
         path = '/'.join(comps)
@@ -134,7 +134,8 @@ class FakeTestLoader(object):
 
 
 class FakeTestCase(unittest.TestCase):
-    def __init__(self, name):
+    def __init__(self, host, name):
+        self._host = host
         self._name = name
         comps = self._name.split('.')
         self._class_name = comps[:-1]
@@ -145,14 +146,20 @@ class FakeTestCase(unittest.TestCase):
     def id(self):
         return self._name
 
-    def __str__(self):
+    def __str__(self): # pragma: no cover
         return "%s (%s)" % (self._testMethodName, self._class_name)
 
-    def __repr__(self):
+    def __repr__(self): # pragma: no cover
         return "%s testMethod=%s" % (self._class_name, self._testMethodName)
 
     def _run(self):
         if 'fail' in self._testMethodName:
             self.fail()
+        if 'out' in self._testMethodName: # pragma: no cover
+            self._host.stdout.write('hello on stdout')
+            self._host.stdout.flush()
+        if 'err' in self._testMethodName:
+            self._host.stderr.write('hello on stderr')
+            self._host.stderr.flush()
         if 'interrupt' in self._testMethodName:
             raise KeyboardInterrupt()

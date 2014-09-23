@@ -42,7 +42,7 @@ class MainTestCase(TestCase):
     def assert_files(self, expected_files, actual_files, files_to_ignore=None):
         files_to_ignore = files_to_ignore or []
         for k, v in expected_files.items():
-            self.assertEqual(expected_files[k], v)
+            self.assertMultiLineEqual(expected_files[k], v)
         interesting_files = set(actual_files.keys()).difference(
             files_to_ignore)
         self.assertEqual(interesting_files, set(expected_files.keys()))
@@ -84,9 +84,9 @@ class MainTestCase(TestCase):
         if ret is not None:
             self.assertEqual(actual_ret, ret)
         if out is not None:
-            self.assertEqual(actual_out, out)
+            self.assertMultiLineEqual(actual_out, out)
         if err is not None:
-            self.assertEqual(actual_err, err)
+            self.assertMultiLineEqual(actual_err, err)
         if exp_files:
             self.assert_files(exp_files, actual_files, files_to_ignore)
 

@@ -31,7 +31,7 @@ from typ.printer import Printer
 
 
 def version():
-    return '0.3'
+    return '0.4'
 
 
 DEFAULT_STATUS_FORMAT = '[%f/%t] '
@@ -313,7 +313,8 @@ def find_tests(args, host=None, loader=None):
                         stream=host.stderr)
             ret = 1
 
-    return ret, test_names, serial_test_names, skip_names
+    return (ret, sorted(test_names), sorted(serial_test_names),
+            sorted(skip_names))
 
 
 def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
@@ -353,7 +354,7 @@ def run_tests_with_retries(args, printer, stats, test_names, serial_test_names,
 
     err_occurred, err_str = json_results.upload_full_results_if_necessary(
         args, full_results, host=host)
-    if err_occurred:
+    if err_occurred: # pragma: no cover
         for line in err_str.splitlines():
             host.print_(line)
         return 1
@@ -457,7 +458,9 @@ def _run_test(context, test_name):
     result = TestResult(pass_through=args.pass_through)
     try:
         suite = loader.loadTestsFromName(test_name)
-    except Exception as e:
+    except Exception as e: # pragma: no cover
+        # TODO: This should be a very rare failure, but we need to figure out
+        # how to test it.
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
     start = host.time()
@@ -476,7 +479,7 @@ def _run_test(context, test_name):
     if result.failures:
         return (test_name, 1, result.out, result.err + result.failures[0][1],
                 took)
-    if result.errors:
+    if result.errors: # pragma: no cover
         return (test_name, 1, result.out, result.err + result.errors[0][1],
                 took)
     return (test_name, 0, result.out, result.err, took)
@@ -495,20 +498,22 @@ def _print_test_finished(printer, args, stats, test_name, res, out, err, took):
         if out or err:
             suffix += ':\n'
         printer.update(stats.format() + test_name + suffix, elide=False)
-        for l in out.splitlines():
+        for l in out.splitlines(): # pragma: no cover
             printer.print_('  %s' % l)
-        for l in err.splitlines():
+        for l in err.splitlines(): # pragma: no cover
             printer.print_('  %s' % l)
     elif not args.quiet:
-        if args.verbose > 1 and (out or err):
+        if args.verbose > 1 and (out or err): # pragma: no cover
             suffix += ':\n'
         printer.update(stats.format() + test_name + suffix,
                        elide=(not args.verbose))
-        if args.verbose > 1:
+        if args.verbose > 1: # pragma: no cover
             for l in out.splitlines():
                 printer.print_('  %s' % l)
             for l in err.splitlines():
                 printer.print_('  %s' % l)
+        if args.verbose:
+            printer.flush()
 
 
 def _host():
@@ -528,12 +533,12 @@ class PassThrough(io.StringIO):
         super(PassThrough, self).__init__()
 
     def write(self, msg, *args, **kwargs):
-        if self.stream:
+        if self.stream: # pragma: no cover
             self.stream.write(unicode(msg), *args, **kwargs)
         super(PassThrough, self).write(unicode(msg), *args, **kwargs)
 
     def flush(self, *args, **kwargs):
-        if self.stream:
+        if self.stream: # pragma: no cover
             self.stream.flush(*args, **kwargs)
         super(PassThrough, self).flush(*args, **kwargs)
 
