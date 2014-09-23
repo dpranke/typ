@@ -90,6 +90,9 @@ class TestsMixin(object):
                    ret=0, out='foo.pass_test.PassingTest.test_pass\n')
         self.check(['-l', 'foo'], files=files, cwd='bar',
                    ret=0, out='foo.pass_test.PassingTest.test_pass\n')
+        self.check(['-l', '--path', '../foo', 'pass_test'],
+                   files=files, cwd='bar', ret=0,
+                   out='pass_test.PassingTest.test_pass\n')
 
     def test_help(self):
         self.check(['--help'], ret=0)

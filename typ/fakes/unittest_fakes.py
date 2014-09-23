@@ -60,6 +60,8 @@ class FakeTestLoader(object):
         h = self.host
         comps = name.split('.')
         path = '/'.join(comps)
+        test_path_dirs = [d for d in sys.path if d not in self.orig_sys_path]
+
         if len(comps) == 1:
             if h.isdir(path):
                 # package
@@ -67,6 +69,16 @@ class FakeTestLoader(object):
             if h.isfile(path + '.py'):
                 # module
                 return self._loadTestsFromFile(path + '.py')
+            for d in test_path_dirs:
+                path = h.join(d, comps[0] + '.py')
+                if h.isfile(path):
+                    # module
+                    suite = self._loadTestsFromFile(path, d)
+                    return unittest.TestSuite([t for t in suite._tests if
+                                                t.id().startswith(name)])
+                if h.isdir(d, path):
+                    # package
+                    return self.discover(path)
         if len(comps) == 2:
             if h.isfile(comps[0] + '.py'):
                 # module + class
@@ -74,7 +86,7 @@ class FakeTestLoader(object):
                 return unittest.TestSuite([t for t in suite._tests if
                                            t.id().startswith(name)])
 
-            for d in [d for d in sys.path if d not in self.orig_sys_path]:
+            for d in test_path_dirs:
                 path = h.join(d, comps[0], comps[1] + '.py')
                 if h.isfile(path):
                     # package + module
@@ -91,7 +103,7 @@ class FakeTestLoader(object):
         module_name = '.'.join(comps[:-2])
         fname = module_name.replace('.', h.sep) + '.py'
 
-        for d in [p for p in sys.path if p not in self.orig_sys_path]:
+        for d in test_path_dirs:
             path = h.join(d, fname)
             if h.isfile(path):
                 # module + class + method
@@ -107,7 +119,7 @@ class FakeTestLoader(object):
                 # module + class
                 suite = self._loadTestsFromFile(comps[0] + '.py', d)
                 return unittest.TestSuite([t for t in suite._tests if
-                                            t.id().startswith(name)])
+                                           t.id().startswith(name)])
 
         # no match
         return unittest.TestSuite()
