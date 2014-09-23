@@ -135,7 +135,7 @@ class FakeTestCase(unittest.TestCase):
 
 class TestsMixin(object):
     def test_version(self):
-        self.check('--version', ret=0, out='0.2\n')
+        self.check('--version', ret=0, out=(tester.version() + '\n'))
 
     def test_fail(self):
         files = {'fail_test.py': FAILING_TEST}
