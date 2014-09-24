@@ -14,12 +14,22 @@
 
 import argparse
 
+from typ.host import Host
+
+
+class _Bailout(Exception):
+    pass
+
 
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
+        self._host = kwargs['host']
+        del kwargs['host']
         super(ArgumentParser, self).__init__(*args, **kwargs)
+
         self.exit_status = None
         self.exit_message = None
+
         self.usage = '%(prog)s [options] [tests...]'
         self.add_argument('--builder-name',
                           help=('Builder name to include in the '
@@ -98,6 +108,27 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('tests', nargs='*', default=[],
                           help=argparse.SUPPRESS)
 
+    def parse_args(self, args=None, namespace=None):
+        try:
+            super(ArgumentParser, self).parse_args(args=args,
+                                                   namespace=namespace)
+        except _Bailout:
+            pass
+
+    def _print_message(self, msg, file=None):
+        self._host.print_(msg=msg, stream=file, end='')
+
+    def print_usage(self, file=None):
+        self._print_message(self.format_usage(), file=file)
+
+    def print_help(self, file=None):
+        self._print_message(msg=self.format_help(), file=file)
+
+    def error(self, message):
+        self.exit(2, '%s: error: %s\n' % (self.prog, message))
+
     def exit(self, status=0, message=None):
         self.exit_status = status
-        self.exit_message = message
+        if message:
+            self._print_message(message, file=self._host.stderr)
+        raise _Bailout()

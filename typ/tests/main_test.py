@@ -61,6 +61,10 @@ class FailTest(unittest.TestCase):
 class TestCli(test_case.MainTestCase):
     prog = [sys.executable, '-m', 'typ']
 
+    def test_bad_arg(self):
+        self.check(['--bad-arg'], ret=2)
+        self.check(['-help'], ret=2)
+
     def test_bad_metadata(self):
         self.check(['--metadata', 'foo'], ret=2)
 

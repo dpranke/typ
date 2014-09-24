@@ -18,7 +18,7 @@ from typ import main
 
 
 if __name__ == '__main__':
-    if sys.platform == 'win32':
+    if sys.platform == 'win32': # pragma: no cover
         sys.exit(main.spawn_main())
     else:
         sys.exit(main.main())

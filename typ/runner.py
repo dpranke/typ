@@ -75,12 +75,10 @@ class Runner(object):
         self._cov = None
 
     def main(self, argv=None):
-        parser = ArgumentParser()
-        exit_status, exit_message = self.parse_args(parser, argv)
-        if exit_status is not None:
-            if exit_status:
-                self.print_(exit_message, stream=self.host.stderr)
-            return exit_status
+        parser = ArgumentParser(host=self.host)
+        self.parse_args(parser, argv)
+        if parser.exit_status is not None:
+            return parser.exit_status
 
         try:
             ret, full_results = self.run()
@@ -103,7 +101,6 @@ class Runner(object):
 
         # TODO: Decide if this is sufficiently idiot-proof.
         parser.parse_args(args=args, namespace=self)
-        return parser.exit_status, parser.exit_message
 
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)
@@ -148,17 +145,17 @@ class Runner(object):
                             'with --test-result-server')
                 ret = 2
 
-        if self.debugger:
+        if self.debugger: # pragma: no cover
             self.jobs = 1
             self.passthrough = True
 
-        if self.coverage:
+        if self.coverage: # pragma: no cover
             self.jobs = 1
 
         self.stats = Stats(self.status_format, h.time, self.jobs)
 
-        should_overwrite = h.stdout.isatty() and not self.verbose
-        self.printer = Printer(self.print_, should_overwrite,
+        self.should_overwrite = h.stdout.isatty() and not self.verbose
+        self.printer = Printer(self.print_, self.should_overwrite,
                                cols=self.terminal_width)
 
         if not self.top_level_dir:
@@ -172,7 +169,7 @@ class Runner(object):
         for path in self.path:
             h.add_to_path(path)
 
-        if self.coverage:
+        if self.coverage: # pragma: no cover
             self._cov = coverage.coverage()
 
         return ret
@@ -392,11 +389,11 @@ class Runner(object):
                      '' if num_failures == 1 else 's'))
         self.print_()
 
-    def write_results(self, full_results):
+    def write_results(self, full_results): # pragma: no cover
         if self.write_full_results_to:
             self.host.write_text_file(json.dumps(full_results, indent=2) + '\n')
 
-    def upload_results(self, full_results):
+    def upload_results(self, full_results): # pragma: no cover
         h = self.host
         if not self.test_results_server:
             return 0
@@ -415,10 +412,10 @@ class Runner(object):
         return 1
 
     def report_coverage(self):
-        if self._cov:
+        if self._cov: # pragma: no cover
             self._cov.report(show_missing=False, omit=self.coverage_omit)
 
-    def exit_code_from_full_results(self, full_results):
+    def exit_code_from_full_results(self, full_results): # pragma: no cover
         return json_results.exit_code_from_full_results(full_results)
 
 
@@ -495,13 +492,13 @@ class PassThrough(io.StringIO):
         self.stream = stream
         super(PassThrough, self).__init__()
 
-    def write(self, msg, *args, **kwargs):
-        if self.stream: # pragma: no cover
+    def write(self, msg, *args, **kwargs): # pragma: no cover
+        if self.stream:
             self.stream.write(unicode(msg), *args, **kwargs)
         super(PassThrough, self).write(unicode(msg), *args, **kwargs)
 
-    def flush(self, *args, **kwargs):
-        if self.stream: # pragma: no cover
+    def flush(self, *args, **kwargs): # pragma: no cover
+        if self.stream:
             self.stream.flush(*args, **kwargs)
         super(PassThrough, self).flush(*args, **kwargs)
 
