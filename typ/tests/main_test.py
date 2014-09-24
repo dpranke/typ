@@ -147,18 +147,18 @@ class TestCli(test_case.MainTestCase):
         self.assertEqual(len([l for l in lines if 'test_fail failed:' in l]),
                          3)
 
-    def test_serial(self):
+    def test_isolate(self):
         files = {'pass_test.py': PASSING_TEST}
-        self.check(['--serial', '*test_pass*'], files=files, ret=0)
+        self.check(['--isolate', '*test_pass*'], files=files, ret=0)
 
     def test_skip(self):
         files = {'fail_test.py': FAILING_TEST}
-        self.check(['-x', '*test_fail*'], files=files, ret=1,
+        self.check(['--skip', '*test_fail*'], files=files, ret=1,
                    out='No tests to run.\n')
 
         files = {'fail_test.py': FAILING_TEST,
                  'pass_test.py': PASSING_TEST}
-        self.check(['-x', '*test_fail*'], files=files, ret=0)
+        self.check(['--skip', '*test_fail*'], files=files, ret=0)
 
     def test_timing(self):
         files = {'pass_test.py': PASSING_TEST}
@@ -192,7 +192,7 @@ class TestCli(test_case.MainTestCase):
                         '    File "err_test.py", line 4, in test_err\n'
                         '      foo = bar\n'
                         '  NameError: global name \'bar\' is not defined\n'
-                        '1 tests run, 1 failure.\n'),
+                        '1 test run, 1 failure.\n'),
                    err='')
 
 
@@ -220,7 +220,7 @@ class TestCli(test_case.MainTestCase):
                  '    File "output_tests.py", line 18, in test_out_err_fail\n'
                  '      self.fail()\n'
                  '  AssertionError: None\n'
-                 '1 tests run, 1 failure.\n'),
+                 '1 test run, 1 failure.\n'),
             err='')
 
     def test_debugger(self):

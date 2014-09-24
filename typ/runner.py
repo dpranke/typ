@@ -61,7 +61,7 @@ class Runner(object):
         self.should_overwrite = False
         self.suffixes = ['*_test.py', '*_unittest.py']
         self.stats = None
-        self.status_format = '[%f/%t]'
+        self.status_format = '[%f/%t] '
         self.terminal_width = host.terminal_width()
         self.test_results_server = None
         self.test_type = None
@@ -84,12 +84,15 @@ class Runner(object):
 
         try:
             ret, full_results = self.run()
-            self.write_results(full_results)
-            upload_ret = self.upload_results(full_results)
+            if full_results:
+                self.write_results(full_results)
+                upload_ret = self.upload_results(full_results)
+            else:
+                upload_ret = 0
             self.report_coverage()
             return ret or upload_ret
         except KeyboardInterrupt:
-            self.print_("interrupted, exiting")
+            self.print_("interrupted, exiting", stream=self.host.stderr)
             return 130
 
     def parse_args(self, parser, args):
@@ -107,7 +110,7 @@ class Runner(object):
 
     def run(self):
         if self.version:
-            self.print_(VERSION + '\n')
+            self.print_(VERSION)
             return 0, None
 
         ret = self._validate()
@@ -119,7 +122,8 @@ class Runner(object):
             return ret, None
 
         ret, full_results = self._run_tests()
-        self._summarize(full_results)
+        if full_results:
+            self._summarize(full_results)
         return ret, full_results
 
     def _validate(self):
@@ -276,14 +280,15 @@ class Runner(object):
             self.print_('')
 
         while retry_limit and failed_tests:
-            stats = Stats(self.status_format, h.time, jobs=1)
+            stats = Stats(self.status_format, h.time, 1)
             stats.total = len(failed_tests)
             result = self._run_one_set(stats, [], failed_tests, [])
             results.append(result)
             failed_tests = list(json_results.failed_test_names(result))
             retry_limit -= 1
 
-        full_results = json_results.make_full_results(self.metadata, h.time(),
+        full_results = json_results.make_full_results(self.metadata,
+                                                      int(h.time()),
                                                       all_tests, results)
         return (json_results.exit_code_from_full_results(full_results),
                 full_results)
@@ -393,19 +398,21 @@ class Runner(object):
 
     def upload_results(self, full_results):
         h = self.host
-        if self.test_results_server:
-            url, data, content_type = json_results.make_upload_request(
-                self.test_results_server, self.builder_name, self.master_name,
-                self.test_type, full_results)
-            try:
-                response = h.fetch(url, data, {'Content-Type': content_type})
-                if response.code == 200:
-                    return 0
-                h.print_('Uploading the JSON results failed with %d: "%s"' %
-                         (response.code, response.read()))
-                return 1
-            except Exception as e:
-                h.print_('Uploading the JSON results raised "%s"\n' % str(e))
+        if not self.test_results_server:
+            return 0
+
+        url, data, content_type = json_results.make_upload_request(
+            self.test_results_server, self.builder_name, self.master_name,
+            self.test_type, full_results)
+        try:
+            response = h.fetch(url, data, {'Content-Type': content_type})
+            if response.code == 200:
+                return 0
+            h.print_('Uploading the JSON results failed with %d: "%s"' %
+                        (response.code, response.read()))
+        except Exception as e:
+            h.print_('Uploading the JSON results raised "%s"\n' % str(e))
+        return 1
 
     def report_coverage(self):
         if self._cov:
