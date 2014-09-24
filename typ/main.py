@@ -19,9 +19,8 @@ import unittest
 from typ.host import Host
 from typ.runner import Runner
 
-
 def main(argv=None, host=None, loader=None):
-    runner = make_runner(host, loader)
+    runner = make_runner(host=host, loader=loader)
     return runner.main(argv)
 
 
@@ -29,10 +28,6 @@ def make_runner(host=None, loader=None):
     host = host or Host()
     loader = loader or unittest.loader.TestLoader()
     return Runner(host, loader)
-
-
-def make_arg_parser(host=None):
-    host = host or Host()
 
 
 def spawn_main(): # pragma: no cover

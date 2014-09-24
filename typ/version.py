@@ -12,13 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
-from typ import main
-
-
-if __name__ == '__main__':
-    if sys.platform == 'win32':
-        sys.exit(main.spawn_main())
-    else:
-        sys.exit(main.main())
+VERSION = '0.5a'

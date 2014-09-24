@@ -21,8 +21,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 if not here in sys.path:
     sys.path.insert(0, here)
 
-from typ import tester
-version = tester.version()
+from typ.version import VERSION
 
 with open(os.path.join(here, 'README.md')) as fp:
     readme = fp.read().strip()
@@ -35,10 +34,10 @@ setup(
     package_data={'': ['../README.md']},
     entry_points={
         'console_scripts': [
-            'typ=typ.__main__:main',
+            'typ=typ.main:main',
         ]
     },
-    version=version,
+    version=VERSION,
     author='Dirk Pranke',
     author_email='dpranke@chromium.org',
     description=readme_lines[3],

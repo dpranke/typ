@@ -83,11 +83,12 @@ class Runner(object):
             return exit_status
 
         try:
-            full_results = self.run()
+            import pdb; pdb.set_trace()
+            ret, full_results = self.run()
             self.write_results(full_results)
             upload_ret = self.upload_results(full_results)
             self.report_coverage()
-            return self.exit_code_from_full_results(full_results) or upload_ret
+            return ret or upload_ret
         except KeyboardInterrupt:
             self.print_("interrupted, exiting")
             return 130
@@ -108,20 +109,19 @@ class Runner(object):
     def run(self):
         if self.version:
             self.print_(VERSION + '\n')
-            return 0
+            return 0, None
 
         ret = self._validate()
         if ret:
-            return ret
+            return ret, None
 
-        if not self.tests:
-            ret = self.find_tests()
-            if ret:
-                return ret
+        ret = self.find_tests()
+        if ret:
+            return ret, None
 
-        full_results = self._run_tests()
+        ret, full_results = self._run_tests()
         self._summarize(full_results)
-        return full_results
+        return ret, full_results
 
     def _validate(self):
         ret = 0
@@ -162,9 +162,9 @@ class Runner(object):
             top_dir = h.getcwd()
             while h.exists(top_dir, '__init__.py'):
                 top_dir = h.dirname(top_dir)
-            h.top_level_dir = top_dir
+            self.top_level_dir = top_dir
 
-        h.add_to_path(h.top_level_dir)
+        h.add_to_path(self.top_level_dir)
 
         for path in self.path:
             h.add_to_path(path)
@@ -253,12 +253,12 @@ class Runner(object):
         h = self.host
         if not self.parallel_tests and not self.isolated_tests:
             self.print_('No tests to run.')
-            return 1
+            return 1, None
 
         if self.list_only:
             all_tests = sorted(self.parallel_tests + self.isolated_tests)
             self.print_('\n'.join(all_tests))
-            return 0
+            return 0, None
 
         all_tests = sorted(self.parallel_tests + self.isolated_tests +
                            self.tests_to_skip)
@@ -284,8 +284,10 @@ class Runner(object):
             failed_tests = list(json_results.failed_test_names(result))
             retry_limit -= 1
 
-        return json_results.make_full_results(self.metadata, h.time(),
-                                              all_tests, results)
+        full_results = json_results.make_full_results(self.metadata, h.time(),
+                                                      all_tests, results)
+        return (json_results.exit_code_from_full_results(full_results),
+                full_results)
 
     def _run_one_set(self, stats, parallel_tests, serial_tests, tests_to_skip):
         stats.total = (len(parallel_tests) + len(serial_tests) +
@@ -310,7 +312,7 @@ class Runner(object):
         running_jobs = set()
 
         jobs = min(len(test_names), jobs)
-        pool = make_pool(h, jobs, _run_one_test, (self, self.loader),
+        pool = make_pool(h, jobs, _run_one_test, _Child(self, self.loader),
                          _setup_process, _teardown_process)
         try:
             while test_names or running_jobs:
@@ -416,11 +418,12 @@ class Runner(object):
 
 class _Child(object):
     def __init__(self, parent, loader):
+        self.debugger = parent.debugger
         self.dry_run = parent.dry_run
         self.loader = loader
         self.quiet = parent.quiet
-        self.should_passthrough = parent.passthrough
-        self.should_trap_stdio = parent.trap_stdio
+        self.passthrough = parent.passthrough
+        self.trap_stdio = not parent.no_trapping
         self.verbose = parent.verbose
         self.worker_num = None
         self.host = None
@@ -430,8 +433,8 @@ def _setup_process(host, worker_num, context):
     child = context
     child.host = host
     child.worker_num = worker_num
-    if child.should_trap_stdio:
-        trap_stdio(child.should_passthrough)
+    if child.trap_stdio:
+        trap_stdio(child.passthrough)
     return child
 
 
@@ -476,7 +479,7 @@ def _run_one_test(context_from_setup, test_name):
 
 def _teardown_process(context_from_setup):
     child = context_from_setup
-    if child.should_trap_stdio:
+    if child.trap_stdio:
         release_stdio()
     return child.worker_num
 

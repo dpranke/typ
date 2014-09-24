@@ -39,7 +39,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('-n', '--dry-run', action='store_true',
                           help=('Do not actually run the tests, act like they '
                                 'succeeded.'))
-        self.add_argument('-p', '--pass-through', action='store_true',
+        self.add_argument('-p', '--passthrough', action='store_true',
                           help='Pass output through while running tests.')
         self.add_argument('-q', '--quiet', action='store_true', default=False,
                           help='Be as quiet as possible (only print errors).')
