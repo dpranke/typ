@@ -14,15 +14,11 @@
 
 import sys
 
-from typ import tester
-
-
-def main():
-    if sys.platform == 'win32': # pragma: no cover
-        return tester.spawn_main()
-    else:
-        return tester.main()
+from typ import main
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    if sys.platform == 'win32': # pragma: no cover
+        sys.exit(main.spawn_main())
+    else:
+        sys.exit(main.main())

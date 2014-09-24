@@ -76,11 +76,12 @@ class Runner(object):
 
     def main(self, argv=None):
         parser = ArgumentParser()
-        exit_code, exit_message = self.parse_args(parser, argv)
-        if exit_code:
-            if exit_message:
+        exit_status, exit_message = self.parse_args(parser, argv)
+        if exit_status is not None:
+            if exit_status:
                 self.print_(exit_message, stream=self.host.stderr)
-            return exit_code
+            return exit_status
+
         try:
             full_results = self.run()
             self.write_results(full_results)
@@ -99,7 +100,7 @@ class Runner(object):
 
         # TODO: Decide if this is sufficiently idiot-proof.
         parser.parse_args(args=args, namespace=self)
-        return parser.exit_code, parser.exit_message
+        return parser.exit_status, parser.exit_message
 
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)

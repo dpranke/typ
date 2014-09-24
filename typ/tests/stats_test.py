@@ -19,11 +19,11 @@ from typ.stats import Stats
 
 class TestStats(unittest.TestCase):
     def test_basic(self):
-        s = Stats('foo', None, None, 32)
+        s = Stats('foo', None, 32)
         self.assertEqual(s.format(), 'foo')
 
     def test_edges(self):
-        s = Stats('[%s/%f/%t/%r/%p]', None, None, 32)
+        s = Stats('[%s/%f/%t/%r/%p]', None, 32)
         self.assertEqual(s.format(), '[0/0/0/0/-]')
         s.started = 3
         s.total = 5
@@ -35,15 +35,15 @@ class TestStats(unittest.TestCase):
         self.assertEqual(s.format(), '[5/5/5/0/100.0]')
 
     def test_elapsed_time(self):
-        s = Stats('[%e]', lambda: 0.4, 0, 32)
+        s = Stats('[%e]', lambda: 0.4, 32)
         self.assertEqual(s.format(), '[0.400]')
 
-        s = Stats('[%e]', lambda: 0, 0, 32)
+        s = Stats('[%e]', lambda: 0, 32)
         self.assertEqual(s.format(), '[0.000]')
 
     def test_current_rate(self):
         times = [0.1, 0.2]
-        s = Stats('[%c]', lambda: times.pop(0), 0, 1)
+        s = Stats('[%c]', lambda: times.pop(0), 1)
         self.assertEquals(s.format(), '[-]')
         s.add_time()
         s.add_time()
@@ -51,7 +51,7 @@ class TestStats(unittest.TestCase):
 
     def test_overall_rate(self):
         times = [0, 5]
-        s = Stats('[%o]', lambda: times.pop(0), 0, 32)
+        s = Stats('[%o]', lambda: times.pop(0), 32)
         self.assertEqual(s.format(), '[-]')
         s.started = 3
         s.finished = 1
@@ -59,14 +59,14 @@ class TestStats(unittest.TestCase):
         self.assertEqual(s.format(), '[  0.2]')
 
     def test_escaped_percent(self):
-        s = Stats('%%', None, None, 32)
+        s = Stats('%%', None, 32)
         self.assertEqual(s.format(), '%')
 
     def test_unrecognized_escape(self):
-        s = Stats('%x', None, None, 32)
+        s = Stats('%x', None, 32)
         self.assertEqual(s.format(), '%x')
 
     def test_remaining(self):
-        s = Stats('%u', None, None, 32)
-        s.total = 2
+        s = Stats('%u', None, 32)
+        s.total =
         self.assertEqual(s.format(), '2')
