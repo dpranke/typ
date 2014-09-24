@@ -48,21 +48,15 @@ load-plugins=
 # multiple time (only on the command line, not in the configuration file where
 # it should appear only once).
 # CHANGED:
-# C0103: Invalid name ""
 # C0111: Missing docstring
 # I0011: Locally disabling WNNNN
 # R0201: Method could be a function
 # R0801: Similar lines
-# R0902: Too many instance attributes
-# R0903: Too few public methods
-# R0904: Too many public methods
-# R0913: Too many arguments
 # W0141: Used builtin function 'map'
 # W0142: Used * or ** magic
 # W0511: TODO
-# W0614: Unused import X from wildcard import
 # W0703: Catch "Exception"
-disable=C0111,I0010,I0011,R0201,R0801,W0141,W0142,W0511,W0703
+disable=C0111,I0011,R0201,R0801,W0141,W0142,W0511,W0703
 
 
 [REPORTS]
@@ -227,13 +221,13 @@ max-returns=32
 max-branchs=32
 
 # Maximum number of statements in function / method body
-max-statements=50
+max-statements=65
 
 # Maximum number of parents for a class (see R0901).
 max-parents=7
 
 # Maximum number of attributes for a class (see R0902).
-max-attributes=10
+max-attributes=50
 
 # Minimum number of public methods for a class (see R0903).
 min-public-methods=0

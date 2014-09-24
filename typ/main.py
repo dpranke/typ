@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import subprocess
+import sys
+import unittest
 
-from typ.arg_parser import ArgumentParser
+from typ.host import Host
 from typ.runner import Runner
 
 

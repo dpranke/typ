@@ -26,7 +26,7 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
     full_results = {}
     full_results['interrupted'] = False
     full_results['path_delimiter'] = TEST_SEPARATOR
-    _results['version'] = 3
+    full_results['version'] = 3
     full_results['seconds_since_epoch'] = seconds_since_epoch
     for md in metadata:
         key, val = md.split('=', 1)
@@ -38,19 +38,19 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
     skipped_tests = (set(all_test_names) - sets_of_passing_test_names[0]
                                          - sets_of_failing_test_names[0])
 
-    num_tests = len(all_test_names)
-    num_failures = len(sets_of_failing_test_names[-1])
-    num_skips = len(skipped_tests)
-    num_passes = num_tests - num_failures - num_skips
+    n_tests = len(all_test_names)
+    n_failures = len(sets_of_failing_test_names[-1])
+    n_skips = len(skipped_tests)
+    n_passes = n_tests - n_failures - n_skips
     full_results['num_failures_by_type'] = {
-        'FAIL': num_failures,
-        'PASS': num_passes,
-        'SKIP': num_skips,
+        'FAIL': n_failures,
+        'PASS': n_passes,
+        'SKIP': n_skips,
     }
 
     full_results['tests'] = {}
 
-    for test_name in test_names:
+    for test_name in all_test_names:
         if test_name in skipped_tests:
             value = {
                 'expected': 'SKIP',
@@ -72,19 +72,19 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
 
 def make_upload_request(test_results_server, builder, master, testtype,
                         full_results):
-    url = 'http://%s/testfile/upload' % args.test_results_server
-    attrs = [('builder', args.builder_name),
-             ('master', args.master_name),
-             ('testtype', args.test_type)]
+    url = 'http://%s/testfile/upload' % test_results_server
+    attrs = [('builder', builder),
+             ('master', master),
+             ('testtype', testtype)]
     content_type, data = _encode_multipart_form_data(attrs, full_results)
-    return _upload_data(host, url, data, content_type)
+    return url, content_type, data
 
 
 def exit_code_from_full_results(full_results):
     return 1 if num_failures(full_results) else 0
 
 
-def num_failures(test_results):
+def num_failures(full_results):
     return full_results['num_failures_by_type']['FAIL']
 
 

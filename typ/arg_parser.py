@@ -17,7 +17,7 @@ import argparse
 
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
-        super(ArgumentParser, self).__init(*args, **kwargs)
+        super(ArgumentParser, self).__init__(*args, **kwargs)
         self.exit_status = None
         self.exit_message = None
         self.usage = '%(prog)s [options] [tests...]'
@@ -35,7 +35,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('-j', '--jobs', metavar='N', type=int,
                           default=0,
                           help=('Run N jobs in parallel (0 gives CPUs '
-                                'available).')
+                                'available).'))
         self.add_argument('-n', '--dry-run', action='store_true',
                           help=('Do not actually run the tests, act like they '
                                 'succeeded.'))
@@ -57,10 +57,10 @@ class ArgumentParser(argparse.ArgumentParser):
                           help='Print the typ version and exit.')
         self.add_argument('--builder-name',
                           help=('Builder name to include in the '
-                                'uploaded data.')
+                                'uploaded data.'))
         self.add_argument('--master-name',
-                          help='Buildbot master name to include in the '
-                               'uploaded data.')
+                          help=('Buildbot master name to include in the '
+                                'uploaded data.'))
         self.add_argument('--metadata', action='append', default=[],
                           help=('Optional key=value metadata that will be '
                                 'included in the results.'))
@@ -68,7 +68,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help='Retry each failure up to N times.')
         self.add_argument('--terminal-width', type=int, default=0,
                           help=('Width of output (current terminal width '
-                                if available.'))
+                                'if available.'))
         self.add_argument('--test-results-server',
                           help=('If specified, upload the full results to '
                                 'this server.'))
@@ -90,7 +90,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           help='test globs to exclude')
         self.add_argument('--suffixes', metavar='glob', default=[],
                           action='append',
-                          help=('filename globs to look for')
+                          help='filename globs to look for')
         self.add_argument('--coverage-omit', default=None,
                           help='globs to omit in coverage report')
         self.add_argument('--no-trapping', action='store_true')
