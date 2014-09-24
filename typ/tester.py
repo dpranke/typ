@@ -31,7 +31,7 @@ from typ.printer import Printer
 
 
 def version():
-    return '0.4'
+    return '0.5.0-dev'
 
 
 DEFAULT_STATUS_FORMAT = '[%f/%t] '
