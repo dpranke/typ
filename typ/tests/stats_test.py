@@ -68,5 +68,5 @@ class TestStats(unittest.TestCase):
 
     def test_remaining(self):
         s = Stats('%u', None, 32)
-        s.total =
+        s.total = 2
         self.assertEqual(s.format(), '2')

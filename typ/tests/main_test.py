@@ -15,8 +15,9 @@
 import StringIO
 import sys
 
-from typ import tester
+from typ import main
 from typ import test_case
+from typ.version import VERSION
 from typ.fakes.unittest_fakes import FakeTestLoader
 
 
@@ -164,7 +165,7 @@ class TestCli(test_case.MainTestCase):
         self.check(['-t'], files=files, ret=0)
 
     def test_version(self):
-        self.check('--version', ret=0, out=(tester.version() + '\n'))
+        self.check('--version', ret=0, out=(VERSION + '\n'))
 
     def test_no_passthrough(self):
         files = {'output_tests.py': OUTPUT_TESTS}
@@ -241,7 +242,7 @@ class TestMain(TestCli):
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
         try:
-            ret = tester.main(['--no-trapping'] + argv, host, loader)
+            ret = main.main(['--no-trapping'] + argv, host, loader)
             return ret, host.stdout.getvalue(), host.stderr.getvalue()
         finally:
             sys.path = orig_sys_path

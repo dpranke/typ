@@ -83,7 +83,6 @@ class Runner(object):
             return exit_status
 
         try:
-            import pdb; pdb.set_trace()
             ret, full_results = self.run()
             self.write_results(full_results)
             upload_ret = self.upload_results(full_results)
