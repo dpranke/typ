@@ -37,6 +37,10 @@ setup(
             'typ=typ.main:main',
         ]
     },
+    install_requires=[
+        'coverage>=3.7.1',
+        'enum34>=1.0',
+    ],
     version=VERSION,
     author='Dirk Pranke',
     author_email='dpranke@chromium.org',

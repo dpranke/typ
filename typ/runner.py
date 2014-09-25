@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import coverage
+import enum
 import fnmatch
 import inspect
 import io
@@ -27,6 +28,48 @@ from typ.pool import make_pool
 from typ.stats import Stats
 from typ.printer import Printer
 from typ.version import VERSION
+
+
+class TestSet(object):
+    def __init__(self, parallel_tests=None, serial_tests=None, skip_tests=None):
+        self.parallel_tests = parallel_tests or []
+        self.serial_tests = serial_tests or []
+        self.skip_tests = skip_tests or []
+
+
+class ResultType(enum.Enum):
+    Pass = 0
+    Fail = 1
+    ImageOnlyFailure = 2
+    Timeout = 3
+    Crash = 4
+    Skip = 5
+
+
+class Result(object):
+    def __init__(self, name, actual=None, unexpected=False, flaky=False,
+                 expected=None,
+                 out=None, err=None, code=None, started=None, took=None,
+                 worker=None):
+        self.name = name
+        self.expected = expected or [ResultType.Pass]
+        self.actual = actual
+        self.unexpected = unexpected
+        self.flaky = flaky
+        self.out = out
+        self.err = err
+        self.code = code
+        self.started = started
+        self.took = took
+        self.worker = worker
+
+
+class ResultSet(object):
+    def __init__(self):
+        self.results = []
+
+    def add(self, result):
+        self.results.append(result)
 
 
 class Runner(object):
