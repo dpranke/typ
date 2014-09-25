@@ -22,6 +22,7 @@ typ is still a work in progress, but it's getting close to being done.
 Things remaining, roughly in priority order:
 
 - Clean up the API and refactor the tester module
+- investigate unittest.TestResult.buffer
 - Support for per-process setup and teardown entry points (for telemetry
   and run-webkit-tests to support efficient per-process launching of
   browsers)
