@@ -80,8 +80,6 @@ class Runner(object):
         if parser.exit_status is not None:
             return parser.exit_status
 
-        if not self.no_trapping:
-            trap_stdio(self.passthrough)
         try:
             ret, full_results = self.run()
             if full_results:
@@ -94,9 +92,6 @@ class Runner(object):
         except KeyboardInterrupt:
             self.print_("interrupted, exiting", stream=self.host.stderr)
             return 130
-        finally:
-            if not self.no_trapping:
-                release_stdio()
 
     def parse_args(self, parser, args):
         parser.set_defaults(jobs=self.jobs,
@@ -307,7 +302,7 @@ class Runner(object):
             self._print_test_started(stats, test_name)
             result.addSkip(test_name, '')
             stats.finished += 1
-            self._print_test_finished(stats, test_name, 0, '', '', 0, 0)
+            self._print_test_finished(stats, test_name, 0, '', '', 0)
 
 
     def _run_list(self, stats, result, test_names, jobs):
@@ -326,15 +321,15 @@ class Runner(object):
                     running_jobs.add(test_name)
                     self._print_test_started(stats, test_name)
 
-                    test_name, res, out, err, took, worker = pool.get()
-                    running_jobs.remove(test_name)
-                    if res:
-                        result.errors.append((test_name, err))
-                    else:
-                        result.successes.append((test_name, err))
-                    stats.finished += 1
-                    self._print_test_finished(stats, test_name,
-                                               res, out, err, took, worker)
+                test_name, res, out, err, took = pool.get()
+                running_jobs.remove(test_name)
+                if res:
+                    result.errors.append((test_name, err))
+                else:
+                    result.successes.append((test_name, err))
+                stats.finished += 1
+                self._print_test_finished(stats, test_name,
+                                          res, out, err, took)
             pool.close()
         finally:
             pool.join()
@@ -343,10 +338,10 @@ class Runner(object):
         if not self.quiet and self.should_overwrite:
             self.update(stats.format() + test_name, elide=(not self.verbose))
 
-    def _print_test_finished(self, stats, test_name, res, out, err, took, worker):
+    def _print_test_finished(self, stats, test_name, res, out, err, took):
         stats.add_time()
         suffix = '%s%s' % (' failed' if res else ' passed',
-                           (' %.4fs %d' % (took, worker)) if self.timing else '')
+                           (' %.4fs' % took) if self.timing else '')
         if res:
             if out or err:
                 suffix += ':\n'
@@ -377,12 +372,12 @@ class Runner(object):
     def _summarize(self, full_results):
         num_tests = self.stats.finished
         num_failures = json_results.num_failures(full_results)
-        if not self.quiet:
-            if self.timing:
-                timing_clause = ' in %.1fs' % (self.host.time() -
-                                               self.stats.started_time)
-            else:
-                timing_clause = ''
+
+        if not self.quiet and self.timing:
+            timing_clause = ' in %.1fs' % (self.host.time() -
+                                           self.stats.started_time)
+        else:
+            timing_clause = ''
         self.update('%d test%s run%s, %d failure%s.' %
                     (num_tests,
                      '' if num_tests == 1 else 's',
@@ -448,7 +443,7 @@ def _run_one_test(context_from_setup, test_name):
     h = child.host
 
     if child.dry_run:
-        return test_name, 0, '', '', 0, child.worker_num
+        return test_name, 0, '', '', 0
 
     result = TestResult(passthrough=child.passthrough)
     try:
@@ -475,11 +470,11 @@ def _run_one_test(context_from_setup, test_name):
     took = h.time() - start
     if result.failures:
         return (test_name, 1, result.out, result.err + result.failures[0][1],
-                took, child.worker_num)
+                took)
     if result.errors: # pragma: no cover
         return (test_name, 1, result.out, result.err + result.errors[0][1],
-                took, child.worker_num)
-    return (test_name, 0, result.out, result.err, took, child.worker_num)
+                took)
+    return (test_name, 0, result.out, result.err, took)
 
 
 def _teardown_process(context_from_setup):
