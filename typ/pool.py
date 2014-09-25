@@ -117,5 +117,7 @@ def _loop(requests, responses, host, worker_num,
         pass
     except IOError:
         pass
+    except KeyboardInterrupt:
+        pass
     finally:
         responses.put(post_fn(context_after_pre))

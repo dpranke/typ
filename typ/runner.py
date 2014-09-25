@@ -69,13 +69,13 @@ class Runner(object):
         self.tests_to_skip = []
         self.timing = False
         self.top_level_dir = None
-        self.verbose = False
+        self.verbose = 0
         self.version = False
         self.write_full_results_to = None
         self._cov = None
 
     def main(self, argv=None):
-        parser = ArgumentParser(host=self.host)
+        parser = ArgumentParser(self.host)
         self.parse_args(parser, argv)
         if parser.exit_status is not None:
             return parser.exit_status
@@ -94,12 +94,9 @@ class Runner(object):
             return 130
 
     def parse_args(self, parser, args):
-        # TODO: Figure out how to handle suffixes, coverage-omit.
         parser.set_defaults(jobs=self.jobs,
                             status_format=self.status_format,
                             terminal_width=self.terminal_width)
-
-        # TODO: Decide if this is sufficiently idiot-proof.
         parser.parse_args(args=args, namespace=self)
 
     def print_(self, msg='', end='\n', stream=None):
