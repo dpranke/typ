@@ -121,4 +121,5 @@ def _loop(requests, responses, host, worker_num,
     except KeyboardInterrupt:
         pass
     finally:
+        # TODO: Figure out how to propagate errors back.
         responses.put(post_fn(context_after_pre))

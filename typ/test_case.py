@@ -82,11 +82,11 @@ class MainTestCase(TestCase):
             host.chdir(orig_wd)
 
         if ret is not None:
-            self.assertEqual(actual_ret, ret)
+            self.assertEqual(ret, actual_ret)
         if out is not None:
-            self.assertMultiLineEqual(actual_out, out)
+            self.assertMultiLineEqual(out, actual_out)
         if err is not None:
-            self.assertMultiLineEqual(actual_err, err)
+            self.assertMultiLineEqual(err, actual_err)
         if exp_files:
             self.assert_files(exp_files, actual_files, files_to_ignore)
 

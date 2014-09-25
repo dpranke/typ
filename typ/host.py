@@ -23,11 +23,12 @@ import urllib2
 
 
 class Host(object):
+    python_interpreter = sys.executable
     sep = os.sep
     stdin = sys.stdin
     stderr = sys.stderr
     stdout = sys.stdout
-    python_interpreter = sys.executable
+    sys_module = sys
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))

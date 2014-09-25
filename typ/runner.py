@@ -18,7 +18,6 @@ import inspect
 import io
 import json
 import pdb
-import sys
 import unittest
 
 
@@ -28,10 +27,6 @@ from typ.pool import make_pool
 from typ.stats import Stats
 from typ.printer import Printer
 from typ.version import VERSION
-
-
-orig_stdout = sys.stdout
-orig_stderr = sys.stderr
 
 
 class Runner(object):
@@ -73,9 +68,7 @@ class Runner(object):
         self.isolated_tests = []
         self.parallel_tests = []
         self.tests_to_skip = []
-        self.passthrough = False
         self.tests = []
-        self.trap_stdio = True
 
     def main(self, argv=None):
         parser = ArgumentParser(self.host)
@@ -364,13 +357,13 @@ class Runner(object):
                     self.print_('  %s' % l)
                 for l in err.splitlines():
                     self.print_('  %s' % l)
-            if self.verbose:
+            if self.verbose: # pragma: no cover
                 self.flush()
 
     def update(self, msg, elide=True):  # pylint: disable=W0613
         self.printer.update(msg, elide=True)
 
-    def flush(self):
+    def flush(self): # pragma: no cover
         self.printer.flush()
 
     def _summarize(self, full_results):
@@ -426,8 +419,6 @@ class _Child(object):
         self.dry_run = parent.dry_run
         self.loader = loader
         self.quiet = parent.quiet
-        self.passthrough = parent.passthrough
-        self.trap_stdio = parent.trap_stdio
         self.verbose = parent.verbose
         self.worker_num = None
         self.host = None
@@ -437,8 +428,7 @@ def _setup_process(host, worker_num, context):
     child = context
     child.host = host
     child.worker_num = worker_num
-    if child.trap_stdio:
-        trap_stdio(child.passthrough)
+    trap(child.host.sys_module)
     return child
 
 
@@ -449,7 +439,6 @@ def _run_one_test(context_from_setup, test_name):
     if child.dry_run:
         return test_name, 0, '', '', 0
 
-    result = TestResult(passthrough=child.passthrough)
     try:
         suite = child.loader.loadTestsFromName(test_name)
     except Exception as e: # pragma: no cover
@@ -458,7 +447,10 @@ def _run_one_test(context_from_setup, test_name):
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
 
+    result = TestResult()
     start = h.time()
+    out = ''
+    err = ''
     if child.debugger: # pragma: no cover
         # Access to a protected member  pylint: disable=W0212
         test_case = suite._tests[0]
@@ -469,74 +461,82 @@ def _run_one_test(context_from_setup, test_name):
         dbg.set_break(fname, lineno)
         dbg.runcall(suite.run, result)
     else:
-        suite.run(result)
+        try:
+            start_capture(h.sys_module)
+            suite.run(result)
+        finally:
+            out, err = stop_capture(h.sys_module)
 
     took = h.time() - start
     if result.failures:
-        return (test_name, 1, result.out, result.err + result.failures[0][1],
-                took)
+        return (test_name, 1, out, err + result.failures[0][1], took)
     if result.errors: # pragma: no cover
-        return (test_name, 1, result.out, result.err + result.errors[0][1],
-                took)
-    return (test_name, 0, result.out, result.err, took)
+        return (test_name, 1, out, err + result.errors[0][1], took)
+    return (test_name, 0, out, err, took)
 
 
 def _teardown_process(context_from_setup):
     child = context_from_setup
-    if child.trap_stdio:
-        release_stdio()
+    release(child.host.sys_module)
     return child.worker_num
 
 
-class PassThrough(io.StringIO):
-    def __init__(self, stream=None):
+class TrappableStream(io.StringIO):
+    def __init__(self, stream):
+        super(TrappableStream, self).__init__()
         self.stream = stream
-        super(PassThrough, self).__init__()
+        self.trap = False
 
     def write(self, msg, *args, **kwargs): # pragma: no cover
-        if self.stream:
+        if self.trap:
+            super(TrappableStream, self).write(unicode(msg), *args, **kwargs)
+        else:
             self.stream.write(unicode(msg), *args, **kwargs)
-        super(PassThrough, self).write(unicode(msg), *args, **kwargs)
 
     def flush(self, *args, **kwargs): # pragma: no cover
-        if self.stream:
+        if self.trap:
+            super(TrappableStream, self).flush(*args, **kwargs)
+        else:
             self.stream.flush(*args, **kwargs)
-        super(PassThrough, self).flush(*args, **kwargs)
+
+    def start_capture(self):
+        self.truncate(0)
+        self.trap = True
+
+    def stop_capture(self):
+        self.trap = False
+        msg = self.getvalue()
+        self.truncate(0)
+        return msg
 
 
-def trap_stdio(should_passthrough):
-    sys.stdout = PassThrough(sys.stdout if should_passthrough else None)
-    sys.stderr = PassThrough(sys.stderr if should_passthrough else None)
+def trap(sys_module):
+    sys_module.stdout = TrappableStream(sys_module.stdout)
+    sys_module.stderr = TrappableStream(sys_module.stderr)
 
 
-def release_stdio():
-    sys.stdout = orig_stdout
-    sys.stderr = orig_stderr
+def release(sys_module):
+    sys_module.stdout = sys_module.stdout.stream
+    sys_module.stderr = sys_module.stderr.stream
 
+
+def start_capture(sys_module):
+    sys_module.stdout.start_capture()
+    sys_module.stderr.start_capture()
+
+
+def stop_capture(sys_module):
+    out = sys_module.stdout.stop_capture()
+    err = sys_module.stderr.stop_capture()
+    return out, err
 
 
 class TestResult(unittest.TestResult):
     # unittests's TestResult has built-in support for buffering
     # stdout and stderr, but unfortunately it interacts awkwardly w/
     # the way they format errors (the output gets comingled and rearranged).
-    def __init__(self, stream=None, descriptions=None, verbosity=None,
-                 passthrough=False):
-        self.passthrough = passthrough
-        self.out_pos = 0
-        self.err_pos = 0
-        self.out = ''
-        self.err = ''
-        self.successes = []
+    def __init__(self, stream=None, descriptions=None, verbosity=None):
         super(TestResult, self).__init__(stream=stream,
                                          descriptions=descriptions,
                                          verbosity=verbosity)
-
-    # "Invalid name" pylint: disable=C0103
-
-    def startTest(self, test):
-        self.out_pos = len(sys.stdout.getvalue())
-        self.err_pos = len(sys.stderr.getvalue())
-
-    def stopTest(self, test):
-        self.out = sys.stdout.getvalue()[self.out_pos:]
-        self.err = sys.stderr.getvalue()[self.err_pos:]
+        self.successes = []

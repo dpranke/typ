@@ -171,20 +171,6 @@ class TestCli(test_case.MainTestCase):
     def test_version(self):
         self.check('--version', ret=0, out=(VERSION + '\n'))
 
-    def test_no_passthrough(self):
-        files = {'output_tests.py': OUTPUT_TESTS}
-        self.check(['-v', 'output_tests.PassTest'], files=files, ret=0, err='')
-
-    def test_passthrough(self):
-        files = {'output_tests.py': OUTPUT_TESTS}
-        self.check(['-v', '--passthrough', '-j', '1', 'output_tests.PassTest'],
-                   files=files, ret=0,
-                   out=('[1/2] output_tests.PassTest.test_err passed\n'
-                        'hello on stdout\n'
-                        '[2/2] output_tests.PassTest.test_out passed\n'
-                        '2 tests run, 0 failures.\n'),
-                   err='hello on stderr\n')
-
     def test_error(self):
         files = {'err_test.py': ('import unittest\n'
                                  'class ErrTest(unittest.TestCase):\n'
@@ -246,7 +232,7 @@ class TestMain(TestCli):
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
         try:
-            ret = main.main(['--no-trap-stdio'] + argv, host, loader)
+            ret = main.main(argv, host, loader)
             return ret, host.stdout.getvalue(), host.stderr.getvalue()
         finally:
             sys.path = orig_sys_path
@@ -265,7 +251,4 @@ class TestMain(TestCli):
         pass
 
     def test_output_for_failures(self):
-        pass
-
-    def test_passthrough(self):
         pass

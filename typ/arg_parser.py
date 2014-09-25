@@ -104,13 +104,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('-V', '--version', action='store_true',
                           help='Print the typ version and exit.')
 
-        self.add_argument('--no-trap-stdio', action='store_false',
-                          default=True, dest='trap_stdio',
-                          help=argparse.SUPPRESS)
         self.add_argument('--no-overwrite', action='store_false',
                           dest='overwrite',
-                          help=argparse.SUPPRESS)
-        self.add_argument('--passthrough', action='store_true',
                           help=argparse.SUPPRESS)
         self.add_argument('--overwrite', action='store_true',
                           help=argparse.SUPPRESS)
