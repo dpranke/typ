@@ -219,7 +219,13 @@ class TestCli(test_case.MainTestCase):
 
     def test_coverage(self):
         files = {'pass_test.py': PASSING_TEST}
-        self.check(['-c'], files=files, ret=0)
+        self.check(['-c'], files=files, ret=0,
+                   out=('[1/1] pass_test.PassingTest.test_pass passed\n'
+                        '1 test run, 0 failures.\n'
+                        '\n'
+                        'Name        Stmts   Miss  Cover\n'
+                        '-------------------------------\n'
+                        'pass_test       4      0   100%\n'))
 
 
 class TestMain(TestCli):

@@ -40,7 +40,7 @@ class Runner(object):
 
         self.builder_name = None
         self.coverage = False
-        self.coverage_omit = None
+        self.coverage_omit = ['*/typ/*']
         self.debugger = False
         self.dry_run = False
         self.skip = []
@@ -107,11 +107,17 @@ class Runner(object):
         if ret:
             return ret, None
 
-        ret = self.find_tests()
-        if ret:
-            return ret, None
+        if self.cov: # pragma: no cover
+            self.cov.start()
 
-        ret, full_results = self._run_tests()
+        full_results = None
+        ret = self.find_tests()
+        if not ret:
+            ret, full_results = self._run_tests()
+
+        if self.cov: # pragma: no cover
+            self.cov.stop()
+
         if full_results:
             self._summarize(full_results)
         return ret, full_results
@@ -407,6 +413,7 @@ class Runner(object):
 
     def report_coverage(self):
         if self.cov: # pragma: no cover
+            self.host.print_()
             self.cov.report(show_missing=False, omit=self.coverage_omit)
 
     def exit_code_from_full_results(self, full_results): # pragma: no cover
