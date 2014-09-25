@@ -61,10 +61,6 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--metadata', action='append', default=[],
                           help=('Optional key=value metadata that will be '
                                 'included in the results.'))
-        self.add_argument('--no-trapping', action='store_true',
-                          help=argparse.SUPPRESS)
-        self.add_argument('-p', '--passthrough', action='store_true',
-                          help='Pass output through while running tests.')
         self.add_argument('-P', '--path', action='append', default=[],
                           help=('Add dir to sys.path (can specify multiple '
                                 'times).'))
@@ -107,6 +103,17 @@ class ArgumentParser(argparse.ArgumentParser):
                                 'for more output).'))
         self.add_argument('-V', '--version', action='store_true',
                           help='Print the typ version and exit.')
+
+        self.add_argument('--no-trap-stdio', action='store_false',
+                          default=True, dest='trap_stdio',
+                          help=argparse.SUPPRESS)
+        self.add_argument('--no-overwrite', action='store_false',
+                          dest='overwrite',
+                          help=argparse.SUPPRESS)
+        self.add_argument('--passthrough', action='store_true',
+                          help=argparse.SUPPRESS)
+        self.add_argument('--overwrite', action='store_true',
+                          help=argparse.SUPPRESS)
         self.add_argument('tests', nargs='*', default=[],
                           help=argparse.SUPPRESS)
 

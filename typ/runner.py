@@ -36,6 +36,13 @@ orig_stderr = sys.stderr
 
 class Runner(object):
     def __init__(self, host, loader):
+        self.host = host
+        self.args = None
+        self.loader = loader
+        self.printer = None
+        self.stats = None
+        self.cov = None
+
         self.builder_name = None
         self.coverage = False
         self.coverage_omit = None
@@ -43,40 +50,36 @@ class Runner(object):
         self.dry_run = False
         self.skip = []
         self.file_list = None
-        self.host = host
         self.isolate = []
-        self.isolated_tests = []
         self.jobs = host.cpu_count()
         self.list_only = False
-        self.loader = loader
         self.master_name = None
         self.metadata = []
-        self.no_trapping = False
-        self.passthrough = False
-        self.parallel_tests = []
+        self.overwrite = None
         self.path = []
-        self.printer = None
         self.quiet = False
         self.retry_limit = 0
-        self.should_overwrite = False
         self.suffixes = ['*_test.py', '*_unittest.py']
-        self.stats = None
         self.status_format = '[%f/%t] '
         self.terminal_width = host.terminal_width()
         self.test_results_server = None
         self.test_type = None
-        self.tests = []
-        self.tests_to_skip = []
         self.timing = False
         self.top_level_dir = None
         self.verbose = 0
         self.version = False
         self.write_full_results_to = None
-        self._cov = None
+
+        self.isolated_tests = []
+        self.parallel_tests = []
+        self.tests_to_skip = []
+        self.passthrough = False
+        self.tests = []
+        self.trap_stdio = True
 
     def main(self, argv=None):
         parser = ArgumentParser(self.host)
-        self.parse_args(parser, argv)
+        self.args = self.parse_args(parser, argv)
         if parser.exit_status is not None:
             return parser.exit_status
 
@@ -151,8 +154,9 @@ class Runner(object):
 
         self.stats = Stats(self.status_format, h.time, self.jobs)
 
-        self.should_overwrite = h.stdout.isatty() and not self.verbose
-        self.printer = Printer(self.print_, self.should_overwrite,
+        if self.overwrite is None:
+            self.overwrite = h.stdout.isatty() and not self.verbose
+        self.printer = Printer(self.print_, self.overwrite,
                                cols=self.terminal_width)
 
         if not self.top_level_dir:
@@ -167,7 +171,7 @@ class Runner(object):
             h.add_to_path(path)
 
         if self.coverage: # pragma: no cover
-            self._cov = coverage.coverage()
+            self.cov = coverage.coverage()
 
         return ret
 
@@ -335,7 +339,7 @@ class Runner(object):
             pool.join()
 
     def _print_test_started(self, stats, test_name):
-        if not self.quiet and self.should_overwrite:
+        if not self.quiet and self.overwrite:
             self.update(stats.format() + test_name, elide=(not self.verbose))
 
     def _print_test_finished(self, stats, test_name, res, out, err, took):
@@ -409,8 +413,8 @@ class Runner(object):
         return 1
 
     def report_coverage(self):
-        if self._cov: # pragma: no cover
-            self._cov.report(show_missing=False, omit=self.coverage_omit)
+        if self.cov: # pragma: no cover
+            self.cov.report(show_missing=False, omit=self.coverage_omit)
 
     def exit_code_from_full_results(self, full_results): # pragma: no cover
         return json_results.exit_code_from_full_results(full_results)
@@ -423,7 +427,7 @@ class _Child(object):
         self.loader = loader
         self.quiet = parent.quiet
         self.passthrough = parent.passthrough
-        self.trap_stdio = not parent.no_trapping
+        self.trap_stdio = parent.trap_stdio
         self.verbose = parent.verbose
         self.worker_num = None
         self.host = None

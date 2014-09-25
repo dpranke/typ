@@ -177,7 +177,7 @@ class TestCli(test_case.MainTestCase):
 
     def test_passthrough(self):
         files = {'output_tests.py': OUTPUT_TESTS}
-        self.check(['-v', '-p', '-j', '1', 'output_tests.PassTest'],
+        self.check(['-v', '--passthrough', '-j', '1', 'output_tests.PassTest'],
                    files=files, ret=0,
                    out=('[1/2] output_tests.PassTest.test_err passed\n'
                         'hello on stdout\n'
@@ -246,7 +246,7 @@ class TestMain(TestCli):
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
         try:
-            ret = main.main(['--no-trapping'] + argv, host, loader)
+            ret = main.main(['--no-trap-stdio'] + argv, host, loader)
             return ret, host.stdout.getvalue(), host.stderr.getvalue()
         finally:
             sys.path = orig_sys_path
