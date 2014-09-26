@@ -58,6 +58,61 @@ class FailTest(unittest.TestCase):
 """
 
 
+SKIPS_AND_FAILURES = """
+import sys
+import unittest
+
+class SkipMethods(unittest.TestCase):
+    @unittest.skip('reason')
+    def test_reason(self):
+        self.fail()
+
+    @unittest.skipIf(True, 'reason')
+    def test_skip_if_true(self):
+        self.fail()
+
+    @unittest.skipIf(False, 'reason')
+    def test_skip_if_false(self):
+        self.fail()
+
+
+class SkipSetup(unittest.TestCase):
+    def setUp(self):
+        self.skipTest('setup failed')
+
+    def test_notrun(self):
+        self.fail()
+
+
+@unittest.skip('skip class')
+class SkipClass(unittest.TestCase):
+    def test_method(self):
+        self.fail()
+
+class SetupClass(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        sys.stdout.write('in setupClass\n')
+        sys.stdout.flush()
+        assert False, 'setupClass failed'
+
+    def test_method1(self):
+        pass
+
+    def test_method2(self):
+        pass
+
+class ExpectedFailures(unittest.TestCase):
+    @unittest.expectedFailure
+    def test_fail(self):
+        self.fail()
+
+    @unittest.expectedFailure
+    def test_pass(self):
+        pass
+"""
+
+
 class TestCli(test_case.MainTestCase):
     prog = [sys.executable, '-m', 'typ']
 
@@ -234,6 +289,10 @@ class TestCli(test_case.MainTestCase):
                         '-------------------------------\n'
                         'pass_test       4      0   100%\n'))
 
+    def test_skips_and_failures(self):
+        files = {'sf_test.py': SKIPS_AND_FAILURES}
+        # TODO: add real tests here.
+        self.check([], files=files, ret=1)
 
 class TestMain(TestCli):
     prog = []
