@@ -30,11 +30,12 @@ from typ.printer import Printer
 from typ.version import VERSION
 
 
-class TestSet(object): # pragma: no cover
-    def __init__(self, parallel_tests=None, serial_tests=None, skip_tests=None):
+class TestSet(object):
+    def __init__(self, parallel_tests=None, isolated_tests=None,
+                 tests_to_skip=None):
         self.parallel_tests = parallel_tests or []
-        self.serial_tests = serial_tests or []
-        self.skip_tests = skip_tests or []
+        self.isolated_tests = isolated_tests or []
+        self.tests_to_skip = tests_to_skip or []
 
 
 class ResultType(enum.Enum):
@@ -82,10 +83,6 @@ class Runner(object):
         self.cov = None
         self.top_level_dir = None
 
-        self.isolated_tests = []
-        self.parallel_tests = []
-        self.tests_to_skip = []
-
     def main(self, argv=None):
         parser = ArgumentParser(self.host)
         self.parse_args(parser, argv)
@@ -125,9 +122,9 @@ class Runner(object):
             self.cov.start()
 
         full_results = None
-        ret = self.find_tests()
+        ret, test_set = self.find_tests(self.args)
         if not ret:
-            ret, full_results = self._run_tests()
+            ret, full_results = self._run_tests(test_set)
 
         if self.cov: # pragma: no cover
             self.cov.stop()
@@ -158,7 +155,7 @@ class Runner(object):
         if args.coverage: # pragma: no cover
             self.cov = coverage.coverage()
 
-    def find_tests(self):
+    def find_tests(self, args):
         isolated_tests = []
         parallel_tests = []
         tests_to_skip = []
@@ -228,28 +225,28 @@ class Runner(object):
                 ret = 1
 
         if not ret:
-            self.parallel_tests = sorted(parallel_tests)
-            self.isolated_tests = sorted(isolated_tests)
-            self.tests_to_skip = sorted(tests_to_skip)
-        return ret
+            test_set = TestSet(sorted(parallel_tests),
+                               sorted(isolated_tests),
+                               sorted(tests_to_skip))
+        else:
+            test_set = None
+        return ret, test_set
 
-    def _run_tests(self):
+    def _run_tests(self, test_set):
         h = self.host
-        if not self.parallel_tests and not self.isolated_tests:
+        if not test_set.parallel_tests and not test_set.isolated_tests:
             self.print_('No tests to run.')
             return 1, None
 
         if self.args.list_only:
-            all_tests = sorted(self.parallel_tests + self.isolated_tests)
+            all_tests = sorted(test_set.parallel_tests +
+                               test_set.isolated_tests)
             self.print_('\n'.join(all_tests))
             return 0, None
 
-        all_tests = sorted(self.parallel_tests + self.isolated_tests +
-                           self.tests_to_skip)
-        result = self._run_one_set(self.stats,
-                                   self.parallel_tests,
-                                   self.isolated_tests,
-                                   self.tests_to_skip)
+        all_tests = sorted(test_set.parallel_tests + test_set.isolated_tests +
+                           test_set.tests_to_skip)
+        result = self._run_one_set(self.stats, test_set)
         results = [result]
 
         failed_tests = list(json_results.failed_test_names(result))
@@ -263,7 +260,8 @@ class Runner(object):
         while retry_limit and failed_tests:
             stats = Stats(self.args.status_format, h.time, 1)
             stats.total = len(failed_tests)
-            result = self._run_one_set(stats, [], failed_tests, [])
+            result = self._run_one_set(stats,
+                                       TestSet(isolated_tests=failed_tests))
             results.append(result)
             failed_tests = list(json_results.failed_test_names(result))
             retry_limit -= 1
@@ -274,13 +272,14 @@ class Runner(object):
         return (json_results.exit_code_from_full_results(full_results),
                 full_results)
 
-    def _run_one_set(self, stats, parallel_tests, serial_tests, tests_to_skip):
-        stats.total = (len(parallel_tests) + len(serial_tests) +
-                       len(tests_to_skip))
+    def _run_one_set(self, stats, test_set):
+        stats.total = (len(test_set.parallel_tests) +
+                       len(test_set.isolated_tests) +
+                       len(test_set.tests_to_skip))
         result = TestResult()
-        self._skip_tests(stats, result, tests_to_skip)
-        self._run_list(stats, result, parallel_tests, self.args.jobs)
-        self._run_list(stats, result, serial_tests, 1)
+        self._skip_tests(stats, result, test_set.tests_to_skip)
+        self._run_list(stats, result, test_set.parallel_tests, self.args.jobs)
+        self._run_list(stats, result, test_set.isolated_tests, 1)
         return result
 
     def _skip_tests(self, stats, result, tests_to_skip):
