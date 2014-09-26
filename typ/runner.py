@@ -30,7 +30,7 @@ from typ.printer import Printer
 from typ.version import VERSION
 
 
-class TestSet(object):
+class TestSet(object): # pragma: no cover
     def __init__(self, parallel_tests=None, serial_tests=None, skip_tests=None):
         self.parallel_tests = parallel_tests or []
         self.serial_tests = serial_tests or []
@@ -46,7 +46,7 @@ class ResultType(enum.Enum):
     Skip = 5
 
 
-class Result(object):
+class Result(object): # pragma: no cover
     def __init__(self, name, actual=None, unexpected=False, flaky=False,
                  expected=None,
                  out=None, err=None, code=None, started=None, took=None,
@@ -64,7 +64,7 @@ class Result(object):
         self.worker = worker
 
 
-class ResultSet(object):
+class ResultSet(object): # pragma: no cover
     def __init__(self):
         self.results = []
 
@@ -81,41 +81,13 @@ class Runner(object):
         self.stats = None
         self.cov = None
 
-        self.builder_name = None
-        self.coverage = False
-        self.coverage_omit = ['*/typ/*']
-        self.debugger = False
-        self.dry_run = False
-        self.skip = []
-        self.file_list = None
-        self.isolate = []
-        self.jobs = host.cpu_count()
-        self.list_only = False
-        self.master_name = None
-        self.metadata = []
-        self.overwrite = None
-        self.path = []
-        self.quiet = False
-        self.retry_limit = 0
-        self.suffixes = ['*_test.py', '*_unittest.py']
-        self.status_format = '[%f/%t] '
-        self.terminal_width = host.terminal_width()
-        self.test_results_server = None
-        self.test_type = None
-        self.timing = False
-        self.top_level_dir = None
-        self.verbose = 0
-        self.version = False
-        self.write_full_results_to = None
-
         self.isolated_tests = []
         self.parallel_tests = []
         self.tests_to_skip = []
-        self.tests = []
 
     def main(self, argv=None):
         parser = ArgumentParser(self.host)
-        self.args = self.parse_args(parser, argv)
+        self.parse_args(parser, argv)
         if parser.exit_status is not None:
             return parser.exit_status
 
@@ -132,23 +104,21 @@ class Runner(object):
             self.print_("interrupted, exiting", stream=self.host.stderr)
             return 130
 
-    def parse_args(self, parser, args):
-        parser.set_defaults(jobs=self.jobs,
-                            status_format=self.status_format,
-                            terminal_width=self.terminal_width)
-        parser.parse_args(args=args, namespace=self)
+    def parse_args(self, parser, argv):
+        self.args = parser.parse_args(args=argv)
+        if parser.exit_status is not None:
+            return
+
 
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)
 
     def run(self):
-        if self.version:
+        if self.args.version:
             self.print_(VERSION)
             return 0, None
 
-        ret = self._validate()
-        if ret:
-            return ret, None
+        self._set_up_runner()
 
         if self.cov: # pragma: no cover
             self.cov.start()
@@ -165,57 +135,26 @@ class Runner(object):
             self._summarize(full_results)
         return ret, full_results
 
-    def _validate(self):
-        ret = 0
+    def _set_up_runner(self):
         h = self.host
-        for val in self.metadata:
-            if '=' not in val:
-                self.print_('Error: malformed --metadata "%s"' % val)
-                ret = 2
+        args = self.args
 
-        if self.test_results_server:
-            if not self.builder_name:
-                self.print_('Error: --builder-name must be specified along '
-                            'with --test-result-server')
-                ret = 2
-            if not self.master_name:
-                self.print_('Error: --master-name must be specified along '
-                            'with --test-result-server')
-                ret = 2
-            if not self.test_type:
-                self.print_('Error: --test_type must be specified along '
-                            'with --test-result-server')
-                ret = 2
+        self.stats = Stats(args.status_format, h.time, args.jobs)
+        self.printer = Printer(self.print_, args.overwrite, args.terminal_width)
 
-        if self.debugger: # pragma: no cover
-            self.jobs = 1
-            self.passthrough = True
-
-        if self.coverage: # pragma: no cover
-            self.jobs = 1
-
-        self.stats = Stats(self.status_format, h.time, self.jobs)
-
-        if self.overwrite is None:
-            self.overwrite = h.stdout.isatty() and not self.verbose
-        self.printer = Printer(self.print_, self.overwrite,
-                               cols=self.terminal_width)
-
-        if not self.top_level_dir:
+        if not args.top_level_dir:
             top_dir = h.getcwd()
             while h.exists(top_dir, '__init__.py'):
                 top_dir = h.dirname(top_dir)
-            self.top_level_dir = top_dir
+            args.top_level_dir = top_dir
 
-        h.add_to_path(self.top_level_dir)
+        h.add_to_path(args.top_level_dir)
 
-        for path in self.path:
+        for path in args.path:
             h.add_to_path(path)
 
-        if self.coverage: # pragma: no cover
+        if args.coverage: # pragma: no cover
             self.cov = coverage.coverage()
-
-        return ret
 
     def find_tests(self):
         isolated_tests = []
@@ -233,28 +172,28 @@ class Runner(object):
                     add_names(el)
             else:
                 test_name = obj.id()
-                if matches(test_name, self.skip):
+                if matches(test_name, self.args.skip):
                     tests_to_skip.append(test_name)
-                elif matches(test_name, self.isolate):
+                elif matches(test_name, self.args.isolate):
                     isolated_tests.append(test_name)
                 else:
                     parallel_tests.append(test_name)
 
-        if self.tests:
-            tests = self.tests
-        elif self.file_list:
-            if self.file_list == '-':
+        if self.args.tests:
+            tests = self.args.tests
+        elif self.args.file_list:
+            if self.args.file_list == '-':
                 s = h.stdin.read()
             else:
-                s = h.read_text_file(self.file_list)
+                s = h.read_text_file(self.args.file_list)
             tests = [line.strip() for line in s.splitlines()]
         else:
             tests = ['.']
 
         ret = 0
         loader = self.loader
-        suffixes = self.suffixes
-        top_level_dir = self.top_level_dir
+        suffixes = self.args.suffixes
+        top_level_dir = self.args.top_level_dir
         for test in tests:
             try:
                 if h.isfile(test):
@@ -298,7 +237,7 @@ class Runner(object):
             self.print_('No tests to run.')
             return 1, None
 
-        if self.list_only:
+        if self.args.list_only:
             all_tests = sorted(self.parallel_tests + self.isolated_tests)
             self.print_('\n'.join(all_tests))
             return 0, None
@@ -312,7 +251,7 @@ class Runner(object):
         results = [result]
 
         failed_tests = list(json_results.failed_test_names(result))
-        retry_limit = self.retry_limit
+        retry_limit = self.args.retry_limit
 
         if retry_limit and failed_tests:
             self.print_('')
@@ -320,14 +259,14 @@ class Runner(object):
             self.print_('')
 
         while retry_limit and failed_tests:
-            stats = Stats(self.status_format, h.time, 1)
+            stats = Stats(self.args.status_format, h.time, 1)
             stats.total = len(failed_tests)
             result = self._run_one_set(stats, [], failed_tests, [])
             results.append(result)
             failed_tests = list(json_results.failed_test_names(result))
             retry_limit -= 1
 
-        full_results = json_results.make_full_results(self.metadata,
+        full_results = json_results.make_full_results(self.args.metadata,
                                                       int(h.time()),
                                                       all_tests, results)
         return (json_results.exit_code_from_full_results(full_results),
@@ -338,7 +277,7 @@ class Runner(object):
                        len(tests_to_skip))
         result = TestResult()
         self._skip_tests(stats, result, tests_to_skip)
-        self._run_list(stats, result, parallel_tests, self.jobs)
+        self._run_list(stats, result, parallel_tests, self.args.jobs)
         self._run_list(stats, result, serial_tests, 1)
         return result
 
@@ -360,7 +299,7 @@ class Runner(object):
                          _setup_process, _teardown_process)
         try:
             while test_names or running_jobs:
-                while test_names and (len(running_jobs) < self.jobs):
+                while test_names and (len(running_jobs) < self.args.jobs):
                     test_name = test_names.pop(0)
                     stats.started += 1
                     pool.send(test_name)
@@ -381,13 +320,14 @@ class Runner(object):
             pool.join()
 
     def _print_test_started(self, stats, test_name):
-        if not self.quiet and self.overwrite:
-            self.update(stats.format() + test_name, elide=(not self.verbose))
+        if not self.args.quiet and self.args.overwrite:
+            self.update(stats.format() + test_name,
+                        elide=(not self.args.verbose))
 
     def _print_test_finished(self, stats, test_name, res, out, err, took):
         stats.add_time()
         suffix = '%s%s' % (' failed' if res else ' passed',
-                           (' %.4fs' % took) if self.timing else '')
+                           (' %.4fs' % took) if self.args.timing else '')
         if res:
             if out or err:
                 suffix += ':\n'
@@ -396,17 +336,17 @@ class Runner(object):
                 self.print_('  %s' % l)
             for l in err.splitlines(): # pragma: no cover
                 self.print_('  %s' % l)
-        elif not self.quiet:
-            if self.verbose > 1 and (out or err): # pragma: no cover
+        elif not self.args.quiet:
+            if self.args.verbose > 1 and (out or err): # pragma: no cover
                 suffix += ':\n'
             self.update(stats.format() + test_name + suffix,
-                        elide=(not self.verbose))
-            if self.verbose > 1: # pragma: no cover
+                        elide=(not self.args.verbose))
+            if self.args.verbose > 1: # pragma: no cover
                 for l in out.splitlines():
                     self.print_('  %s' % l)
                 for l in err.splitlines():
                     self.print_('  %s' % l)
-            if self.verbose: # pragma: no cover
+            if self.args.verbose: # pragma: no cover
                 self.flush()
 
     def update(self, msg, elide=True):  # pylint: disable=W0613
@@ -419,7 +359,7 @@ class Runner(object):
         num_tests = self.stats.finished
         num_failures = json_results.num_failures(full_results)
 
-        if not self.quiet and self.timing:
+        if not self.args.quiet and self.args.timing:
             timing_clause = ' in %.1fs' % (self.host.time() -
                                            self.stats.started_time)
         else:
@@ -433,17 +373,20 @@ class Runner(object):
         self.print_()
 
     def write_results(self, full_results): # pragma: no cover
-        if self.write_full_results_to:
-            self.host.write_text_file(json.dumps(full_results, indent=2) + '\n')
+        if self.args.write_full_results_to:
+            self.host.write_text_file(
+                self.args.write_full_results_to,
+                json.dumps(full_results, indent=2) + '\n')
 
     def upload_results(self, full_results): # pragma: no cover
         h = self.host
-        if not self.test_results_server:
+        if not self.args.test_results_server:
             return 0
 
         url, data, content_type = json_results.make_upload_request(
-            self.test_results_server, self.builder_name, self.master_name,
-            self.test_type, full_results)
+            self.args.test_results_server, self.args.builder_name,
+            self.args.master_name, self.args.test_type,
+            full_results)
         try:
             response = h.fetch(url, data, {'Content-Type': content_type})
             if response.code == 200:
@@ -457,7 +400,7 @@ class Runner(object):
     def report_coverage(self):
         if self.cov: # pragma: no cover
             self.host.print_()
-            self.cov.report(show_missing=False, omit=self.coverage_omit)
+            self.cov.report(show_missing=False, omit=self.args.coverage_omit)
 
     def exit_code_from_full_results(self, full_results): # pragma: no cover
         return json_results.exit_code_from_full_results(full_results)
@@ -465,11 +408,9 @@ class Runner(object):
 
 class _Child(object):
     def __init__(self, parent, loader):
-        self.debugger = parent.debugger
-        self.dry_run = parent.dry_run
+        self.debugger = parent.args.debugger
+        self.dry_run = parent.args.dry_run
         self.loader = loader
-        self.quiet = parent.quiet
-        self.verbose = parent.verbose
         self.worker_num = None
         self.host = None
 

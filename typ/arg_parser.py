@@ -21,6 +21,11 @@ class _Bailout(Exception):
     pass
 
 
+DEFAULT_COVERAGE_OMIT = ['*/typ/*', '*/site-packages/*']
+DEFAULT_STATUS_FORMAT = '[%f/%t] '
+DEFAULT_SUFFIXES = ['*_test.py', '*_unittest.py']
+
+
 class ArgumentParser(argparse.ArgumentParser):
     def __init__(self, host):
         super(ArgumentParser, self).__init__()
@@ -34,8 +39,10 @@ class ArgumentParser(argparse.ArgumentParser):
                                 'uploaded data.'))
         self.add_argument('-c', '--coverage', action='store_true',
                           help='Report coverage information.')
-        self.add_argument('--coverage-omit', default=None,
-                          help='Globs to omit in coverage report.')
+        self.add_argument('--coverage-omit', action='append',
+                          default=[],
+                          help=('Globs to omit in coverage report '
+                                '(defaults to %s).' % DEFAULT_COVERAGE_OMIT))
         self.add_argument('-d', '--debugger', action='store_true',
                           help='Run tests under the debugger.')
         self.add_argument('-n', '--dry-run', action='store_true',
@@ -49,7 +56,7 @@ class ArgumentParser(argparse.ArgumentParser):
                           action='append',
                           help='test globs to run in isolation (serially).')
         self.add_argument('-j', '--jobs', metavar='N', type=int,
-                          default=0,
+                          default=host.cpu_count(),
                           help=('Run N jobs in parallel '
                                 '(defaults to %(default)s).'))
         self.add_argument('-l', '--list-only', action='store_true',
@@ -69,6 +76,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--retry-limit', type=int, default=0,
                           help='Retry each failure up to N times.')
         self.add_argument('-s', '--status-format',
+                          default=DEFAULT_STATUS_FORMAT,
                           help=('Format for status updates '
                                 '(uses NINJA_STATUS env var if set, '
                                  '"%(default)s" otherwise). '))
@@ -79,10 +87,12 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--suffixes', metavar='glob', default=[],
                           action='append',
                           help=('Globs of test filenames to look for ('
-                                'can specify multiple times).'))
-        self.add_argument('--terminal-width', type=int, default=0,
-                          help=('Width of output (current terminal width '
-                                'if available.)'))
+                                'can specify multiple times; defaults to %s).'
+                                % DEFAULT_SUFFIXES))
+        self.add_argument('--terminal-width', type=int,
+                          default=host.terminal_width(),
+                          help=('width to use for output (defaults to '
+                                    '%(default)s; 0 is unbounded).'))
         self.add_argument('--test-results-server',
                           help=('If specified, upload the full results to '
                                 'this server.'))
@@ -105,19 +115,56 @@ class ArgumentParser(argparse.ArgumentParser):
                           help='Print the typ version and exit.')
 
         self.add_argument('--no-overwrite', action='store_false',
-                          dest='overwrite',
+                          dest='overwrite', default=None,
                           help=argparse.SUPPRESS)
         self.add_argument('--overwrite', action='store_true',
+                          default=None,
                           help=argparse.SUPPRESS)
         self.add_argument('tests', nargs='*', default=[],
                           help=argparse.SUPPRESS)
 
     def parse_args(self, args=None, namespace=None):
         try:
-            super(ArgumentParser, self).parse_args(args=args,
-                                                   namespace=namespace)
+            rargs = super(ArgumentParser, self).parse_args(args=args,
+                                                           namespace=namespace)
         except _Bailout:
-            pass
+            return None
+
+        for val in rargs.metadata:
+            if '=' not in val:
+                self._print_message('Error: malformed --metadata "%s"' % val)
+                self.exit_status = 2
+
+        if rargs.test_results_server:
+            if not rargs.builder_name:
+                self._print_message('Error: --builder-name must be specified '
+                                    'along with --test-result-server')
+                self.exit_status = 2
+            if not rargs.master_name:
+                self._print_message('Error: --master-name must be specified '
+                                    'along with --test-result-server')
+                self.exit_status = 2
+            if not rargs.test_type:
+                self._print_message('Error: --test_type must be specified '
+                                    'along with --test-result-server')
+                self.exit_status = 2
+
+        if not rargs.suffixes:
+            rargs.suffixes = DEFAULT_SUFFIXES
+
+        if not rargs.coverage_omit:
+            rargs.coverage_omit = DEFAULT_COVERAGE_OMIT
+
+        if rargs.debugger: # pragma: no cover
+            rargs.jobs = 1
+
+        if rargs.coverage: # pragma: no cover
+            rargs.jobs = 1
+
+        if rargs.overwrite is None:
+            rargs.overwrite = self._host.stdout.isatty() and not rargs.verbose
+
+        return rargs
 
     def _print_message(self, msg, file=None):
         self._host.print_(msg=msg, stream=file, end='')

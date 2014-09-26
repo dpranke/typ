@@ -148,7 +148,7 @@ class Host(object):
         return urllib2.urlopen(urllib2.Request(url, data, headers))
 
     def terminal_width(self):
-        """Returns sys.maxint if the width cannot be determined."""
+        """Returns 0 if the width cannot be determined."""
         try:
             if sys.platform == 'win32': # pragma: no cover
                 # From http://code.activestate.com/recipes/ \
@@ -171,7 +171,7 @@ class Host(object):
                     # into the rightmost column automatically performs a
                     # line feed.
                     return right - left
-                return sys.maxint
+                return 0
             else:
                 import fcntl
                 import struct
@@ -182,4 +182,4 @@ class Host(object):
                 return columns
         except Exception: # pragma: no cover
             # TODO: Figure out how to test this and make coverage see it.
-            return sys.maxint
+            return 0

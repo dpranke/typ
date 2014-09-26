@@ -26,19 +26,19 @@ class TestPrinter(unittest.TestCase):
         self.out.append(msg + end)
 
     def test_basic(self):
-        pr = Printer(self.print_, False)
+        pr = Printer(self.print_, False, 80)
         pr.update('foo')
         pr.flush()
         self.assertEqual(self.out, ['foo', '\n'])
 
     def test_elide(self):
-        pr = Printer(self.print_, False, cols=8)
+        pr = Printer(self.print_, False, 8)
         pr.update('hello world')
         pr.flush()
         self.assertEqual(self.out, ['hel ...', '\n'])
 
     def test_overwrite(self):
-        pr = Printer(self.print_, True)
+        pr = Printer(self.print_, True, 80)
         pr.update('hello world')
         pr.update('goodbye world')
         pr.flush()
@@ -49,7 +49,7 @@ class TestPrinter(unittest.TestCase):
                           '\n'])
 
     def test_last_line_flushed_when_not_overwriting(self):
-        pr = Printer(self.print_, False)
+        pr = Printer(self.print_, False, 80)
         pr.update('foo\nbar')
         pr.update('baz')
         pr.flush()

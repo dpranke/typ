@@ -25,6 +25,7 @@ class TestCase(unittest.TestCase):
 class MainTestCase(TestCase):
     prog = None
     host = None
+    maxDiff = 4096
 
     def _write_files(self, host, files):
         for path, contents in list(files.items()):
