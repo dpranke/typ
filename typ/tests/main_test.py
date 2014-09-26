@@ -197,6 +197,13 @@ class TestCli(test_case.MainTestCase):
                         '2 tests run, 0 failures.\n'),
                    err='')
 
+    def test_ninja_status_env(self):
+        files = {'output_tests.py': OUTPUT_TESTS}
+        self.check(['-v', 'output_tests.PassTest.test_out'],
+                   files=files, env={'NINJA_STATUS': 'ns: '},
+                   out=('ns: output_tests.PassTest.test_out passed\n'
+                        '1 test run, 0 failures.\n'))
+
     def test_output_for_failures(self):
         files = {'output_tests.py': OUTPUT_TESTS}
         self.check(
@@ -235,6 +242,8 @@ class TestMain(TestCli):
         host.stdin = StringIO.StringIO(stdin)
         host.stdout = StringIO.StringIO()
         host.stderr = StringIO.StringIO()
+        if env:
+            host.getenv = lambda k,v: env.get(k, v)
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
         try:

@@ -76,7 +76,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--retry-limit', type=int, default=0,
                           help='Retry each failure up to N times.')
         self.add_argument('-s', '--status-format',
-                          default=DEFAULT_STATUS_FORMAT,
+                          default=self._host.getenv('NINJA_STATUS',
+                                                    DEFAULT_STATUS_FORMAT),
                           help=('Format for status updates '
                                 '(uses NINJA_STATUS env var if set, '
                                  '"%(default)s" otherwise). '))

@@ -80,6 +80,7 @@ class Runner(object):
         self.printer = None
         self.stats = None
         self.cov = None
+        self.top_level_dir = None
 
         self.isolated_tests = []
         self.parallel_tests = []
@@ -142,13 +143,14 @@ class Runner(object):
         self.stats = Stats(args.status_format, h.time, args.jobs)
         self.printer = Printer(self.print_, args.overwrite, args.terminal_width)
 
-        if not args.top_level_dir:
+        self.top_level_dir = args.top_level_dir
+        if not self.top_level_dir:
             top_dir = h.getcwd()
             while h.exists(top_dir, '__init__.py'):
                 top_dir = h.dirname(top_dir)
-            args.top_level_dir = top_dir
+            self.top_level_dir = top_dir
 
-        h.add_to_path(args.top_level_dir)
+        h.add_to_path(self.top_level_dir)
 
         for path in args.path:
             h.add_to_path(path)
@@ -193,7 +195,7 @@ class Runner(object):
         ret = 0
         loader = self.loader
         suffixes = self.args.suffixes
-        top_level_dir = self.args.top_level_dir
+        top_level_dir = self.top_level_dir
         for test in tests:
             try:
                 if h.isfile(test):
