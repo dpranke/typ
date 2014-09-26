@@ -14,7 +14,6 @@
 
 import copy
 import multiprocessing
-import sys
 
 from typ.host import Host
 

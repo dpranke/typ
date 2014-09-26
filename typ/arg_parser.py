@@ -14,9 +14,6 @@
 
 import argparse
 
-from typ.host import Host
-
-
 class _Bailout(Exception):
     pass
 
@@ -166,6 +163,8 @@ class ArgumentParser(argparse.ArgumentParser):
             rargs.overwrite = self._host.stdout.isatty() and not rargs.verbose
 
         return rargs
+
+    # Redefining built-in 'file' pylint: disable=W0622
 
     def _print_message(self, msg, file=None):
         self._host.print_(msg=msg, stream=file, end='')

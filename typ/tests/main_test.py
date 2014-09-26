@@ -243,7 +243,7 @@ class TestMain(TestCli):
         host.stdout = StringIO.StringIO()
         host.stderr = StringIO.StringIO()
         if env:
-            host.getenv = lambda k,v: env.get(k, v)
+            host.getenv = env.get
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
         try:

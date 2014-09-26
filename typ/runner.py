@@ -38,7 +38,7 @@ class TestSet(object):
         self.tests_to_skip = tests_to_skip or []
 
 
-class ResultType(enum.Enum):
+class ResultType(enum.Enum): # no __init__ pylint: disable=W0232
     Pass = 0
     Fail = 1
     ImageOnlyFailure = 2
@@ -48,6 +48,8 @@ class ResultType(enum.Enum):
 
 
 class Result(object): # pragma: no cover
+    # too many instance attributes  pylint: disable=R0902
+    # too many arguments  pylint: disable=R0913
     def __init__(self, name, actual=None, unexpected=False, flaky=False,
                  expected=None,
                  out=None, err=None, code=None, started=None, took=None,
@@ -171,27 +173,27 @@ class Runner(object):
                     add_names(el)
             else:
                 test_name = obj.id()
-                if matches(test_name, self.args.skip):
+                if matches(test_name, args.skip):
                     tests_to_skip.append(test_name)
-                elif matches(test_name, self.args.isolate):
+                elif matches(test_name, args.isolate):
                     isolated_tests.append(test_name)
                 else:
                     parallel_tests.append(test_name)
 
-        if self.args.tests:
-            tests = self.args.tests
-        elif self.args.file_list:
-            if self.args.file_list == '-':
+        if args.tests:
+            tests = args.tests
+        elif args.file_list:
+            if args.file_list == '-':
                 s = h.stdin.read()
             else:
-                s = h.read_text_file(self.args.file_list)
+                s = h.read_text_file(args.file_list)
             tests = [line.strip() for line in s.splitlines()]
         else:
             tests = ['.']
 
         ret = 0
         loader = self.loader
-        suffixes = self.args.suffixes
+        suffixes = args.suffixes
         top_level_dir = self.top_level_dir
         for test in tests:
             try:
