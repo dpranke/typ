@@ -189,55 +189,45 @@ class Host(object):
             # TODO: Figure out how to test this and make coverage see it.
             return 0
 
-    def tap_stdio(self, msg=''):
-        self.stdout = sys.stdout = TrappableStream(self.stdout)
-        self.stderr = sys.stderr = TrappableStream(self.stderr)
-        # orig_stderr.write('  tap%s\n' % msg)
+    def tap_stdio(self):
+        self.stdout = sys.stdout = _TeedStream(self.stdout)
+        self.stderr = sys.stderr = _TeedStream(self.stderr)
 
-    def untap_stdio(self, msg=''):
-        if isinstance(self.stdout, TrappableStream):
+    def untap_stdio(self):
+        if isinstance(self.stdout, _TeedStream):
             self.stdout = sys.stdout = self.stdout.stream
             self.stderr = sys.stderr = self.stderr.stream
-            # orig_stderr.write('untap(True)%s\n' % msg)
-        else:
-            pass # orig_stderr.write('untap(False)%s\n' % msg)
 
-    def start_capturing_stdio(self, msg=''):
-        if isinstance(self.stdout, TrappableStream):
+    def start_capturing_stdio(self):
+        if isinstance(self.stdout, _TeedStream):
             self.stdout.start_capturing()
             self.stderr.start_capturing()
-            # orig_stderr.write('start(true)%s\n' % msg)
-        else:
-            pass # orig_stderr.write('start(false)%s\n' % msg)
 
-    def stop_capturing_stdio(self, msg=''):
-        if isinstance(self.stdout, TrappableStream):
+    def stop_capturing_stdio(self):
+        if isinstance(self.stdout, _TeedStream):
             out = self.stdout.stop_capturing()
             err = self.stderr.stop_capturing()
-            # orig_stderr.write(' stop(true)%s\n' % msg)
             return out, err
-        else:
-            # orig_stderr.write(' stop(false)%s\n' % msg)
+        else: # pragma: no cover
+            # TODO: add a test for this and other trap hooks.
             return None, None
 
 
-
-class TrappableStream(io.StringIO):
+class _TeedStream(io.StringIO):
     def __init__(self, stream):
-        super(TrappableStream, self).__init__()
+        super(_TeedStream, self).__init__()
         self.stream = stream
         self.trap = False
 
     def write(self, msg, *args, **kwargs): # pragma: no cover
         if self.trap:
-            super(TrappableStream, self).write(unicode(msg), *args, **kwargs)
+            super(_TeedStream, self).write(unicode(msg), *args, **kwargs)
         else:
             self.stream.write(unicode(msg), *args, **kwargs)
-        # orig_stderr.write(unicode(msg), *args, **kwargs)
 
     def flush(self): # pragma: no cover
         if self.trap:
-            super(TrappableStream, self).flush()
+            super(_TeedStream, self).flush()
         else:
             self.stream.flush()
 
@@ -250,6 +240,3 @@ class TrappableStream(io.StringIO):
         msg = self.getvalue()
         self.truncate(0)
         return msg
-
-
-
