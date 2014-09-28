@@ -98,6 +98,8 @@ class AsyncPool(object):
         self.final_context = self.post_fn(self.context_after_pre)
 
     def join(self):
+        if not self.closed:
+            self.close()
         return [self.final_context]
 
 
