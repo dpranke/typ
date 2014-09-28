@@ -33,7 +33,9 @@ class Host(object):
     stdin = sys.stdin
     stderr = sys.stderr
     stdout = sys.stdout
-    orig_stderr = sys.stderr
+
+    _orig_stdout = orig_stdout
+    _orig_stderr = orig_stderr
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))
@@ -189,54 +191,54 @@ class Host(object):
             # TODO: Figure out how to test this and make coverage see it.
             return 0
 
-    def tap_stdio(self):
+    def _tap_output(self):
         self.stdout = sys.stdout = _TeedStream(self.stdout)
         self.stderr = sys.stderr = _TeedStream(self.stderr)
 
-    def untap_stdio(self):
-        if isinstance(self.stdout, _TeedStream):
-            self.stdout = sys.stdout = self.stdout.stream
-            self.stderr = sys.stderr = self.stderr.stream
+    def _untap_output(self):
+        assert isinstance(self.stdout, _TeedStream)
+        self.stdout = sys.stdout = self.stdout.stream
+        self.stderr = sys.stderr = self.stderr.stream
 
-    def start_capturing_stdio(self):
-        if isinstance(self.stdout, _TeedStream):
-            self.stdout.start_capturing()
-            self.stderr.start_capturing()
+    def capture_output(self, divert=True):
+        self._tap_output()
+        self.stdout.capture(divert)
+        self.stderr.capture(divert)
 
-    def stop_capturing_stdio(self):
-        if isinstance(self.stdout, _TeedStream):
-            out = self.stdout.stop_capturing()
-            err = self.stderr.stop_capturing()
-            return out, err
-        else: # pragma: no cover
-            # TODO: add a test for this and other trap hooks.
-            return None, None
+    def restore_output(self):
+        assert isinstance(self.stdout, _TeedStream)
+        out, err = (self.stdout.restore(), self.stderr.restore())
+        self._untap_output()
+        return out, err
 
 
 class _TeedStream(io.StringIO):
     def __init__(self, stream):
         super(_TeedStream, self).__init__()
         self.stream = stream
-        self.trap = False
+        self.capturing = False
+        self.diverting = False
 
     def write(self, msg, *args, **kwargs): # pragma: no cover
-        if self.trap:
+        if self.capturing:
             super(_TeedStream, self).write(unicode(msg), *args, **kwargs)
-        else:
+        if not self.diverting:
             self.stream.write(unicode(msg), *args, **kwargs)
 
     def flush(self): # pragma: no cover
-        if self.trap:
+        if self.capturing:
             super(_TeedStream, self).flush()
-        else:
+        if not self.diverting:
             self.stream.flush()
 
-    def start_capturing(self):
+    def capture(self, divert=True):
         self.truncate(0)
-        self.trap = True
+        self.capturing = True
+        self.diverting = divert
 
-    def stop_capturing(self):
-        self.trap = False
+    def restore(self):
         msg = self.getvalue()
         self.truncate(0)
+        self.capturing = False
+        self.diverting = False
         return msg

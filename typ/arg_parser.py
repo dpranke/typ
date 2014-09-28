@@ -112,11 +112,14 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('-V', '--version', action='store_true',
                           help='Print the typ version and exit.')
 
+        self.add_argument('--overwrite', action='store_true',
+                          default=None,
+                          help=argparse.SUPPRESS)
         self.add_argument('--no-overwrite', action='store_false',
                           dest='overwrite', default=None,
                           help=argparse.SUPPRESS)
-        self.add_argument('--overwrite', action='store_true',
-                          default=None,
+        self.add_argument('--passthrough', action='store_true',
+                          default=False,
                           help=argparse.SUPPRESS)
         self.add_argument('--setup-process-name', help=argparse.SUPPRESS)
         self.add_argument('--teardown-process-name', help=argparse.SUPPRESS)
@@ -158,6 +161,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if rargs.debugger: # pragma: no cover
             rargs.jobs = 1
+            rargs.passthrough = True
 
         if rargs.coverage: # pragma: no cover
             rargs.jobs = 1

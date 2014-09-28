@@ -467,6 +467,7 @@ class _Child(object):
         self.debugger = parent.args.debugger
         self.dry_run = parent.args.dry_run
         self.loader = loader
+        self.passthrough = parent.args.passthrough
         self.context = test_set.context
         self.setup_process_name = test_set.setup_process_name
         self.teardown_process_name = test_set.teardown_process_name
@@ -476,7 +477,6 @@ class _Child(object):
 def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
-    child.host.tap_stdio()
 
     if child.setup_process_name: # pragma: no cover
         func = _import_name(child.setup_process_name)
@@ -484,6 +484,15 @@ def _setup_process(host, worker_num, child):
     else:
         child.context_after_setup = child.context
     return child
+
+
+def _teardown_process(child):
+    if child.teardown_process_name:  # pragma: no cover
+        func = _import_name(child.teardown_process_name)
+        func(child, child.context_after_setup)
+    # TODO: Return a more structured result, including something from
+    # the teardown function?
+    return child.worker_num
 
 
 def _import_name(name):  # pragma: no cover
@@ -513,26 +522,25 @@ def _run_one_test(child, test_name):
         test_case.context = child.context_after_setup
 
     result = TestResult()
-    start = h.time()
     out = ''
     err = ''
-    if child.debugger: # pragma: no cover
-        # Access to protected member pylint: disable=W0212
-        # TODO: add start_capture() and make it debugger-aware.
-        test_func = getattr(test_case, test_case._testMethodName)
-        fname = inspect.getsourcefile(test_func)
-        lineno = inspect.getsourcelines(test_func)[1] + 1
-        dbg = pdb.Pdb()
-        dbg.set_break(fname, lineno)
-        dbg.runcall(suite.run, result)
-    else:
-        try:
-            h.start_capturing_stdio()
+    h.capture_output(divert=not child.passthrough)
+    start = h.time()
+    try:
+        if child.debugger: # pragma: no cover
+            # Access to protected member pylint: disable=W0212
+            # TODO: add start_capture() and make it debugger-aware.
+            test_func = getattr(test_case, test_case._testMethodName)
+            fname = inspect.getsourcefile(test_func)
+            lineno = inspect.getsourcelines(test_func)[1] + 1
+            dbg = pdb.Pdb()
+            dbg.set_break(fname, lineno)
+            dbg.runcall(suite.run, result)
+        else:
             suite.run(result)
-        finally:
-            out, err = h.stop_capturing_stdio()
-
-    took = h.time() - start
+        took = h.time() - start
+    finally:
+        out, err = h.restore_output()
 
     # TODO: return proper Results and handle skips and expected failures.
     if result.failures:
@@ -540,18 +548,6 @@ def _run_one_test(child, test_name):
     if result.errors: # pragma: no cover
         return (test_name, 1, out, err + result.errors[0][1], took)
     return (test_name, 0, out, err, took)
-
-
-def _teardown_process(child):
-    try:
-        if child.teardown_process_name:  # pragma: no cover
-            func = _import_name(child.teardown_process_name)
-            func(child, child.context_after_setup)
-        # TODO: Return a more structured result, including something from
-        # the teardown function?
-        return child.worker_num
-    finally:
-        child.host.untap_stdio()
 
 
 class TestResult(unittest.TestResult):

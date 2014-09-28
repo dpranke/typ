@@ -359,17 +359,17 @@ class TestMain(TestCli):
         host.stdin = StringIO.StringIO(stdin)
         if env:
             host.getenv = env.get
-        host.tap_stdio()
-        host.start_capturing_stdio()
+        host.capture_output()
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
+
         try:
-            ret = main.main(argv, host, loader)
-            out, err = host.stop_capturing_stdio()
-            return ret, out, err
+            ret = main.main(argv + ['-j', '1'], host, loader)
         finally:
-            host.untap_stdio()
+            out, err = host.restore_output()
             sys.path = orig_sys_path
+
+        return ret, out, err
 
     # TODO: figure out how to make these tests pass w/ trapping output.
     def test_debugger(self):
