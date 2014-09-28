@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+
 import sys
+
 
 from subprocess import call
 
 
-def print_(msg, end='\n', stream=sys.stdout):
-    stream.write(msg + end)
-
-
 def usage():
-    print_("""\
+    print("""\
 usage: go COMMAND
 
 Where COMMAND is one of:
@@ -44,6 +43,8 @@ def run(cmd):
         if not ret:
             ret = run('cover')
         return ret
+    if cmd == 'clean':
+        return call(['git', 'clean', '-fxd'])
     if cmd == 'cover':
         ret = call(['coverage', 'erase'])
         if not ret:
@@ -65,6 +66,10 @@ def run(cmd):
         return call(['git', 'push'])
     if cmd == 'test':
         return call([sys.executable, '-m', 'typ'])
+    else:
+        print('Unknown command "%s"' % cmd)
+        usage()
+        return 2
 
 
 if __name__ == '__main__':
