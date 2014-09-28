@@ -17,6 +17,7 @@ import sys
 
 from typ import main
 from typ import test_case
+from typ.host import Host
 from typ.version import VERSION
 from typ.fakes.unittest_fakes import FakeTestLoader
 
@@ -110,6 +111,43 @@ class ExpectedFailures(unittest.TestCase):
     @unittest.expectedFailure
     def test_pass(self):
         pass
+"""
+
+SETUP_AND_TEARDOWN = """
+import unittest
+from typ import test_case as typ_test_case
+
+def setupProcess(child, context):
+    if context is None:
+        context = {'passed_in': False, 'calls': 0}
+    child.host.print_('setupProcess(%d): %s' % (child.worker_num, context))
+    context['calls'] += 1
+    return context
+
+
+def teardownProcess(child, context):
+    child.host.print_('teardownProcess(%d): %s' % (child.worker_num, context))
+
+
+class UnitTest(unittest.TestCase):
+    def test_one(self):
+        self.assertFalse(hasattr(self, 'host'))
+        self.assertFalse(hasattr(self, 'context'))
+
+    def test_two(self):
+        pass
+
+
+class TypTest(typ_test_case.TestCase):
+    def test_one(self):
+        self.assertNotEquals(self.child, None)
+        self.assertGreaterEqual(self.context['calls'], 1)
+        self.context['calls'] += 1
+
+    def test_two(self):
+        self.assertNotEquals(self.context, None)
+        self.assertGreaterEqual(self.context['calls'], 1)
+        self.context['calls'] += 1
 """
 
 
@@ -294,21 +332,43 @@ class TestCli(test_case.MainTestCase):
         # TODO: add real tests here.
         self.check([], files=files, ret=1)
 
+    def test_setup_and_teardown_single_child(self):
+        files = {'st_test.py': SETUP_AND_TEARDOWN}
+        self.check(['--jobs', '1',
+                    '--setup-process-name', 'st_test.setupProcess',
+                    '--teardown-process-name', 'st_test.teardownProcess'],
+                    files=files, ret=0, err='',
+                    out=("setupProcess(1): {'passed_in': False, 'calls': 0}\n"
+                         "[1/4] st_test.TypTest.test_one passed\n"
+                         "[2/4] st_test.TypTest.test_two passed\n"
+                         "[3/4] st_test.UnitTest.test_one passed\n"
+                         "[4/4] st_test.UnitTest.test_two passed"
+                         "teardownProcess(1): "
+                         "{'passed_in': False, 'calls': 3}\n"
+                         "\n"
+                         "4 tests run, 0 failures.\n"))
+
+
 class TestMain(TestCli):
     prog = []
 
+    def make_host(self):
+        return Host()
+
     def call(self, host, argv, stdin, env):
         host.stdin = StringIO.StringIO(stdin)
-        host.stdout = StringIO.StringIO()
-        host.stderr = StringIO.StringIO()
         if env:
             host.getenv = env.get
+        host.tap_stdio()
+        host.start_capturing_stdio()
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
         try:
             ret = main.main(argv, host, loader)
-            return ret, host.stdout.getvalue(), host.stderr.getvalue()
+            out, err = host.stop_capturing_stdio()
+            return ret, out, err
         finally:
+            host.untap_stdio()
             sys.path = orig_sys_path
 
     # TODO: figure out how to make these tests pass w/ trapping output.
@@ -325,4 +385,10 @@ class TestMain(TestCli):
         pass
 
     def test_output_for_failures(self):
+        pass
+
+    # TODO: These tests need to execute the real tests (they can't use a
+    # FakeTestLoader and FakeTestCase) because we're testing
+    # the side effects the tests have on setup and teardown.
+    def test_setup_and_teardown_single_child(self):
         pass

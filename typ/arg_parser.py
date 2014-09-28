@@ -118,6 +118,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--overwrite', action='store_true',
                           default=None,
                           help=argparse.SUPPRESS)
+        self.add_argument('--setup-process-name', help=argparse.SUPPRESS)
+        self.add_argument('--teardown-process-name', help=argparse.SUPPRESS)
+        self.add_argument('--user-context', help=argparse.SUPPRESS)
         self.add_argument('tests', nargs='*', default=[],
                           help=argparse.SUPPRESS)
 

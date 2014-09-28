@@ -15,8 +15,8 @@
 import coverage
 import enum
 import fnmatch
+import importlib
 import inspect
-import io
 import json
 import pdb
 import unittest
@@ -24,18 +24,24 @@ import unittest
 
 from typ import json_results
 from typ.arg_parser import ArgumentParser
+from typ.host import Host
 from typ.pool import make_pool
 from typ.stats import Stats
 from typ.printer import Printer
+from typ.test_case import TestCase as TypTestCase
 from typ.version import VERSION
 
 
 class TestSet(object):
     def __init__(self, parallel_tests=None, isolated_tests=None,
-                 tests_to_skip=None):
+                 tests_to_skip=None, context = None,
+                 setup_process_name=None, teardown_process_name=None):
         self.parallel_tests = parallel_tests or []
         self.isolated_tests = isolated_tests or []
         self.tests_to_skip = tests_to_skip or []
+        self.context = context
+        self.setup_process_name = setup_process_name or []
+        self.teardown_process_name = teardown_process_name or []
 
 
 class ResultType(enum.Enum): # no __init__ pylint: disable=W0232
@@ -76,14 +82,18 @@ class ResultSet(object): # pragma: no cover
 
 
 class Runner(object):
-    def __init__(self, host, loader):
-        self.host = host
-        self.args = None
-        self.loader = loader
+    def __init__(self, host=None, loader=None):
+        self.host = host or Host()
+        self.loader = loader or unittest.loader.TestLoader()
         self.printer = None
         self.stats = None
         self.cov = None
         self.top_level_dir = None
+        self.args = None
+
+        # initialize self.args to the defaults.
+        parser = ArgumentParser(self.host)
+        self.parse_args(parser, [])
 
     def main(self, argv=None):
         parser = ArgumentParser(self.host)
@@ -113,10 +123,12 @@ class Runner(object):
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)
 
-    def run(self):
+    def run(self, test_set=None):
+        ret = 0
+
         if self.args.version:
             self.print_(VERSION)
-            return 0, None
+            return ret, None
 
         self._set_up_runner()
 
@@ -124,7 +136,9 @@ class Runner(object):
             self.cov.start()
 
         full_results = None
-        ret, test_set = self.find_tests(self.args)
+
+        if not test_set:
+            ret, test_set = self.find_tests(self.args)
         if not ret:
             ret, full_results = self._run_tests(test_set)
 
@@ -157,28 +171,29 @@ class Runner(object):
         if args.coverage: # pragma: no cover
             self.cov = coverage.coverage()
 
-    def find_tests(self, args):
-        isolated_tests = []
-        parallel_tests = []
-        tests_to_skip = []
+    def find_tests(self, args, classifier=None):
+        test_set = self._make_test_set()
 
         h = self.host
 
         def matches(name, globs):
             return any(fnmatch.fnmatch(name, glob) for glob in globs)
 
+        def default_classifier(test_set, test):
+            name = test.id()
+            if matches(name, args.skip):
+                test_set.tests_to_skip.append(name)
+            elif matches(name, args.isolate):
+                test_set.isolated_tests.append(name)
+            else:
+                test_set.parallel_tests.append(name)
+
         def add_names(obj):
             if isinstance(obj, unittest.suite.TestSuite):
                 for el in obj:
                     add_names(el)
             else:
-                test_name = obj.id()
-                if matches(test_name, args.skip):
-                    tests_to_skip.append(test_name)
-                elif matches(test_name, args.isolate):
-                    isolated_tests.append(test_name)
-                else:
-                    parallel_tests.append(test_name)
+                classifier(test_set, obj)
 
         if args.tests:
             tests = args.tests
@@ -195,6 +210,7 @@ class Runner(object):
         loader = self.loader
         suffixes = args.suffixes
         top_level_dir = self.top_level_dir
+        classifier = classifier or default_classifier
         for test in tests:
             try:
                 if h.isfile(test):
@@ -226,10 +242,12 @@ class Runner(object):
                             stream=h.stderr)
                 ret = 1
 
+        # TODO: Add support for discovering setupProcess/teardownProcess?
+
         if not ret:
-            test_set = TestSet(sorted(parallel_tests),
-                               sorted(isolated_tests),
-                               sorted(tests_to_skip))
+            test_set.parallel_tests = sorted(test_set.parallel_tests)
+            test_set.isolated_tests = sorted(test_set.isolated_tests)
+            test_set.tests_to_skip = sorted(test_set.tests_to_skip)
         else:
             test_set = None
         return ret, test_set
@@ -254,19 +272,29 @@ class Runner(object):
         failed_tests = list(json_results.failed_test_names(result))
         retry_limit = self.args.retry_limit
 
-        if retry_limit and failed_tests:
+        while retry_limit and failed_tests:
+            if retry_limit == self.args.retry_limit:
+                self.flush()
+                self.args.overwrite = False
+                self.printer.should_overwrite = False
+                self.args.verbose = min(self.args.verbose, 1)
+
             self.print_('')
-            self.print_('Retrying failed tests ...')
+            self.print_('Retrying failed tests (attempt #%d of %d)...' %
+                        (self.args.retry_limit - retry_limit + 1,
+                         self.args.retry_limit))
             self.print_('')
 
-        while retry_limit and failed_tests:
             stats = Stats(self.args.status_format, h.time, 1)
             stats.total = len(failed_tests)
-            result = self._run_one_set(stats,
-                                       TestSet(isolated_tests=failed_tests))
+            tests_to_retry = self._make_test_set(isolated_tests=failed_tests)
+            result = self._run_one_set(stats, tests_to_retry)
             results.append(result)
             failed_tests = list(json_results.failed_test_names(result))
             retry_limit -= 1
+
+        if retry_limit != self.args.retry_limit:
+            self.print_('')
 
         full_results = json_results.make_full_results(self.args.metadata,
                                                       int(h.time()),
@@ -274,14 +302,33 @@ class Runner(object):
         return (json_results.exit_code_from_full_results(full_results),
                 full_results)
 
+    def _make_test_set(self, parallel_tests=None, isolated_tests=None,
+                       tests_to_skip=None):
+        parallel_tests = parallel_tests or []
+        isolated_tests = isolated_tests or []
+        tests_to_skip = tests_to_skip or []
+
+        if self.args.user_context: # pragma: no cover
+            user_context = self.args.user_context
+        else:
+            user_context = None
+
+        return TestSet(sorted(parallel_tests),
+                       sorted(isolated_tests),
+                       sorted(tests_to_skip),
+                       user_context,
+                       self.args.setup_process_name,
+                       self.args.teardown_process_name)
+
     def _run_one_set(self, stats, test_set):
         stats.total = (len(test_set.parallel_tests) +
                        len(test_set.isolated_tests) +
                        len(test_set.tests_to_skip))
         result = TestResult()
         self._skip_tests(stats, result, test_set.tests_to_skip)
-        self._run_list(stats, result, test_set.parallel_tests, self.args.jobs)
-        self._run_list(stats, result, test_set.isolated_tests, 1)
+        self._run_list(stats, result, test_set, test_set.parallel_tests,
+                       self.args.jobs)
+        self._run_list(stats, result, test_set, test_set.isolated_tests, 1)
         return result
 
     def _skip_tests(self, stats, result, tests_to_skip):
@@ -293,12 +340,16 @@ class Runner(object):
             self._print_test_finished(stats, test_name, 0, '', '', 0)
 
 
-    def _run_list(self, stats, result, test_names, jobs):
+    def _run_list(self, stats, result, test_set, test_names, jobs):
         h = self.host
         running_jobs = set()
 
         jobs = min(len(test_names), jobs)
-        pool = make_pool(h, jobs, _run_one_test, _Child(self, self.loader),
+        if not jobs:
+            return
+
+        child = _Child(self, self.loader, test_set)
+        pool = make_pool(h, jobs, _run_one_test, child,
                          _setup_process, _teardown_process)
         try:
             while test_names or running_jobs:
@@ -410,24 +461,38 @@ class Runner(object):
 
 
 class _Child(object):
-    def __init__(self, parent, loader):
+    def __init__(self, parent, loader, test_set):
+        self.host = None
+        self.worker_num = None
         self.debugger = parent.args.debugger
         self.dry_run = parent.args.dry_run
         self.loader = loader
-        self.worker_num = None
-        self.host = None
+        self.context = test_set.context
+        self.setup_process_name = test_set.setup_process_name
+        self.teardown_process_name = test_set.teardown_process_name
+        self.context_after_setup = None
 
 
-def _setup_process(host, worker_num, context):
-    child = context
+def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
-    trap(child.host.sys_module)
+    child.host.tap_stdio()
+
+    if child.setup_process_name: # pragma: no cover
+        func = _import_name(child.setup_process_name)
+        child.context_after_setup = func(child, child.context)
+    else:
+        child.context_after_setup = child.context
     return child
 
 
-def _run_one_test(context_from_setup, test_name):
-    child = context_from_setup
+def _import_name(name):  # pragma: no cover
+    module_name, function_name = name.rsplit('.', 1)
+    module = importlib.import_module(module_name)
+    return getattr(module, function_name)
+
+
+def _run_one_test(child, test_name):
     h = child.host
 
     if child.dry_run:
@@ -436,18 +501,24 @@ def _run_one_test(context_from_setup, test_name):
     try:
         suite = child.loader.loadTestsFromName(test_name)
     except Exception as e: # pragma: no cover
-        # TODO: This should be a very rare failure, but we need to figure out
-        # how to test it.
+        # TODO: Figure out how to handle failures here.
         return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
                 0)
+
+    tests = list(suite)
+    assert len(tests) == 1
+    test_case = tests[0]
+    if isinstance(test_case, TypTestCase):
+        test_case.child = child
+        test_case.context = child.context_after_setup
 
     result = TestResult()
     start = h.time()
     out = ''
     err = ''
     if child.debugger: # pragma: no cover
-        # Access to a protected member  pylint: disable=W0212
-        test_case = suite._tests[0]
+        # Access to protected member pylint: disable=W0212
+        # TODO: add start_capture() and make it debugger-aware.
         test_func = getattr(test_case, test_case._testMethodName)
         fname = inspect.getsourcefile(test_func)
         lineno = inspect.getsourcelines(test_func)[1] + 1
@@ -456,12 +527,14 @@ def _run_one_test(context_from_setup, test_name):
         dbg.runcall(suite.run, result)
     else:
         try:
-            start_capture(h.sys_module)
+            h.start_capturing_stdio()
             suite.run(result)
         finally:
-            out, err = stop_capture(h.sys_module)
+            out, err = h.stop_capturing_stdio()
 
     took = h.time() - start
+
+    # TODO: return proper Results and handle skips and expected failures.
     if result.failures:
         return (test_name, 1, out, err + result.failures[0][1], took)
     if result.errors: # pragma: no cover
@@ -469,60 +542,16 @@ def _run_one_test(context_from_setup, test_name):
     return (test_name, 0, out, err, took)
 
 
-def _teardown_process(context_from_setup):
-    child = context_from_setup
-    release(child.host.sys_module)
-    return child.worker_num
-
-
-class TrappableStream(io.StringIO):
-    def __init__(self, stream):
-        super(TrappableStream, self).__init__()
-        self.stream = stream
-        self.trap = False
-
-    def write(self, msg, *args, **kwargs): # pragma: no cover
-        if self.trap:
-            super(TrappableStream, self).write(unicode(msg), *args, **kwargs)
-        else:
-            self.stream.write(unicode(msg), *args, **kwargs)
-
-    def flush(self, *args, **kwargs): # pragma: no cover
-        if self.trap:
-            super(TrappableStream, self).flush(*args, **kwargs)
-        else:
-            self.stream.flush(*args, **kwargs)
-
-    def start_capture(self):
-        self.truncate(0)
-        self.trap = True
-
-    def stop_capture(self):
-        self.trap = False
-        msg = self.getvalue()
-        self.truncate(0)
-        return msg
-
-
-def trap(sys_module):
-    sys_module.stdout = TrappableStream(sys_module.stdout)
-    sys_module.stderr = TrappableStream(sys_module.stderr)
-
-
-def release(sys_module):
-    sys_module.stdout = sys_module.stdout.stream
-    sys_module.stderr = sys_module.stderr.stream
-
-
-def start_capture(sys_module):
-    sys_module.stdout.start_capture()
-    sys_module.stderr.start_capture()
-
-
-def stop_capture(sys_module):
-    out = sys_module.stdout.stop_capture()
-    err = sys_module.stderr.stop_capture()
-    return out, err
+def _teardown_process(child):
+    try:
+        if child.teardown_process_name:  # pragma: no cover
+            func = _import_name(child.teardown_process_name)
+            func(child, child.context_after_setup)
+        # TODO: Return a more structured result, including something from
+        # the teardown function?
+        return child.worker_num
+    finally:
+        child.host.untap_stdio()
 
 
 class TestResult(unittest.TestResult):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import multiprocessing
 import os
 import shutil
@@ -22,13 +23,17 @@ import time
 import urllib2
 
 
+orig_stderr = sys.stderr
+orig_stdout = sys.stdout
+
+
 class Host(object):
     python_interpreter = sys.executable
     sep = os.sep
     stdin = sys.stdin
     stderr = sys.stderr
     stdout = sys.stdout
-    sys_module = sys
+    orig_stderr = sys.stderr
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))
@@ -183,3 +188,68 @@ class Host(object):
         except Exception: # pragma: no cover
             # TODO: Figure out how to test this and make coverage see it.
             return 0
+
+    def tap_stdio(self, msg=''):
+        self.stdout = sys.stdout = TrappableStream(self.stdout)
+        self.stderr = sys.stderr = TrappableStream(self.stderr)
+        # orig_stderr.write('  tap%s\n' % msg)
+
+    def untap_stdio(self, msg=''):
+        if isinstance(self.stdout, TrappableStream):
+            self.stdout = sys.stdout = self.stdout.stream
+            self.stderr = sys.stderr = self.stderr.stream
+            # orig_stderr.write('untap(True)%s\n' % msg)
+        else:
+            pass # orig_stderr.write('untap(False)%s\n' % msg)
+
+    def start_capturing_stdio(self, msg=''):
+        if isinstance(self.stdout, TrappableStream):
+            self.stdout.start_capturing()
+            self.stderr.start_capturing()
+            # orig_stderr.write('start(true)%s\n' % msg)
+        else:
+            pass # orig_stderr.write('start(false)%s\n' % msg)
+
+    def stop_capturing_stdio(self, msg=''):
+        if isinstance(self.stdout, TrappableStream):
+            out = self.stdout.stop_capturing()
+            err = self.stderr.stop_capturing()
+            # orig_stderr.write(' stop(true)%s\n' % msg)
+            return out, err
+        else:
+            # orig_stderr.write(' stop(false)%s\n' % msg)
+            return None, None
+
+
+
+class TrappableStream(io.StringIO):
+    def __init__(self, stream):
+        super(TrappableStream, self).__init__()
+        self.stream = stream
+        self.trap = False
+
+    def write(self, msg, *args, **kwargs): # pragma: no cover
+        if self.trap:
+            super(TrappableStream, self).write(unicode(msg), *args, **kwargs)
+        else:
+            self.stream.write(unicode(msg), *args, **kwargs)
+        # orig_stderr.write(unicode(msg), *args, **kwargs)
+
+    def flush(self): # pragma: no cover
+        if self.trap:
+            super(TrappableStream, self).flush()
+        else:
+            self.stream.flush()
+
+    def start_capturing(self):
+        self.truncate(0)
+        self.trap = True
+
+    def stop_capturing(self):
+        self.trap = False
+        msg = self.getvalue()
+        self.truncate(0)
+        return msg
+
+
+

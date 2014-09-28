@@ -15,16 +15,14 @@
 import shlex
 import unittest
 
-from typ import host as typ_host
-
 
 class TestCase(unittest.TestCase):
-    typ_context = None
+    child = None
+    context = None
 
 
 class MainTestCase(TestCase):
     prog = None
-    host = None
     maxDiff = 4096
 
     def _write_files(self, host, files):
@@ -49,7 +47,7 @@ class MainTestCase(TestCase):
         self.assertEqual(interesting_files, set(expected_files.keys()))
 
     def make_host(self):
-        return typ_host.Host()
+        return self.child.host
 
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)
@@ -60,7 +58,7 @@ class MainTestCase(TestCase):
               files_to_ignore=None):
         # Too many arguments pylint: disable=R0913
         prog = prog or self.prog or []
-        host = host or self.host or self.make_host()
+        host = host or self.make_host()
         argv = shlex.split(cmd) if isinstance(cmd, basestring) else cmd or []
 
         tmpdir = None
