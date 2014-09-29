@@ -335,8 +335,8 @@ class TestCli(test_case.MainTestCase):
     def test_setup_and_teardown_single_child(self):
         files = {'st_test.py': SETUP_AND_TEARDOWN}
         self.check(['--jobs', '1',
-                    '--setup-process-name', 'st_test.setupProcess',
-                    '--teardown-process-name', 'st_test.teardownProcess'],
+                    '--setup', 'st_test.setupProcess',
+                    '--teardown', 'st_test.teardownProcess'],
                     files=files, ret=0, err='',
                     out=("setupProcess(1): {'passed_in': False, 'calls': 0}\n"
                          "[1/4] st_test.TypTest.test_one passed\n"

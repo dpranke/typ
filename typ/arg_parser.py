@@ -121,9 +121,9 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument('--passthrough', action='store_true',
                           default=False,
                           help=argparse.SUPPRESS)
-        self.add_argument('--setup-process-name', help=argparse.SUPPRESS)
-        self.add_argument('--teardown-process-name', help=argparse.SUPPRESS)
-        self.add_argument('--user-context', help=argparse.SUPPRESS)
+        self.add_argument('--setup', help=argparse.SUPPRESS)
+        self.add_argument('--teardown', help=argparse.SUPPRESS)
+        self.add_argument('--context', help=argparse.SUPPRESS)
         self.add_argument('tests', nargs='*', default=[],
                           help=argparse.SUPPRESS)
 

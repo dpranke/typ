@@ -34,14 +34,14 @@ from typ.version import VERSION
 
 class TestSet(object):
     def __init__(self, parallel_tests=None, isolated_tests=None,
-                 tests_to_skip=None, context = None,
-                 setup_process_name=None, teardown_process_name=None):
+                 tests_to_skip=None, context=None, setup_fn=None,
+                 teardown_fn=None):
         self.parallel_tests = parallel_tests or []
         self.isolated_tests = isolated_tests or []
         self.tests_to_skip = tests_to_skip or []
         self.context = context
-        self.setup_process_name = setup_process_name or []
-        self.teardown_process_name = teardown_process_name or []
+        self.setup_fn = setup_fn
+        self.teardown_fn = teardown_fn
 
 
 class ResultType(enum.Enum): # no __init__ pylint: disable=W0232
@@ -102,14 +102,8 @@ class Runner(object):
             return parser.exit_status
 
         try:
-            ret, full_results = self.run()
-            if full_results:
-                self.write_results(full_results)
-                upload_ret = self.upload_results(full_results)
-            else:
-                upload_ret = 0
-            self.report_coverage()
-            return ret or upload_ret
+            ret, _ = self.run()
+            return ret
         except KeyboardInterrupt:
             self.print_("interrupted, exiting", stream=self.host.stderr)
             return 130
@@ -123,7 +117,8 @@ class Runner(object):
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)
 
-    def run(self, test_set=None):
+    def run(self, test_set=None, classifier=None, context=None,
+            setup_fn=None, teardown_fn=None):
         ret = 0
 
         if self.args.version:
@@ -138,7 +133,8 @@ class Runner(object):
         full_results = None
 
         if not test_set:
-            ret, test_set = self.find_tests(self.args)
+            ret, test_set = self.find_tests(self.args, classifier, context,
+                                            setup_fn, teardown_fn)
         if not ret:
             ret, full_results = self._run_tests(test_set)
 
@@ -147,6 +143,14 @@ class Runner(object):
 
         if full_results:
             self._summarize(full_results)
+            self.write_results(full_results)
+            upload_ret = self.upload_results(full_results)
+            if not ret:
+                ret = upload_ret
+            self.report_coverage()
+        else:
+            upload_ret = 0
+
         return ret, full_results
 
     def _set_up_runner(self):
@@ -171,8 +175,17 @@ class Runner(object):
         if args.coverage: # pragma: no cover
             self.cov = coverage.coverage()
 
-    def find_tests(self, args, classifier=None):
-        test_set = self._make_test_set()
+    def find_tests(self, args, classifier=None,
+                   setup_fn=None, teardown_fn=None, context=None):
+        if not setup_fn and self.args.setup:
+            setup_fn = _import_name(self.args.setup)
+        if not teardown_fn and self.args.teardown:
+            teardown_fn = _import_name(self.args.teardown)
+        if not context and self.args.context:
+            context = json.loads(self.args.context)
+        test_set = self._make_test_set(context=context,
+                                       setup_fn=setup_fn,
+                                       teardown_fn=teardown_fn)
 
         h = self.host
 
@@ -287,7 +300,11 @@ class Runner(object):
 
             stats = Stats(self.args.status_format, h.time, 1)
             stats.total = len(failed_tests)
-            tests_to_retry = self._make_test_set(isolated_tests=failed_tests)
+            tests_to_retry = self._make_test_set(
+                isolated_tests=failed_tests,
+                context=test_set.context,
+                setup_fn=test_set.setup_fn,
+                teardown_fn=test_set.teardown_fn)
             result = self._run_one_set(stats, tests_to_retry)
             results.append(result)
             failed_tests = list(json_results.failed_test_names(result))
@@ -303,22 +320,13 @@ class Runner(object):
                 full_results)
 
     def _make_test_set(self, parallel_tests=None, isolated_tests=None,
-                       tests_to_skip=None):
+                       tests_to_skip=None, context=None, setup_fn=None,
+                       teardown_fn=None):
         parallel_tests = parallel_tests or []
         isolated_tests = isolated_tests or []
         tests_to_skip = tests_to_skip or []
-
-        if self.args.user_context: # pragma: no cover
-            user_context = self.args.user_context
-        else:
-            user_context = None
-
-        return TestSet(sorted(parallel_tests),
-                       sorted(isolated_tests),
-                       sorted(tests_to_skip),
-                       user_context,
-                       self.args.setup_process_name,
-                       self.args.teardown_process_name)
+        return TestSet(sorted(parallel_tests), sorted(isolated_tests),
+                       sorted(tests_to_skip), context, setup_fn, teardown_fn)
 
     def _run_one_set(self, stats, test_set):
         stats.total = (len(test_set.parallel_tests) +
@@ -469,8 +477,8 @@ class _Child(object):
         self.loader = loader
         self.passthrough = parent.args.passthrough
         self.context = test_set.context
-        self.setup_process_name = test_set.setup_process_name
-        self.teardown_process_name = test_set.teardown_process_name
+        self.setup_fn = test_set.setup_fn
+        self.teardown_fn = test_set.teardown_fn
         self.context_after_setup = None
 
 
@@ -478,18 +486,16 @@ def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
 
-    if child.setup_process_name: # pragma: no cover
-        func = _import_name(child.setup_process_name)
-        child.context_after_setup = func(child, child.context)
+    if child.setup_fn:
+        child.context_after_setup = child.setup_fn(child, child.context)
     else:
         child.context_after_setup = child.context
     return child
 
 
 def _teardown_process(child):
-    if child.teardown_process_name:  # pragma: no cover
-        func = _import_name(child.teardown_process_name)
-        func(child, child.context_after_setup)
+    if child.teardown_fn:
+        child.teardown_fn(child, child.context_after_setup)
     # TODO: Return a more structured result, including something from
     # the teardown function?
     return child.worker_num
