@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import coverage
-import enum
 import fnmatch
 import importlib
 import inspect
@@ -31,6 +29,11 @@ from typ.printer import Printer
 from typ.test_case import TestCase as TypTestCase
 from typ.version import VERSION
 
+try:
+   from enum import Enum
+except ImportError:
+   Enum = object
+
 
 class TestSet(object):
     def __init__(self, parallel_tests=None, isolated_tests=None,
@@ -44,7 +47,7 @@ class TestSet(object):
         self.teardown_fn = teardown_fn
 
 
-class ResultType(enum.Enum): # no __init__ pylint: disable=W0232
+class ResultType(Enum): # no __init__ pylint: disable=W0232
     Pass = 0
     Fail = 1
     ImageOnlyFailure = 2
@@ -125,7 +128,9 @@ class Runner(object):
             self.print_(VERSION)
             return ret, None
 
-        self._set_up_runner()
+        ret = self._set_up_runner()
+        if ret:
+            return ret, None
 
         if self.cov: # pragma: no cover
             self.cov.start()
@@ -173,7 +178,13 @@ class Runner(object):
             h.add_to_path(path)
 
         if args.coverage: # pragma: no cover
+            try:
+                import coverage
+            except ImportError:
+                h.print_("Error: coverage is not installed")
+                return 1
             self.cov = coverage.coverage()
+        return 0
 
     def find_tests(self, args, classifier=None,
                    context=None, setup_fn=None, teardown_fn=None):

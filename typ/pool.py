@@ -13,14 +13,19 @@
 # limitations under the License.
 
 import copy
-import enum
 import multiprocessing
 import pickle
+
+try:
+    from enum import Enum
+except ImportError:
+    Enum = object
 
 from typ.host import Host
 
 
-class _MessageType(enum.Enum):
+
+class _MessageType(Enum):
     # Class has no __init__ pylint: disable=W0232
     Request = 1
     Response = 2
