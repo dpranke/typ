@@ -30,9 +30,9 @@ from typ.test_case import TestCase as TypTestCase
 from typ.version import VERSION
 
 try:
-   from enum import Enum
-except ImportError:
-   Enum = object
+    from enum import Enum
+except ImportError: # pragma: no cover
+    Enum = object
 
 
 class TestSet(object):
@@ -129,7 +129,7 @@ class Runner(object):
             return ret, None
 
         ret = self._set_up_runner()
-        if ret:
+        if ret: # pragma: no cover
             return ret, None
 
         if self.cov: # pragma: no cover
@@ -188,11 +188,11 @@ class Runner(object):
 
     def find_tests(self, args, classifier=None,
                    context=None, setup_fn=None, teardown_fn=None):
-        if not context and self.args.context:
+        if not context and self.args.context: # pragma: no cover
             context = json.loads(self.args.context)
-        if not setup_fn and self.args.setup:
+        if not setup_fn and self.args.setup: # pragma: no cover
             setup_fn = _import_name(self.args.setup)
-        if not teardown_fn and self.args.teardown:
+        if not teardown_fn and self.args.teardown: # pragma: no cover
             teardown_fn = _import_name(self.args.teardown)
         test_set = self._make_test_set(context=context,
                                        setup_fn=setup_fn,
@@ -497,7 +497,7 @@ def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
 
-    if child.setup_fn:
+    if child.setup_fn: # pragma: no cover
         child.context_after_setup = child.setup_fn(child, child.context)
     else:
         child.context_after_setup = child.context
@@ -505,7 +505,7 @@ def _setup_process(host, worker_num, child):
 
 
 def _teardown_process(child):
-    if child.teardown_fn:
+    if child.teardown_fn: # pragma: no cover
         child.teardown_fn(child, child.context_after_setup)
     # TODO: Return a more structured result, including something from
     # the teardown function?

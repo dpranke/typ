@@ -18,7 +18,7 @@ import pickle
 
 try:
     from enum import Enum
-except ImportError:
+except ImportError: # pragma: no cover
     Enum = object
 
 from typ.host import Host
@@ -43,11 +43,11 @@ def make_pool(host, jobs, callback, context, pre_fn, post_fn):
     #                     % str(e))
     try:
         _ = pickle.dumps(pre_fn)
-    except pickle.PickleError:
+    except pickle.PickleError: # pragma: no cover
         raise ValueError('pre_fn passed to make_pool is not picklable')
     try:
         _ = pickle.dumps(post_fn)
-    except pickle.PickleError:
+    except pickle.PickleError: # pragma: no cover
         raise ValueError('post_fn passed to make_pool is not picklable')
     cls = ProcessPool if jobs > 1 else AsyncPool
     return cls(host, jobs, callback, context, pre_fn, post_fn)

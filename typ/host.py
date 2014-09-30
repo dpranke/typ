@@ -210,7 +210,7 @@ class Host(object):
 
         # TODO: Make log capture more robust.
         self._orig_logging_handlers = self.logger.handlers
-        if self._orig_logging_handlers:
+        if self._orig_logging_handlers: # pragma: no cover
             self.logger.handlers = [logging.StreamHandler(self.stderr)]
 
         self.stdout.capture(divert)
