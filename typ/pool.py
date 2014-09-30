@@ -15,6 +15,7 @@
 import copy
 import enum
 import multiprocessing
+import pickle
 
 from typ.host import Host
 
@@ -29,6 +30,20 @@ class _MessageType(enum.Enum):
 
 
 def make_pool(host, jobs, callback, context, pre_fn, post_fn):
+    # TODO: Fix the fake test loader in main_test so that we can assert this.
+    #try:
+    #    _ = pickle.dumps(context)
+    #except Exception as e:
+    #    raise ValueError('context passed to make_pool is not picklable: %s'
+    #                     % str(e))
+    try:
+        _ = pickle.dumps(pre_fn)
+    except pickle.PickleError:
+        raise ValueError('pre_fn passed to make_pool is not picklable')
+    try:
+        _ = pickle.dumps(post_fn)
+    except pickle.PickleError:
+        raise ValueError('post_fn passed to make_pool is not picklable')
     cls = ProcessPool if jobs > 1 else AsyncPool
     return cls(host, jobs, callback, context, pre_fn, post_fn)
 

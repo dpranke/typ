@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import io
+import logging
 import multiprocessing
 import os
 import shutil
@@ -36,6 +37,10 @@ class Host(object):
 
     _orig_stdout = orig_stdout
     _orig_stderr = orig_stderr
+
+    def __init__(self):
+        self.logger = logging.getLogger()
+        self._orig_logging_handlers = None
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))
@@ -202,12 +207,19 @@ class Host(object):
 
     def capture_output(self, divert=True):
         self._tap_output()
+
+        # TODO: Make log capture more robust.
+        self._orig_logging_handlers = self.logger.handlers
+        if self._orig_logging_handlers:
+            self.logger.handlers = [logging.StreamHandler(self.stderr)]
+
         self.stdout.capture(divert)
         self.stderr.capture(divert)
 
     def restore_output(self):
         assert isinstance(self.stdout, _TeedStream)
         out, err = (self.stdout.restore(), self.stderr.restore())
+        self.logger.handlers = self._orig_logging_handlers
         self._untap_output()
         return out, err
 
