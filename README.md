@@ -23,10 +23,6 @@ Things remaining for 1.0, roughly in priority order:
 
 - Testing intra-method test skipping (a la @unittest.skip) and 
   expected failures
-- Clean up the API and refactor the tester module
-- Support for per-process setup and teardown entry points (for telemetry
-  and run-webkit-tests to support efficient per-process launching of
-  browsers)
 - (Re-)test on Windows, Linux to check for regressions
 - Add more testing of the exact output
 - Remove as many of the "pragma: no-cover" hacks as possible and get test
@@ -46,7 +42,6 @@ Things remaining for 1.0, roughly in priority order:
 Possible future work
 --------------------
 
-- investigate unittest.TestResult.buffer
 - support testing javascript, c++/gtest-style binaries
 - Implement a non-python file format for testing command line interfaces
 - Support for test sharding in addition to parallel execution (so that
