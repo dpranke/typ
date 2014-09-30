@@ -24,23 +24,21 @@ import time
 import urllib2
 
 
-orig_stderr = sys.stderr
-orig_stdout = sys.stdout
 
 
 class Host(object):
     python_interpreter = sys.executable
     sep = os.sep
-    stdin = sys.stdin
-    stderr = sys.stderr
-    stdout = sys.stdout
 
-    _orig_stdout = orig_stdout
-    _orig_stderr = orig_stderr
+    _orig_stdout = sys.stdout
+    _orig_stderr = sys.stderr
 
     def __init__(self):
         self.logger = logging.getLogger()
         self._orig_logging_handlers = None
+        self.stdout = sys.stdout
+        self.stderr = sys.stderr
+        self.stdin = sys.stdin
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))

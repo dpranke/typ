@@ -17,6 +17,8 @@ import re
 import sys
 import unittest
 
+from typ.host import Host
+
 
 class FakeTestLoader(object):
     # invalid names pylint: disable=C0103
@@ -24,11 +26,19 @@ class FakeTestLoader(object):
     # unused args pylint: disable=W0613
 
     def __init__(self, host, orig_sys_path):
-        self.host = host
+        self._host = host
         self.orig_sys_path = orig_sys_path
 
+    def __getstate__(self):
+        return {'orig_sys_path': self.orig_sys_path, '_host': None}
+
+    def host(self):
+        if not self._host:
+            self._host = Host()
+        return self._host
+
     def discover(self, start_dir, pattern='test*.py', top_level_dir=None):
-        h = self.host
+        h = self.host()
         all_files = h.files_under(start_dir)
         matching_files = [f for f in all_files if
                           fnmatch.fnmatch(h.basename(f), pattern)]
@@ -39,7 +49,7 @@ class FakeTestLoader(object):
         return suite
 
     def _loadTestsFromFile(self, path, top_level_dir='.'):
-        h = self.host
+        h = self.host()
         rpath = h.relpath(path, top_level_dir)
         module_name = (h.splitext(rpath)[0]).replace(h.sep, '.')
         class_name = ''
@@ -57,7 +67,7 @@ class FakeTestLoader(object):
         return suite
 
     def loadTestsFromName(self, name, module=None): # pragma: no cover
-        h = self.host
+        h = self.host()
         comps = name.split('.')
         path = '/'.join(comps)
         test_path_dirs = [d for d in sys.path if d not in self.orig_sys_path]
@@ -153,13 +163,13 @@ class FakeTestCase(unittest.TestCase):
         return "%s testMethod=%s" % (self._class_name, self._testMethodName)
 
     def _run(self):
-        if 'fail' in self._testMethodName:
+        if '_fail' in self._testMethodName:
             self.fail()
-        if 'out' in self._testMethodName: # pragma: no cover
+        if '_out' in self._testMethodName: # pragma: no cover
             self._host.stdout.write('hello on stdout')
             self._host.stdout.flush()
-        if 'err' in self._testMethodName:
+        if '_err' in self._testMethodName: # pragma: no cover
             self._host.stderr.write('hello on stderr')
             self._host.stderr.flush()
-        if 'interrupt' in self._testMethodName:
+        if '_interrupt' in self._testMethodName:
             raise KeyboardInterrupt()

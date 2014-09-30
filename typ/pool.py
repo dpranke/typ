@@ -35,12 +35,11 @@ class _MessageType(Enum):
 
 
 def make_pool(host, jobs, callback, context, pre_fn, post_fn):
-    # TODO: Fix the fake test loader in main_test so that we can assert this.
-    #try:
-    #    _ = pickle.dumps(context)
-    #except Exception as e:
-    #    raise ValueError('context passed to make_pool is not picklable: %s'
-    #                     % str(e))
+    try:
+        _ = pickle.dumps(context)
+    except Exception as e: # pragma: no cover
+        raise ValueError('context passed to make_pool is not picklable: %s'
+                         % str(e))
     try:
         _ = pickle.dumps(pre_fn)
     except pickle.PickleError: # pragma: no cover

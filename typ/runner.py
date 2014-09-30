@@ -530,6 +530,14 @@ def _run_one_test(child, test_name):
     if child.dry_run:
         return test_name, 0, '', '', 0
 
+    # It is important to capture the output before loading the test
+    # to ensure that
+    # 1) the loader doesn't logs something we don't captured
+    # 2) neither the loader nor the test case grab a reference to the
+    #    uncaptured stdout or stderr that later is used when the test is run.
+    # This comes up when using the FakeTestLoader and testing typ itself,
+    # but could come up when testing non-typ code as well.
+    h.capture_output(divert=not child.passthrough)
     try:
         suite = child.loader.loadTestsFromName(test_name)
     except Exception as e: # pragma: no cover
@@ -547,7 +555,6 @@ def _run_one_test(child, test_name):
     result = TestResult()
     out = ''
     err = ''
-    h.capture_output(divert=not child.passthrough)
     start = h.time()
     try:
         if child.debugger: # pragma: no cover

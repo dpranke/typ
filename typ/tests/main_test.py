@@ -310,7 +310,8 @@ class TestCli(test_case.MainTestCase):
                   '  hello on stdout\n'
                   '  hello on stderr\n'
                   '  Traceback \(most recent call last\):\n'
-                  '    File ".*/output_tests.py", line 18, in test_out_err_fail\n'
+                  '    File ".*/output_tests.py", line 18, in '
+                  'test_out_err_fail\n'
                   '      self.fail\(\)\n'
                   '  AssertionError: None\n'
                   '1 test run, 1 failure.\n'),
@@ -362,7 +363,7 @@ class TestMain(TestCli):
         host.stdin = StringIO.StringIO(stdin)
         if env:
             host.getenv = env.get
-        host.capture_output()
+        host.capture_output(divert=not self.child.debugger)
         orig_sys_path = sys.path[:]
         loader = FakeTestLoader(host, orig_sys_path)
 
