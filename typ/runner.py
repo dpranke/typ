@@ -167,7 +167,13 @@ class Runner(object):
 
         self.top_level_dir = args.top_level_dir
         if not self.top_level_dir:
-            top_dir = h.getcwd()
+            if args.tests and h.exists(args.tests[0]):
+                # TODO: figure out what to do if multiple files are
+                # specified and they don't all have the same correct
+                # top level dir.
+                top_dir = h.dirname(args.tests[0])
+            else:
+                top_dir = h.getcwd()
             while h.exists(top_dir, '__init__.py'):
                 top_dir = h.dirname(top_dir)
             self.top_level_dir = top_dir

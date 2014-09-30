@@ -37,6 +37,11 @@ Things remaining for 1.0, roughly in priority order:
   - test tests failing a second time
   - test failing uploads
 - Write documentation
+- Write tests for different configurations:
+  - typ not installed, invoked via typ/main.py
+  - typ not installed, invoked via -m typ in dir above typ
+  - typ installed, invoked via typ/main.py
+  - test running tests with absolute paths to test files
 
 Possible future work
 --------------------

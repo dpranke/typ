@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import subprocess
 import sys
 import unittest
+
+# This ensures that absolute imports of typ modules will work when
+# running main.py as a script even if typ is not installed.
+# We need this entry in addition to the one in __main__.py to ensure
+# that typ/main.py works when invoked via subprocess on windows in
+# _spawn_main().
+dir_above_typ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if not dir_above_typ in sys.path:
+    sys.path.append(dir_above_typ)
 
 from typ.host import Host
 from typ.runner import Runner

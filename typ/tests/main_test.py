@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import StringIO
 import sys
 
@@ -150,9 +151,11 @@ class TypTest(typ_test_case.TestCase):
         self.context['calls'] += 1
 """
 
+path_to_main = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'main.py')
 
 class TestCli(test_case.MainTestCase):
-    prog = [sys.executable, '-m', 'typ']
+    prog = [sys.executable, path_to_main]
 
     def test_bad_arg(self):
         self.check(['--bad-arg'], ret=2)
@@ -270,12 +273,12 @@ class TestCli(test_case.MainTestCase):
                                  '  def test_err(self):\n'
                                  '    foo = bar\n')}
         self.check([''], files=files, ret=1,
-                   out=('[1/1] err_test.ErrTest.test_err failed:\n'
-                        '  Traceback (most recent call last):\n'
-                        '    File "err_test.py", line 4, in test_err\n'
-                        '      foo = bar\n'
-                        '  NameError: global name \'bar\' is not defined\n'
-                        '1 test run, 1 failure.\n'),
+                   rout=('\[1/1\] err_test.ErrTest.test_err failed:\n'
+                         '  Traceback \(most recent call last\):\n'
+                         '    File ".*err_test.py", line 4, in test_err\n'
+                         '      foo = bar\n'
+                         '  NameError: global name \'bar\' is not defined\n'
+                         '1 test run, 1 failure.\n'),
                    err='')
 
 
@@ -303,14 +306,14 @@ class TestCli(test_case.MainTestCase):
             ['output_tests.FailTest'],
             files=files,
             ret=1,
-            out=('[1/1] output_tests.FailTest.test_out_err_fail failed:\n'
-                 '  hello on stdout\n'
-                 '  hello on stderr\n'
-                 '  Traceback (most recent call last):\n'
-                 '    File "output_tests.py", line 18, in test_out_err_fail\n'
-                 '      self.fail()\n'
-                 '  AssertionError: None\n'
-                 '1 test run, 1 failure.\n'),
+            rout=('\[1/1\] output_tests.FailTest.test_out_err_fail failed:\n'
+                  '  hello on stdout\n'
+                  '  hello on stderr\n'
+                  '  Traceback \(most recent call last\):\n'
+                  '    File ".*/output_tests.py", line 18, in test_out_err_fail\n'
+                  '      self.fail\(\)\n'
+                  '  AssertionError: None\n'
+                  '1 test run, 1 failure.\n'),
             err='')
 
     def test_debugger(self):
