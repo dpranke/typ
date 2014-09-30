@@ -27,30 +27,30 @@ class TestMakeUploadRequest(unittest.TestCase):
 
         self.assertEqual(
             content_type,
-            'multipart/form-data; boundary=-M-A-G-I-C---B-O-U-N-D-A-R-Y-')
+            'multipart/form-data; boundary=-J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-')
 
         self.assertEqual(url, 'http://localhost/testfile/upload')
         self.assertMultiLineEqual(
             data,
-            ('---M-A-G-I-C---B-O-U-N-D-A-R-Y-\r\n'
+            ('---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-\r\n'
              'Content-Disposition: form-data; name="builder"\r\n'
              '\r\n'
              'fake_builder_name\r\n'
-             '---M-A-G-I-C---B-O-U-N-D-A-R-Y-\r\n'
+             '---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-\r\n'
              'Content-Disposition: form-data; name="master"\r\n'
              '\r\n'
              'fake_master\r\n'
-             '---M-A-G-I-C---B-O-U-N-D-A-R-Y-\r\n'
+             '---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-\r\n'
              'Content-Disposition: form-data; name="testtype"\r\n'
              '\r\n'
              'fake_test_type\r\n'
-             '---M-A-G-I-C---B-O-U-N-D-A-R-Y-\r\n'
+             '---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-\r\n'
              'Content-Disposition: form-data; name="file"; '
              'filename="full_results.json"\r\n'
              'Content-Type: application/json\r\n'
              '\r\n'
              '{"foo": "bar"}\r\n'
-             '---M-A-G-I-C---B-O-U-N-D-A-R-Y---\r\n'))
+             '---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y---\r\n'))
 
 
 class TestMakeFullResults(unittest.TestCase):

@@ -130,7 +130,7 @@ def _add_path_to_trie(trie, path, value):
 
 def _encode_multipart_form_data(attrs, test_results):
     # Cloned from webkitpy/common/net/file_uploader.py
-    BOUNDARY = '-M-A-G-I-C---B-O-U-N-D-A-R-Y-'
+    BOUNDARY = '-J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-'
     CRLF = '\r\n'
     lines = []
 
