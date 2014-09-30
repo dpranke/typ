@@ -176,13 +176,13 @@ class Runner(object):
             self.cov = coverage.coverage()
 
     def find_tests(self, args, classifier=None,
-                   setup_fn=None, teardown_fn=None, context=None):
+                   context=None, setup_fn=None, teardown_fn=None):
+        if not context and self.args.context:
+            context = json.loads(self.args.context)
         if not setup_fn and self.args.setup:
             setup_fn = _import_name(self.args.setup)
         if not teardown_fn and self.args.teardown:
             teardown_fn = _import_name(self.args.teardown)
-        if not context and self.args.context:
-            context = json.loads(self.args.context)
         test_set = self._make_test_set(context=context,
                                        setup_fn=setup_fn,
                                        teardown_fn=teardown_fn)
