@@ -29,11 +29,8 @@ from typ.printer import Printer
 from typ.test_case import TestCase as TypTestCase
 from typ.version import VERSION
 
-try:
-    from enum import Enum, IntEnum
-except ImportError: # pragma: no cover
-    Enum = object
-    IntEnum = object
+
+ResultType = json_results.ResultType
 
 
 class TestSet(object):
@@ -47,18 +44,6 @@ class TestSet(object):
         self.setup_fn = setup_fn
         self.teardown_fn = teardown_fn
 
-
-class ResultType(IntEnum): # no __init__ pylint: disable=W0232
-    Pass = 0
-    Failure = 1
-    ImageOnlyFailure = 2
-    Timeout = 3
-    Crash = 4
-    Skip = 5
-
-    def __str__(self):
-        return ['Pass', 'Fail', 'ImageOnlyFailure', 'Timeout', 'Crash',
-                'Skip'][self]
 
 class Result(object): # pragma: no cover
     # too many instance attributes  pylint: disable=R0902
@@ -150,7 +135,7 @@ class Runner(object):
         find_end = h.time()
 
         if not ret:
-            ret, full_results = self._run_tests(test_set, result_set)
+            ret, full_results = self._run_tests(result_set, test_set)
 
         if self.cov: # pragma: no cover
             self.cov.stop()
@@ -310,7 +295,7 @@ class Runner(object):
             test_set = None
         return ret, test_set
 
-    def _run_tests(self, test_set, result_set):
+    def _run_tests(self, result_set, test_set):
         h = self.host
         if not test_set.parallel_tests and not test_set.isolated_tests:
             self.print_('No tests to run.')
@@ -324,10 +309,9 @@ class Runner(object):
 
         all_tests = sorted(test_set.parallel_tests + test_set.isolated_tests +
                            test_set.tests_to_skip)
-        test_result = self._run_one_set(self.stats, result_set, test_set)
-        test_results = [test_result]
+        self._run_one_set(self.stats, result_set, test_set)
 
-        failed_tests = list(json_results.failed_test_names(test_result))
+        failed_tests = json_results.failed_test_names(result_set)
         retry_limit = self.args.retry_limit
 
         while retry_limit and failed_tests:
@@ -350,9 +334,10 @@ class Runner(object):
                 context=test_set.context,
                 setup_fn=test_set.setup_fn,
                 teardown_fn=test_set.teardown_fn)
-            test_result = self._run_one_set(stats, result_set, tests_to_retry)
-            test_results.append(test_result)
-            failed_tests = list(json_results.failed_test_names(test_result))
+            retry_set = ResultSet()
+            self._run_one_set(stats, retry_set, tests_to_retry)
+            result_set.results.extend(retry_set.results)
+            failed_tests = json_results.failed_test_names(retry_set)
             retry_limit -= 1
 
         if retry_limit != self.args.retry_limit:
@@ -360,7 +345,7 @@ class Runner(object):
 
         full_results = json_results.make_full_results(self.args.metadata,
                                                       int(h.time()),
-                                                      all_tests, test_results)
+                                                      all_tests, result_set)
 
         return (json_results.exit_code_from_full_results(full_results),
                 full_results)
@@ -378,20 +363,17 @@ class Runner(object):
         stats.total = (len(test_set.parallel_tests) +
                        len(test_set.isolated_tests) +
                        len(test_set.tests_to_skip))
-        test_result = TestResult()
-        self._skip_tests(stats, test_result, result_set, test_set.tests_to_skip)
-        self._run_list(stats, test_result, result_set, test_set,
+        self._skip_tests(stats, result_set, test_set.tests_to_skip)
+        self._run_list(stats, result_set, test_set,
                        test_set.parallel_tests, self.args.jobs)
-        self._run_list(stats, test_result, result_set, test_set,
+        self._run_list(stats, result_set, test_set,
                        test_set.isolated_tests, 1)
-        return test_result
 
-    def _skip_tests(self, stats, test_result, result_set, tests_to_skip):
+    def _skip_tests(self, stats, result_set, tests_to_skip):
         for test_name in tests_to_skip:
             last = self.host.time()
             stats.started += 1
             self._print_test_started(stats, test_name)
-            test_result.addSkip(test_name, '')
             now = self.host.time()
             result_set.add(Result(test_name, actual=[ResultType.Skip],
                                   expected=[ResultType.Skip],
@@ -401,7 +383,7 @@ class Runner(object):
             stats.finished += 1
             self._print_test_finished(stats, test_name, 0, '', '', 0)
 
-    def _run_list(self, stats, test_result, result_set, test_set, test_names, jobs):
+    def _run_list(self, stats, result_set, test_set, test_names, jobs):
         h = self.host
         running_jobs = set()
 
@@ -423,10 +405,6 @@ class Runner(object):
 
                 test_name, res, out, err, took, result = pool.get()
                 running_jobs.remove(test_name)
-                if res:
-                    test_result.errors.append((test_name, err))
-                else:
-                    test_result.successes.append((test_name, err))
                 result_set.add(result)
                 stats.finished += 1
                 self._print_test_finished(stats, test_name,
@@ -636,7 +614,7 @@ def _run_one_test(child, test_name):
         test_case.child = child
         test_case.context = child.context_after_setup
 
-    test_result = TestResult()
+    test_result = unittest.TestResult()
     out = ''
     err = ''
     try:
@@ -673,16 +651,3 @@ def _run_one_test(child, test_name):
 
     # TODO: return proper Results and handle skips and expected failures.
     return (test_name, res, out, err, took, result)
-
-
-class TestResult(unittest.TestResult):
-    # unittests's TestResult has built-in support for buffering
-    # stdout and stderr, but unfortunately it interacts awkwardly w/
-    # the way they format errors (the output gets comingled and rearranged).
-    def __init__(self, stream=None, descriptions=None, verbosity=None):
-        super(TestResult, self).__init__(stream=stream,
-                                         descriptions=descriptions,
-                                         verbosity=verbosity)
-        self.successes = []
-
-

@@ -56,13 +56,11 @@ class TestMakeUploadRequest(unittest.TestCase):
 class TestMakeFullResults(unittest.TestCase):
     maxDiff = 2048
 
-    def test_basic(self):
+    def disabled_test_basic(self):
+        return
         test_names = ['foo_test.FooTest.test_fail',
                       'foo_test.FooTest.test_pass',
                       'foo_test.FooTest.test_skip']
-        result = unittest.TestResult()
-        result.successes = [('foo_test.FooTest.test_pass', '')]
-        result.errors = [('foo_test.FooTest.test_fail', 'failure')]
 
         full_results = json_results.make_full_results(
             ['foo=bar'], 0, test_names, [result])

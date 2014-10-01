@@ -14,6 +14,27 @@
 
 import json
 
+try:
+    from enum import Enum, IntEnum
+except ImportError: # pragma: no cover
+    Enum = object
+    IntEnum = object
+
+
+class ResultType(IntEnum): # no __init__ pylint: disable=W0232
+    Pass = 0
+    Failure = 1
+    ImageOnlyFailure = 2
+    Timeout = 3
+    Crash = 4
+    Skip = 5
+
+    def __str__(self):
+        return ['Pass', 'Fail', 'ImageOnlyFailure', 'Timeout', 'Crash',
+                'Skip'][self]
+
+
+
 
 TEST_SEPARATOR = '.'
 
@@ -32,16 +53,14 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
         key, val = md.split('=', 1)
         full_results[key] = val
 
-    sets_of_passing_test_names = map(_passing_test_names, results)
-    sets_of_failing_test_names = map(failed_test_names, results)
-
-    skipped_tests = (set(all_test_names) - sets_of_passing_test_names[0]
-                                         - sets_of_failing_test_names[0])
+    passing_tests = _passing_test_names(results)
+    failed_tests = failed_test_names(results)
+    skipped_tests = set(all_test_names) - passing_tests - failed_tests
 
     n_tests = len(all_test_names)
-    n_failures = len(sets_of_failing_test_names[-1])
+    n_failures = len(failed_tests)
     n_skips = len(skipped_tests)
-    n_passes = n_tests - n_failures - n_skips
+    n_passes = len(passing_tests)
     full_results['num_failures_by_type'] = {
         'FAIL': n_failures,
         'PASS': n_passes,
@@ -59,9 +78,7 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
         else:
             value = {
                 'expected': 'PASS',
-                'actual': _actual_results_for_test(test_name,
-                                                   sets_of_failing_test_names,
-                                                   sets_of_passing_test_names),
+                'actual': _actual_results_for_test(test_name, results)
             }
             if value['actual'].endswith('FAIL'):
                 value['is_unexpected'] = True
@@ -88,31 +105,27 @@ def num_failures(full_results):
     return full_results['num_failures_by_type']['FAIL']
 
 
-def failed_test_names(result):
-    test_names = set()
-    for test, _ in result.failures + result.errors:
-        assert isinstance(test, str), ('Unexpected test type: %s' %
-                                       test.__class__)
-        test_names.add(test)
-    return test_names
+def failed_test_names(results):
+    names = set()
+    for r in results.results:
+        if r.actual == ResultType.Failure:
+            names.add(r.name)
+        elif r.actual == ResultType.Pass and r.name in names:
+            names.remove(r.name)
+    return names
+
+def _passing_test_names(results):
+    return set(r.name for r in results.results if r.actual == ResultType.Pass)
 
 
-def _passing_test_names(result):
-    return set(test for test, _ in result.successes)
-
-
-def _actual_results_for_test(test_name, sets_of_failing_test_names,
-                             sets_of_passing_test_names):
+def _actual_results_for_test(test_name, results):
     actuals = []
-    for retry_num in range(len(sets_of_failing_test_names)):
-        if test_name in sets_of_failing_test_names[retry_num]:
-            actuals.append('FAIL')
-        elif test_name in sets_of_passing_test_names[retry_num]:
-            assert ((retry_num == 0) or
-                    (test_name in sets_of_failing_test_names[retry_num - 1])), (
-                      'We should not have run a test that did not fail '
-                      'on the previous run.')
-            actuals.append('PASS')
+    for r in results.results:
+        if r.name == test_name:
+            if r.actual == ResultType.Failure:
+                actuals.append('FAIL')
+            elif r.actual == ResultType.Pass:
+                actuals.append('PASS')
 
     assert actuals, 'We did not find any result data for %s.' % test_name
     return ' '.join(actuals)
