@@ -35,7 +35,7 @@ class TestPrinter(unittest.TestCase):
         pr = Printer(self.print_, False, 8)
         pr.update('hello world')
         pr.flush()
-        self.assertEqual(self.out, ['hel ...', '\n'])
+        self.assertEqual(self.out, ['h...d', '\n'])
 
     def test_overwrite(self):
         pr = Printer(self.print_, True, 80)
