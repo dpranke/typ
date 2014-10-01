@@ -338,11 +338,9 @@ class Runner(object):
             stats.started += 1
             self._print_test_started(stats, test_name)
             now = self.host.time()
-            result = Result(test_name, actual=[ResultType.Skip],
-                            expected=[ResultType.Skip],
-                            out='', err='', code=0,
-                            started=last, took=(now - last),
-                            worker=0)
+            result = Result(test_name, actual=ResultType.Skip,
+                            started=last, took=(now - last), worker=0,
+                            expected=[ResultType.Skip])
             result_set.add(result)
             stats.finished += 1
             self._print_test_finished(stats, result)
@@ -385,23 +383,25 @@ class Runner(object):
         stats.add_time()
         suffix = '%s%s' % (' failed' if result.code else ' passed',
                            (' %.4fs' % result.took) if self.args.timing else '')
+        out = result.out
+        err = result.err
         if result.code:
-            if result.out or result.err:
+            if out or err:
                 suffix += ':\n'
             self.update(stats.format() + result.name + suffix, elide=False)
-            for l in result.out.splitlines(): # pragma: no cover
+            for l in out.splitlines(): # pragma: no cover
                 self.print_('  %s' % l)
-            for l in result.err.splitlines(): # pragma: no cover
+            for l in err.splitlines(): # pragma: no cover
                 self.print_('  %s' % l)
         elif not self.args.quiet:
-            if self.args.verbose > 1 and (result.out or result.err): # pragma: no cover
+            if self.args.verbose > 1 and (out or err): # pragma: no cover
                 suffix += ':\n'
             self.update(stats.format() + result.name + suffix,
                         elide=(not self.args.verbose))
             if self.args.verbose > 1: # pragma: no cover
-                for l in result.out.splitlines():
+                for l in out.splitlines():
                     self.print_('  %s' % l)
-                for l in result.err.splitlines():
+                for l in err.splitlines():
                     self.print_('  %s' % l)
             if self.args.verbose: # pragma: no cover
                 self.flush()
@@ -484,14 +484,13 @@ class Runner(object):
             'traceEvents': [],
             'otherData': {},
         }
-        for m in self.args.metadata:
+        for m in self.args.metadata: # pragma: no cover
             k, v = m.split('=')
             trace['otherData'][k] = v
 
         for result in result_set.results:
             started = int((result.started - self.stats.started_time) * 1000000)
             took = int(result.took * 1000000)
-            end = started + took
             event = {
                 'name': result.name,
                 'dur': took,
@@ -557,8 +556,7 @@ def _run_one_test(child, test_name):
 
     start = h.time()
     if child.dry_run:
-        return Result(test_name, actual=ResultType.Pass,
-                      started=start, took=0, worker=child.worker_num)
+        return Result(test_name, ResultType.Pass, start, 0, child.worker_num)
 
     # It is important to capture the output before loading the test
     # to ensure that
@@ -574,9 +572,8 @@ def _run_one_test(child, test_name):
         # TODO: Figure out how to handle failures here.
         err = 'failed to load %s: %s' % (test_name, str(e))
         h.restore_output()
-        return Result(test_name, actual=ResultType.Failure, unexpected=True,
-                      code=1, err=err, started=start, took=0,
-                      worker=child.worker_num)
+        return Result(test_name, ResultType.Failure, start, 0, child.worker_num,
+                      unexpected=True, code=1, err=err)
 
     tests = list(suite)
     assert len(tests) == 1
@@ -608,7 +605,7 @@ def _run_one_test(child, test_name):
         err = err + test_result.failures[0][1]
         actual = ResultType.Failure
         code = 1
-    elif test_result.errors:
+    elif test_result.errors: # pragma: no cover
         err = err + test_result.errors[0][1]
         actual = ResultType.Failure
         code = 1
@@ -620,5 +617,5 @@ def _run_one_test(child, test_name):
     expected = [ResultType.Pass]
     unexpected = (actual==ResultType.Failure)
     flaky = False
-    return Result(test_name, actual, expected, unexpected, flaky,
-                  out, err, code, start, took, child.worker_num)
+    return Result(test_name, actual, start, took, child.worker_num,
+                  expected, unexpected, flaky, code, out, err)

@@ -324,7 +324,7 @@ class TestCli(test_case.MainTestCase):
     def test_coverage(self):
         files = {'pass_test.py': PASSING_TEST}
         try:
-            import coverage
+            import coverage # pylint: disable=W0612
             self.check(['-c'], files=files, ret=0,
                        out=('[1/1] pass_test.PassingTest.test_pass passed\n'
                             '1 test run, 0 failures.\n'
@@ -332,7 +332,7 @@ class TestCli(test_case.MainTestCase):
                             'Name        Stmts   Miss  Cover\n'
                             '-------------------------------\n'
                             'pass_test       4      0   100%\n'))
-        except ImportError:
+        except ImportError: # pragma: no cover
             self.check(['-c'], files=files, ret=1,
                        out='Error: coverage is not installed\n', err='')
 

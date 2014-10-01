@@ -29,7 +29,8 @@ class TestMakeUploadRequest(unittest.TestCase):
 
         self.assertEqual(
             content_type,
-            'multipart/form-data; boundary=-J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-')
+            'multipart/form-data; '
+            'boundary=-J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y-')
 
         self.assertEqual(url, 'http://localhost/testfile/upload')
         self.assertMultiLineEqual(
@@ -68,13 +69,14 @@ class TestMakeFullResults(unittest.TestCase):
         result_set = json_results.ResultSet()
         result_set.add(
             json_results.Result('foo_test.FooTest.test_fail',
-                                actual=json_results.ResultType.Failure,
+                                json_results.ResultType.Failure, 0, 0, 0,
                                 unexpected=True))
         result_set.add(json_results.Result('foo_test.FooTest.test_pass',
-                                           actual=json_results.ResultType.Pass))
+                                           json_results.ResultType.Pass,
+                                           0, 0, 0))
         result_set.add(json_results.Result('foo_test.FooTest.test_skip',
-                                           actual=json_results.ResultType.Skip,
-                                           unexpected=False))
+                                           json_results.ResultType.Skip,
+                                           0, 0, 0, unexpected=False))
 
         full_results = json_results.make_full_results(
             ['foo=bar'], 0, test_names, result_set)

@@ -15,7 +15,7 @@
 import json
 
 try:
-    from enum import Enum, IntEnum
+    from enum import IntEnum
 except ImportError: # pragma: no cover
     Enum = object
     IntEnum = object
@@ -37,20 +37,20 @@ class ResultType(IntEnum): # no __init__ pylint: disable=W0232
 class Result(object): # pragma: no cover
     # too many instance attributes  pylint: disable=R0902
     # too many arguments  pylint: disable=R0913
-    def __init__(self, name, actual=None, unexpected=False, flaky=False,
-                 expected=None, out='', err='', code=0,
-                 started=None, took=None, worker=None):
+    def __init__(self, name, actual, started, took, worker,
+                 expected=None, unexpected=False,
+                 flaky=False, code=0, out='', err=''):
         self.name = name
-        self.expected = expected or [ResultType.Pass]
         self.actual = actual
-        self.unexpected = unexpected
-        self.flaky = flaky
-        self.out = out
-        self.err = err
-        self.code = code
         self.started = started
         self.took = took
         self.worker = worker
+        self.expected = expected or [ResultType.Pass]
+        self.unexpected = unexpected
+        self.flaky = flaky
+        self.code = code
+        self.out = out
+        self.err = err
 
 
 class ResultSet(object): # pragma: no cover
@@ -82,14 +82,10 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
     failed_tests = failed_test_names(results)
     skipped_tests = set(all_test_names) - passing_tests - failed_tests
 
-    n_tests = len(all_test_names)
-    n_failures = len(failed_tests)
-    n_skips = len(skipped_tests)
-    n_passes = len(passing_tests)
     full_results['num_failures_by_type'] = {
-        'FAIL': n_failures,
-        'PASS': n_passes,
-        'SKIP': n_skips,
+        'FAIL': len(failed_tests),
+        'PASS': len(passing_tests),
+        'SKIP': len(skipped_tests),
     }
 
     full_results['tests'] = {}
@@ -135,7 +131,7 @@ def failed_test_names(results):
     for r in results.results:
         if r.actual == ResultType.Failure:
             names.add(r.name)
-        elif r.actual == ResultType.Pass and r.name in names:
+        elif r.actual == ResultType.Pass and r.name in names: # pragma: no cover
             names.remove(r.name)
     return names
 

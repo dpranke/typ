@@ -23,7 +23,7 @@ import unittest
 # that typ/main.py works when invoked via subprocess on windows in
 # _spawn_main().
 dir_above_typ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if not dir_above_typ in sys.path:
+if not dir_above_typ in sys.path: # pragma: no cover
     sys.path.append(dir_above_typ)
 
 from typ.host import Host
