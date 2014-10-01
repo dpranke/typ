@@ -49,9 +49,8 @@ class Result(object): # pragma: no cover
     # too many instance attributes  pylint: disable=R0902
     # too many arguments  pylint: disable=R0913
     def __init__(self, name, actual=None, unexpected=False, flaky=False,
-                 expected=None,
-                 out=None, err=None, code=None, started=None, took=None,
-                 worker=None):
+                 expected=None, out='', err='', code=0,
+                 started=None, took=None, worker=None):
         self.name = name
         self.expected = expected or [ResultType.Pass]
         self.actual = actual
@@ -375,13 +374,14 @@ class Runner(object):
             stats.started += 1
             self._print_test_started(stats, test_name)
             now = self.host.time()
-            result_set.add(Result(test_name, actual=[ResultType.Skip],
-                                  expected=[ResultType.Skip],
-                                  out='', err='', code=0,
-                                  started=last, took=(now - last),
-                                  worker=0))
+            result = Result(test_name, actual=[ResultType.Skip],
+                            expected=[ResultType.Skip],
+                            out='', err='', code=0,
+                            started=last, took=(now - last),
+                            worker=0)
+            result_set.add(result)
             stats.finished += 1
-            self._print_test_finished(stats, test_name, 0, '', '', 0)
+            self._print_test_finished(stats, result)
 
     def _run_list(self, stats, result_set, test_set, test_names, jobs):
         h = self.host
@@ -403,12 +403,11 @@ class Runner(object):
                     running_jobs.add(test_name)
                     self._print_test_started(stats, test_name)
 
-                test_name, res, out, err, took, result = pool.get()
-                running_jobs.remove(test_name)
+                result = pool.get()
+                running_jobs.remove(result.name)
                 result_set.add(result)
                 stats.finished += 1
-                self._print_test_finished(stats, test_name,
-                                          res, out, err, took)
+                self._print_test_finished(stats, result)
             pool.close()
         finally:
             pool.join()
@@ -418,27 +417,27 @@ class Runner(object):
             self.update(stats.format() + test_name,
                         elide=(not self.args.verbose))
 
-    def _print_test_finished(self, stats, test_name, res, out, err, took):
+    def _print_test_finished(self, stats, result):
         stats.add_time()
-        suffix = '%s%s' % (' failed' if res else ' passed',
-                           (' %.4fs' % took) if self.args.timing else '')
-        if res:
-            if out or err:
+        suffix = '%s%s' % (' failed' if result.code else ' passed',
+                           (' %.4fs' % result.took) if self.args.timing else '')
+        if result.code:
+            if result.out or result.err:
                 suffix += ':\n'
-            self.update(stats.format() + test_name + suffix, elide=False)
-            for l in out.splitlines(): # pragma: no cover
+            self.update(stats.format() + result.name + suffix, elide=False)
+            for l in result.out.splitlines(): # pragma: no cover
                 self.print_('  %s' % l)
-            for l in err.splitlines(): # pragma: no cover
+            for l in result.err.splitlines(): # pragma: no cover
                 self.print_('  %s' % l)
         elif not self.args.quiet:
-            if self.args.verbose > 1 and (out or err): # pragma: no cover
+            if self.args.verbose > 1 and (result.out or result.err): # pragma: no cover
                 suffix += ':\n'
-            self.update(stats.format() + test_name + suffix,
+            self.update(stats.format() + result.name + suffix,
                         elide=(not self.args.verbose))
             if self.args.verbose > 1: # pragma: no cover
-                for l in out.splitlines():
+                for l in result.out.splitlines():
                     self.print_('  %s' % l)
-                for l in err.splitlines():
+                for l in result.err.splitlines():
                     self.print_('  %s' % l)
             if self.args.verbose: # pragma: no cover
                 self.flush()
@@ -583,10 +582,8 @@ def _run_one_test(child, test_name):
 
     start = h.time()
     if child.dry_run:
-        return (test_name, 0, '', '', 0,
-                Result(test_name, actual=ResultType.Pass,
-                       expected=[ResultType.Pass], code=0, out='', err='',
-                       started = start, took=0, worker=child.worker_num))
+        return Result(test_name, actual=ResultType.Pass,
+                      started=start, took=0, worker=child.worker_num)
 
     # It is important to capture the output before loading the test
     # to ensure that
@@ -602,10 +599,9 @@ def _run_one_test(child, test_name):
         # TODO: Figure out how to handle failures here.
         err = 'failed to load %s: %s' % (test_name, str(e))
         h.restore_output()
-        return (test_name, 1, '', err, 0,
-                Result(test_name, res=1, out='', err=err, took=0,
-                       expected=[ResultType.Pass], actual=ResultType.Failure,
-                       worker=child.worker_num))
+        return Result(test_name, actual=ResultType.Failure, unexpected=True,
+                      code=1, err=err, started=start, took=0,
+                      worker=child.worker_num)
 
     tests = list(suite)
     assert len(tests) == 1
@@ -636,18 +632,18 @@ def _run_one_test(child, test_name):
     if test_result.failures:
         err = err + test_result.failures[0][1]
         actual = ResultType.Failure
-        res = 1
+        code = 1
     elif test_result.errors:
         err = err + test_result.errors[0][1]
         actual = ResultType.Failure
-        res = 1
+        code = 1
     else:
         actual = ResultType.Pass
-        res = 0
+        code = 0
 
-    result = Result(test_name, actual=actual, expected=[ResultType.Pass],
-                    code=res, out=out, err=err, started=start, took=took,
-                    worker=child.worker_num)
-
-    # TODO: return proper Results and handle skips and expected failures.
-    return (test_name, res, out, err, took, result)
+    # TODO: handle skips and expected failures.
+    expected = [ResultType.Pass]
+    unexpected = (actual==ResultType.Failure)
+    flaky = False
+    return Result(test_name, actual, expected, unexpected, flaky,
+                  out, err, code, start, took, child.worker_num)
