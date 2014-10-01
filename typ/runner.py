@@ -127,6 +127,7 @@ class Runner(object):
     def run(self, test_set=None, classifier=None, context=None,
             setup_fn=None, teardown_fn=None):
         ret = 0
+        h = self.host
 
         if self.args.version:
             self.print_(VERSION)
@@ -136,6 +137,7 @@ class Runner(object):
         if ret: # pragma: no cover
             return ret, None, None
 
+        find_start = h.time()
         if self.cov: # pragma: no cover
             self.cov.start()
 
@@ -145,25 +147,44 @@ class Runner(object):
         if not test_set:
             ret, test_set = self.find_tests(self.args, classifier, context,
                                             setup_fn, teardown_fn)
+        find_end = h.time()
+
         if not ret:
             ret, full_results = self._run_tests(test_set, result_set)
-        trace = self._trace_from_results(result_set)
 
         if self.cov: # pragma: no cover
             self.cov.stop()
+        test_end = h.time()
 
+        trace = self._trace_from_results(result_set)
         if full_results:
             self._summarize(full_results)
-            self.write_trace(trace)
             self.write_results(full_results)
             upload_ret = self.upload_results(full_results)
             if not ret:
                 ret = upload_ret
             self.report_coverage()
+            reporting_end = h.time()
+            self._add_trace_event(trace, 'run', find_start, reporting_end)
+            self._add_trace_event(trace, 'discovery', find_start, find_end)
+            self._add_trace_event(trace, 'testing', find_end, test_end)
+            self._add_trace_event(trace, 'reporting', test_end, reporting_end)
+            self.write_trace(trace)
         else:
             upload_ret = 0
 
         return ret, full_results, trace
+
+    def _add_trace_event(self, trace, name, start, end):
+        event = {
+            'name': name,
+            'ts': int((start - self.stats.started_time) * 1000000),
+            'dur': int((end - start) * 1000000),
+            'ph': 'X',
+            'pid': 0,
+            'tid': 0,
+        }
+        trace['traceEvents'].append(event)
 
     def _set_up_runner(self):
         h = self.host
