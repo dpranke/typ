@@ -30,6 +30,8 @@ from typ.test_case import TestCase as TypTestCase
 from typ.version import VERSION
 
 
+Result = json_results.Result
+ResultSet = json_results.ResultSet
 ResultType = json_results.ResultType
 
 
@@ -43,33 +45,6 @@ class TestSet(object):
         self.context = context
         self.setup_fn = setup_fn
         self.teardown_fn = teardown_fn
-
-
-class Result(object): # pragma: no cover
-    # too many instance attributes  pylint: disable=R0902
-    # too many arguments  pylint: disable=R0913
-    def __init__(self, name, actual=None, unexpected=False, flaky=False,
-                 expected=None, out='', err='', code=0,
-                 started=None, took=None, worker=None):
-        self.name = name
-        self.expected = expected or [ResultType.Pass]
-        self.actual = actual
-        self.unexpected = unexpected
-        self.flaky = flaky
-        self.out = out
-        self.err = err
-        self.code = code
-        self.started = started
-        self.took = took
-        self.worker = worker
-
-
-class ResultSet(object): # pragma: no cover
-    def __init__(self):
-        self.results = []
-
-    def add(self, result):
-        self.results.append(result)
 
 
 class Runner(object):
@@ -158,17 +133,6 @@ class Runner(object):
             upload_ret = 0
 
         return ret, full_results, trace
-
-    def _add_trace_event(self, trace, name, start, end):
-        event = {
-            'name': name,
-            'ts': int((start - self.stats.started_time) * 1000000),
-            'dur': int((end - start) * 1000000),
-            'ph': 'X',
-            'pid': 0,
-            'tid': 0,
-        }
-        trace['traceEvents'].append(event)
 
     def _set_up_runner(self):
         h = self.host
@@ -503,6 +467,17 @@ class Runner(object):
 
     def exit_code_from_full_results(self, full_results): # pragma: no cover
         return json_results.exit_code_from_full_results(full_results)
+
+    def _add_trace_event(self, trace, name, start, end):
+        event = {
+            'name': name,
+            'ts': int((start - self.stats.started_time) * 1000000),
+            'dur': int((end - start) * 1000000),
+            'ph': 'X',
+            'pid': 0,
+            'tid': 0,
+        }
+        trace['traceEvents'].append(event)
 
     def _trace_from_results(self, result_set):
         trace = {

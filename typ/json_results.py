@@ -34,6 +34,31 @@ class ResultType(IntEnum): # no __init__ pylint: disable=W0232
                 'Skip'][self]
 
 
+class Result(object): # pragma: no cover
+    # too many instance attributes  pylint: disable=R0902
+    # too many arguments  pylint: disable=R0913
+    def __init__(self, name, actual=None, unexpected=False, flaky=False,
+                 expected=None, out='', err='', code=0,
+                 started=None, took=None, worker=None):
+        self.name = name
+        self.expected = expected or [ResultType.Pass]
+        self.actual = actual
+        self.unexpected = unexpected
+        self.flaky = flaky
+        self.out = out
+        self.err = err
+        self.code = code
+        self.started = started
+        self.took = took
+        self.worker = worker
+
+
+class ResultSet(object): # pragma: no cover
+    def __init__(self):
+        self.results = []
+
+    def add(self, result):
+        self.results.append(result)
 
 
 TEST_SEPARATOR = '.'

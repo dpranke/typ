@@ -18,12 +18,14 @@ from typ import json_results
 
 
 class TestMakeUploadRequest(unittest.TestCase):
+    maxDiff = 4096
 
     def test_basic_upload(self):
-        results = {'foo': 'bar'}
+        results = json_results.ResultSet()
+        full_results = json_results.make_full_results([], 0, [], results)
         url, content_type, data = json_results.make_upload_request(
             'localhost', 'fake_builder_name', 'fake_master', 'fake_test_type',
-            results)
+            full_results)
 
         self.assertEqual(
             content_type,
@@ -49,21 +51,33 @@ class TestMakeUploadRequest(unittest.TestCase):
              'filename="full_results.json"\r\n'
              'Content-Type: application/json\r\n'
              '\r\n'
-             '{"foo": "bar"}\r\n'
+             '{"tests": {}, "interrupted": false, "path_delimiter": ".", '
+             '"version": 3, "seconds_since_epoch": 0, '
+             '"num_failures_by_type": {"FAIL": 0, "SKIP": 0, "PASS": 0}}\r\n'
              '---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y---\r\n'))
 
 
 class TestMakeFullResults(unittest.TestCase):
     maxDiff = 2048
 
-    def disabled_test_basic(self):
-        return
+    def test_basic(self):
         test_names = ['foo_test.FooTest.test_fail',
                       'foo_test.FooTest.test_pass',
                       'foo_test.FooTest.test_skip']
 
+        result_set = json_results.ResultSet()
+        result_set.add(
+            json_results.Result('foo_test.FooTest.test_fail',
+                                actual=json_results.ResultType.Failure,
+                                unexpected=True))
+        result_set.add(json_results.Result('foo_test.FooTest.test_pass',
+                                           actual=json_results.ResultType.Pass))
+        result_set.add(json_results.Result('foo_test.FooTest.test_skip',
+                                           actual=json_results.ResultType.Skip,
+                                           unexpected=False))
+
         full_results = json_results.make_full_results(
-            ['foo=bar'], 0, test_names, [result])
+            ['foo=bar'], 0, test_names, result_set)
         expected_full_results = {
             'foo': 'bar',
             'interrupted': False,
