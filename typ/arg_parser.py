@@ -106,6 +106,10 @@ class ArgumentParser(argparse.ArgumentParser):
                           action='store',
                           help=('If specified, write the full results to '
                                'that path.'))
+        self.add_argument('--write-trace-to', metavar='FILENAME',
+                          action='store',
+                          help=('If specified, write the trace results to '
+                                'that path.'))
         self.add_argument('-v', '--verbose', action='count', default=0,
                           help=('Log verbosely (can specify multiple times '
                                 'for more output).'))

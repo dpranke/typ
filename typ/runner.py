@@ -30,9 +30,10 @@ from typ.test_case import TestCase as TypTestCase
 from typ.version import VERSION
 
 try:
-    from enum import Enum
+    from enum import Enum, IntEnum
 except ImportError: # pragma: no cover
     Enum = object
+    IntEnum = object
 
 
 class TestSet(object):
@@ -47,14 +48,17 @@ class TestSet(object):
         self.teardown_fn = teardown_fn
 
 
-class ResultType(Enum): # no __init__ pylint: disable=W0232
+class ResultType(IntEnum): # no __init__ pylint: disable=W0232
     Pass = 0
-    Fail = 1
+    Failure = 1
     ImageOnlyFailure = 2
     Timeout = 3
     Crash = 4
     Skip = 5
 
+    def __str__(self):
+        return ['Pass', 'Fail', 'ImageOnlyFailure', 'Timeout', 'Crash',
+                'Skip'][self]
 
 class Result(object): # pragma: no cover
     # too many instance attributes  pylint: disable=R0902
@@ -105,7 +109,7 @@ class Runner(object):
             return parser.exit_status
 
         try:
-            ret, _ = self.run()
+            ret, _, _ = self.run()
             return ret
         except KeyboardInterrupt:
             self.print_("interrupted, exiting", stream=self.host.stderr)
@@ -126,28 +130,31 @@ class Runner(object):
 
         if self.args.version:
             self.print_(VERSION)
-            return ret, None
+            return ret, None, None
 
         ret = self._set_up_runner()
         if ret: # pragma: no cover
-            return ret, None
+            return ret, None, None
 
         if self.cov: # pragma: no cover
             self.cov.start()
 
         full_results = None
+        result_set = ResultSet()
 
         if not test_set:
             ret, test_set = self.find_tests(self.args, classifier, context,
                                             setup_fn, teardown_fn)
         if not ret:
-            ret, full_results = self._run_tests(test_set)
+            ret, full_results = self._run_tests(test_set, result_set)
+        trace = self._trace_from_results(result_set)
 
         if self.cov: # pragma: no cover
             self.cov.stop()
 
         if full_results:
             self._summarize(full_results)
+            self.write_trace(trace)
             self.write_results(full_results)
             upload_ret = self.upload_results(full_results)
             if not ret:
@@ -156,7 +163,7 @@ class Runner(object):
         else:
             upload_ret = 0
 
-        return ret, full_results
+        return ret, full_results, trace
 
     def _set_up_runner(self):
         h = self.host
@@ -282,7 +289,7 @@ class Runner(object):
             test_set = None
         return ret, test_set
 
-    def _run_tests(self, test_set):
+    def _run_tests(self, test_set, result_set):
         h = self.host
         if not test_set.parallel_tests and not test_set.isolated_tests:
             self.print_('No tests to run.')
@@ -296,10 +303,10 @@ class Runner(object):
 
         all_tests = sorted(test_set.parallel_tests + test_set.isolated_tests +
                            test_set.tests_to_skip)
-        result = self._run_one_set(self.stats, test_set)
-        results = [result]
+        test_result = self._run_one_set(self.stats, result_set, test_set)
+        test_results = [test_result]
 
-        failed_tests = list(json_results.failed_test_names(result))
+        failed_tests = list(json_results.failed_test_names(test_result))
         retry_limit = self.args.retry_limit
 
         while retry_limit and failed_tests:
@@ -322,9 +329,9 @@ class Runner(object):
                 context=test_set.context,
                 setup_fn=test_set.setup_fn,
                 teardown_fn=test_set.teardown_fn)
-            result = self._run_one_set(stats, tests_to_retry)
-            results.append(result)
-            failed_tests = list(json_results.failed_test_names(result))
+            test_result = self._run_one_set(stats, result_set, tests_to_retry)
+            test_results.append(test_result)
+            failed_tests = list(json_results.failed_test_names(test_result))
             retry_limit -= 1
 
         if retry_limit != self.args.retry_limit:
@@ -332,7 +339,8 @@ class Runner(object):
 
         full_results = json_results.make_full_results(self.args.metadata,
                                                       int(h.time()),
-                                                      all_tests, results)
+                                                      all_tests, test_results)
+
         return (json_results.exit_code_from_full_results(full_results),
                 full_results)
 
@@ -345,27 +353,34 @@ class Runner(object):
         return TestSet(sorted(parallel_tests), sorted(isolated_tests),
                        sorted(tests_to_skip), context, setup_fn, teardown_fn)
 
-    def _run_one_set(self, stats, test_set):
+    def _run_one_set(self, stats, result_set, test_set):
         stats.total = (len(test_set.parallel_tests) +
                        len(test_set.isolated_tests) +
                        len(test_set.tests_to_skip))
-        result = TestResult()
-        self._skip_tests(stats, result, test_set.tests_to_skip)
-        self._run_list(stats, result, test_set, test_set.parallel_tests,
-                       self.args.jobs)
-        self._run_list(stats, result, test_set, test_set.isolated_tests, 1)
-        return result
+        test_result = TestResult()
+        self._skip_tests(stats, test_result, result_set, test_set.tests_to_skip)
+        self._run_list(stats, test_result, result_set, test_set,
+                       test_set.parallel_tests, self.args.jobs)
+        self._run_list(stats, test_result, result_set, test_set,
+                       test_set.isolated_tests, 1)
+        return test_result
 
-    def _skip_tests(self, stats, result, tests_to_skip):
+    def _skip_tests(self, stats, test_result, result_set, tests_to_skip):
         for test_name in tests_to_skip:
+            last = self.host.time()
             stats.started += 1
             self._print_test_started(stats, test_name)
-            result.addSkip(test_name, '')
+            test_result.addSkip(test_name, '')
+            now = self.host.time()
+            result_set.add(Result(test_name, actual=[ResultType.Skip],
+                                  expected=[ResultType.Skip],
+                                  out='', err='', code=0,
+                                  started=last, took=(now - last),
+                                  worker=0))
             stats.finished += 1
             self._print_test_finished(stats, test_name, 0, '', '', 0)
 
-
-    def _run_list(self, stats, result, test_set, test_names, jobs):
+    def _run_list(self, stats, test_result, result_set, test_set, test_names, jobs):
         h = self.host
         running_jobs = set()
 
@@ -385,12 +400,13 @@ class Runner(object):
                     running_jobs.add(test_name)
                     self._print_test_started(stats, test_name)
 
-                test_name, res, out, err, took = pool.get()
+                test_name, res, out, err, took, result = pool.get()
                 running_jobs.remove(test_name)
                 if res:
-                    result.errors.append((test_name, err))
+                    test_result.errors.append((test_name, err))
                 else:
-                    result.successes.append((test_name, err))
+                    test_result.successes.append((test_name, err))
+                result_set.add(result)
                 stats.finished += 1
                 self._print_test_finished(stats, test_name,
                                           res, out, err, took)
@@ -451,6 +467,12 @@ class Runner(object):
                      '' if num_failures == 1 else 's'))
         self.print_()
 
+    def write_trace(self, trace): # pragma: no cover
+        if self.args.write_trace_to:
+            self.host.write_text_file(
+                self.args.write_trace_to,
+                json.dumps(trace, indent=2) + '\n')
+
     def write_results(self, full_results): # pragma: no cover
         if self.args.write_full_results_to:
             self.host.write_text_file(
@@ -483,6 +505,39 @@ class Runner(object):
 
     def exit_code_from_full_results(self, full_results): # pragma: no cover
         return json_results.exit_code_from_full_results(full_results)
+
+    def _trace_from_results(self, result_set):
+        trace = {
+            'traceEvents': [],
+            'otherData': {},
+        }
+        for m in self.args.metadata:
+            k, v = m.split('=')
+            trace['otherData'][k] = v
+
+        for result in result_set.results:
+            started = int((result.started - self.stats.started_time) * 1000000)
+            took = int(result.took * 1000000)
+            end = started + took
+            event = {
+                'name': result.name,
+                'dur': took,
+                'ts': started,
+                'ph': 'X',  # "Complete" events
+                'pid': 0,
+                'tid': result.worker,
+                'args': {
+                    'expected': [str(r) for r in result.expected],
+                    'actual': str(result.actual),
+                    'out': result.out,
+                    'err': result.err,
+                    'code': result.code,
+                    'unexpected': result.unexpected,
+                    'flaky': result.flaky,
+                },
+            }
+            trace['traceEvents'].append(event)
+        return trace
 
 
 class _Child(object):
@@ -527,8 +582,12 @@ def _import_name(name):  # pragma: no cover
 def _run_one_test(child, test_name):
     h = child.host
 
+    start = h.time()
     if child.dry_run:
-        return test_name, 0, '', '', 0
+        return (test_name, 0, '', '', 0,
+                Result(test_name, actual=ResultType.Pass,
+                       expected=[ResultType.Pass], code=0, out='', err='',
+                       started = start, took=0, worker=child.worker_num))
 
     # It is important to capture the output before loading the test
     # to ensure that
@@ -542,8 +601,12 @@ def _run_one_test(child, test_name):
         suite = child.loader.loadTestsFromName(test_name)
     except Exception as e: # pragma: no cover
         # TODO: Figure out how to handle failures here.
-        return (test_name, 1, '', 'failed to load %s: %s' % (test_name, str(e)),
-                0)
+        err = 'failed to load %s: %s' % (test_name, str(e))
+        h.restore_output()
+        return (test_name, 1, '', err, 0,
+                Result(test_name, res=1, out='', err=err, took=0,
+                       expected=[ResultType.Pass], actual=ResultType.Failure,
+                       worker=child.worker_num))
 
     tests = list(suite)
     assert len(tests) == 1
@@ -552,10 +615,9 @@ def _run_one_test(child, test_name):
         test_case.child = child
         test_case.context = child.context_after_setup
 
-    result = TestResult()
+    test_result = TestResult()
     out = ''
     err = ''
-    start = h.time()
     try:
         if child.debugger: # pragma: no cover
             # Access to protected member pylint: disable=W0212
@@ -565,19 +627,31 @@ def _run_one_test(child, test_name):
             lineno = inspect.getsourcelines(test_func)[1] + 1
             dbg = pdb.Pdb()
             dbg.set_break(fname, lineno)
-            dbg.runcall(suite.run, result)
+            dbg.runcall(suite.run, test_result)
         else:
-            suite.run(result)
+            suite.run(test_result)
         took = h.time() - start
     finally:
         out, err = h.restore_output()
 
+    if test_result.failures:
+        err = err + test_result.failures[0][1]
+        actual = ResultType.Failure
+        res = 1
+    elif test_result.errors:
+        err = err + test_result.errors[0][1]
+        actual = ResultType.Failure
+        res = 1
+    else:
+        actual = ResultType.Pass
+        res = 0
+
+    result = Result(test_name, actual=actual, expected=[ResultType.Pass],
+                    code=res, out=out, err=err, started=start, took=took,
+                    worker=child.worker_num)
+
     # TODO: return proper Results and handle skips and expected failures.
-    if result.failures:
-        return (test_name, 1, out, err + result.failures[0][1], took)
-    if result.errors: # pragma: no cover
-        return (test_name, 1, out, err + result.errors[0][1], took)
-    return (test_name, 0, out, err, took)
+    return (test_name, res, out, err, took, result)
 
 
 class TestResult(unittest.TestResult):
@@ -589,3 +663,5 @@ class TestResult(unittest.TestResult):
                                          descriptions=descriptions,
                                          verbosity=verbosity)
         self.successes = []
+
+

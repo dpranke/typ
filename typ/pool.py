@@ -61,7 +61,7 @@ class ProcessPool(object):
         self.workers = []
         self.closed = False
         self.erred = False
-        for worker_num in range(jobs):
+        for worker_num in range(1, jobs + 1):
             w = multiprocessing.Process(target=_loop,
                                         args=(self.requests, self.responses,
                                               host.for_mp(), worker_num,
