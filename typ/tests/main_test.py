@@ -23,6 +23,9 @@ from typ.version import VERSION
 from typ.fakes.unittest_fakes import FakeTestLoader
 
 
+d = test_case.dedent
+
+
 PASSING_TEST = """
 import unittest
 class PassingTest(unittest.TestCase):
@@ -330,12 +333,13 @@ class TestCli(test_case.MainTestCase):
         files = {'output_tests.py': OUTPUT_TESTS}
         self.check(['-vv', '-j', '1', 'output_tests.PassTest'],
                    files=files, ret=0,
-                   out=('[1/2] output_tests.PassTest.test_err passed:\n'
-                        '  hello on stderr\n'
-                        '[2/2] output_tests.PassTest.test_out passed:\n'
-                        '  hello on stdout\n'
-                        '2 tests run, 0 failures.\n'),
-                   err='')
+                   out=d("""
+                         [1/2] output_tests.PassTest.test_err passed:
+                           hello on stderr
+                         [2/2] output_tests.PassTest.test_out passed:
+                           hello on stdout
+                         2 tests run, 0 failures.
+                         """), err='')
 
     def test_ninja_status_env(self):
         files = {'output_tests.py': OUTPUT_TESTS}

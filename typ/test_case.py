@@ -13,7 +13,34 @@
 # limitations under the License.
 
 import shlex
+import textwrap
 import unittest
+
+from host import Host
+
+
+def dedent(msg):
+    """textwrap.dedent() with leading and trailing blank lines also removed."""
+    dmsg = textwrap.dedent(msg)
+    lines = dmsg.split('\n')
+
+    def is_blank(line):
+        return all(c in (' ', '\t') for c in line)
+
+    i = 0
+    while is_blank(lines[i]):
+        i += 1
+    j = len(lines) - 1
+    while is_blank(lines[j]):
+        j -= 1
+
+    trailer = '\n' if j < (len(lines) - 1) else ''
+    return '\n'.join(lines[i:j+1]) + trailer
+
+
+def convert_newlines(msg):
+    """A routine that mimics Python's universal_newlines conversion."""
+    return msg.replace('\r\n', '\n').replace('\r', '\n')
 
 
 class TestCase(unittest.TestCase):
@@ -47,7 +74,9 @@ class MainTestCase(TestCase):
         self.assertEqual(interesting_files, set(expected_files.keys()))
 
     def make_host(self):
-        return self.child.host
+        if self.child:
+            return self.child.host
+        return Host()
 
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)
@@ -55,7 +84,7 @@ class MainTestCase(TestCase):
     def check(self, cmd=None, stdin=None, env=None, files=None,
               prog=None, cwd=None, host=None,
               ret=None, out=None, rout=None, err=None, exp_files=None,
-              files_to_ignore=None):
+              files_to_ignore=None, universal_newlines=True):
         # Too many arguments pylint: disable=R0913
         prog = prog or self.prog or []
         host = host or self.make_host()
@@ -79,6 +108,11 @@ class MainTestCase(TestCase):
             if tmpdir:
                 host.rmtree(tmpdir)
             host.chdir(orig_wd)
+
+        if universal_newlines:
+            actual_out = convert_newlines(actual_out)
+        if universal_newlines:
+            actual_err = convert_newlines(actual_err)
 
         if ret is not None:
             self.assertEqual(ret, actual_ret)

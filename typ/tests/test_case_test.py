@@ -12,12 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
 from typ import test_case
+
+
+class TestFuncs(test_case.MainTestCase):
+    def test_dedent(self):
+        d = test_case.dedent
+        self.assertEqual(d('foo'), 'foo')
+        self.assertEqual(d("""
+                           foo"""), 'foo')
+        self.assertEqual(d("""
+                           foo
+                              bar
+                           """), 'foo\n   bar\n')
+        self.assertEqual(d("""
+                           foo
+                              bar
+
+                           foo
+
+                           """), 'foo\n   bar\n\nfoo\n')
+
+    def test_convert_newlines(self):
+        cn = test_case.convert_newlines
+        self.assertEqual(cn('foo'), 'foo')
+        self.assertEqual(cn('foo\nbar\nbaz'), 'foo\nbar\nbaz')
+        self.assertEqual(cn('foo\rbar\nbaz\r'), 'foo\nbar\nbaz\n')
+        self.assertEqual(cn('foo\r\nbar\r\nbaz\r\nmeh\n'),
+                         'foo\nbar\nbaz\nmeh\n')
+
 
 class TestMainTestCase(test_case.MainTestCase):
     def test_basic(self):
+        h = self.make_host()
         files = {
             'test.py': """
 import os
@@ -33,7 +60,7 @@ with open("../results", "w") as fp:
         }
         exp_files = files.copy()
         exp_files['results'] = 'results written'
-        self.check(prog=[sys.executable, '../test.py'],
+        self.check(prog=[h.python_interpreter, '../test.py'],
                    stdin='hello on stdin',
                    env={'TEST_VAR': 'foo'},
                    cwd='subdir',
