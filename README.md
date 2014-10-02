@@ -23,7 +23,6 @@ Things remaining for 1.0, roughly in priority order:
 
 - Testing intra-method test skipping (a la @unittest.skip) and 
   expected failures
-- API polishing
 - Remove as many of the "pragma: no-cover" hacks as possible and get test
   coverage for the remaining blocks of "uncovered" code:
   - figure out how to get coverage of the command-line based tests
