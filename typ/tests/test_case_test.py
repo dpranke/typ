@@ -20,18 +20,18 @@ class TestFuncs(test_case.MainTestCase):
         d = test_case.dedent
         self.assertEqual(d('foo'), 'foo')
         self.assertEqual(d("""
-                           foo"""), 'foo')
+                           foo"""), '\nfoo')
         self.assertEqual(d("""
                            foo
                               bar
-                           """), 'foo\n   bar\n')
+                           """), '\nfoo\n   bar\n')
         self.assertEqual(d("""
                            foo
                               bar
 
                            foo
 
-                           """), 'foo\n   bar\n\nfoo\n')
+                           """), '\nfoo\n   bar\n\nfoo\n\n')
 
     def test_convert_newlines(self):
         cn = test_case.convert_newlines

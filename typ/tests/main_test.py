@@ -26,7 +26,7 @@ from typ.fakes.unittest_fakes import FakeTestLoader
 d = test_case.dedent
 
 
-PASSING_TEST = """
+PASS_TEST_PY = """
 import unittest
 class PassingTest(unittest.TestCase):
     def test_pass(self):
@@ -34,7 +34,10 @@ class PassingTest(unittest.TestCase):
 """
 
 
-FAILING_TEST = """
+PASS_TEST_FILES = {'pass_test.py': PASS_TEST_PY}
+
+
+FAIL_TEST_PY = """
 import unittest
 class FailingTest(unittest.TestCase):
     def test_fail(self):
@@ -42,7 +45,10 @@ class FailingTest(unittest.TestCase):
 """
 
 
-OUTPUT_TESTS = """
+FAIL_TEST_FILES = {'fail_test.py': FAIL_TEST_PY}
+
+
+OUTPUT_TEST_PY = """
 import sys
 import unittest
 
@@ -63,7 +69,10 @@ class FailTest(unittest.TestCase):
 """
 
 
-SKIPS_AND_FAILURES = """
+OUTPUT_TEST_FILES = {'output_test.py': OUTPUT_TEST_PY}
+
+
+SF_TEST_PY = """
 import sys
 import unittest
 
@@ -117,7 +126,11 @@ class ExpectedFailures(unittest.TestCase):
         pass
 """
 
-SETUP_AND_TEARDOWN = """
+
+SF_TEST_FILES = {'sf_test.py': SF_TEST_PY}
+
+
+ST_TEST_PY = """
 import unittest
 from typ import test_case as typ_test_case
 
@@ -130,7 +143,7 @@ def setupProcess(child, context):
 
 
 def teardownProcess(child, context):
-    child.host.print_('teardownProcess(%d): %s' % (child.worker_num, context))
+    child.host.print_('\\nteardownProcess(%d): %s' % (child.worker_num, context))
 
 
 class UnitTest(unittest.TestCase):
@@ -155,7 +168,9 @@ class TypTest(typ_test_case.TestCase):
 """
 
 
-LOAD_TESTS = """
+ST_TEST_FILES = {'st_test.py': ST_TEST_PY}
+
+LOAD_TEST_PY = """
 import unittest
 def load_tests(_, _2, _3):
     class BaseTest(unittest.TestCase):
@@ -176,6 +191,9 @@ def load_tests(_, _2, _3):
 """
 
 
+LOAD_TEST_FILES = {'load_test.py': LOAD_TEST_PY}
+
+
 path_to_main = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'main.py')
 
@@ -189,28 +207,63 @@ class TestCli(test_case.MainTestCase):
     def test_bad_metadata(self):
         self.check(['--metadata', 'foo'], ret=2)
 
+    def test_coverage(self):
+        try:
+            import coverage # pylint: disable=W0612
+            self.check(['-c'], files=PASS_TEST_FILES, ret=0,
+                       out=d("""
+                             [1/1] pass_test.PassingTest.test_pass passed
+                             1 test run, 0 failures.
+
+                             Name        Stmts   Miss  Cover
+                             -------------------------------
+                             pass_test       4      0   100%
+                             """))
+        except ImportError: # pragma: no cover
+            self.check(['-c'], files=PASS_TEST_FILES, ret=1,
+                       out='Error: coverage is not installed\n', err='')
+
+    def test_debugger(self):
+        self.check(['-d'], stdin='quit()\n', files=PASS_TEST_FILES, ret=0)
+
+
     def test_dryrun(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['-n'], files=files, ret=0)
+        self.check(['-n'], files=PASS_TEST_FILES, ret=0)
+
+    def test_error(self):
+        files = {'err_test.py': d("""\
+                                  import unittest
+                                  class ErrTest(unittest.TestCase):
+                                      def test_err(self):
+                                          foo = bar
+                                  """)}
+        self.check([''], files=files, ret=1, err='',
+                   rout=d("""\
+                          \[1/1\] err_test.ErrTest.test_err failed:
+                            Traceback \(most recent call last\):
+                              File ".*err_test.py", line 4, in test_err
+                                foo = bar
+                            NameError: global name 'bar' is not defined
+                          1 test run, 1 failure.
+                          """))
 
     def test_fail(self):
-        files = {'fail_test.py': FAILING_TEST}
-        self.check([], files=files, ret=1)
+        self.check([], files=FAIL_TEST_FILES, ret=1)
 
     def test_file_list(self):
-        files = {'pass_test.py': PASSING_TEST}
+        files = PASS_TEST_FILES
         self.check(['-f', '-'], files=files, stdin='pass_test\n', ret=0)
         self.check(['-f', '-'], files=files, stdin='pass_test.PassingTest\n',
                    ret=0)
         self.check(['-f', '-'], files=files,
                    stdin='pass_test.PassingTest.test_pass\n',
                    ret=0)
-        files = {'pass_test.py': PASSING_TEST,
+        files = {'pass_test.py': PASS_TEST_PY,
                  'test_list.txt': 'pass_test.PassingTest.test_pass\n'}
         self.check(['-f', 'test_list.txt'], files=files, ret=0)
 
     def test_find(self):
-        files = {'pass_test.py': PASSING_TEST}
+        files = PASS_TEST_FILES
         self.check(['-l'], files=files, ret=0,
                    out='pass_test.PassingTest.test_pass\n')
         self.check(['-l', 'pass_test'], files=files, ret=0,
@@ -230,7 +283,7 @@ class TestCli(test_case.MainTestCase):
     def test_find_from_subdirs(self):
         files = {
             'foo/__init__.py': '',
-            'foo/pass_test.py': PASSING_TEST,
+            'foo/pass_test.py': PASS_TEST_PY,
             'bar/__init__.py': '',
             'bar/tmp': '',
 
@@ -253,27 +306,32 @@ class TestCli(test_case.MainTestCase):
         self.check(['-l', 'foo.bar'], files=files, ret=1, out='')
 
     def test_interrupt(self):
-        files = {'interrupt_test.py': ('import unittest\n'
-                                       'class Foo(unittest.TestCase):\n'
-                                       '    def test_interrupt(self):\n'
-                                       '        raise KeyboardInterrupt()\n')}
+        files = {'interrupt_test.py': d("""\
+                                        import unittest
+                                        class Foo(unittest.TestCase):
+                                           def test_interrupt(self):
+                                               raise KeyboardInterrupt()
+                                        """)}
         self.check(['-j', '1'], files=files, ret=130,
                    err='interrupted, exiting\n')
 
+    def test_isolate(self):
+        self.check(['--isolate', '*test_pass*'], files=PASS_TEST_FILES, ret=0)
+
     def test_load_tests_single_worker(self):
-        files = {'load_test.py': LOAD_TESTS}
-        self.check(['-j', '1', '-v'], files=files, ret=1, err='', rout=(
-            '\[1/2\] load_test.BaseTest.test_fail failed:\n'
-            '  Traceback \(most recent call last\):\n'
-            '    File ".*load_test.py", line 8, in method_fail\n'
-            '      self.fail\(\)\n'
-            '  AssertionError: None\n'
-            '\[2/2\] load_test.BaseTest.test_pass passed\n'
-            '2 tests run, 1 failure.\n'))
+        files = LOAD_TEST_FILES
+        self.check(['-j', '1', '-v'], files=files, ret=1, err='', rout=d("""\
+            \[1/2\] load_test.BaseTest.test_fail failed:
+              Traceback \(most recent call last\):
+                File ".*load_test.py", line 8, in method_fail
+                  self.fail\(\)
+              AssertionError: None
+            \[2/2\] load_test.BaseTest.test_pass passed
+            2 tests run, 1 failure.
+            """))
 
     def test_load_tests_multiple_workers(self):
-        files = {'load_test.py': LOAD_TESTS}
-        _, out, _, _ = self.check([], files=files, ret=1, err='')
+        _, out, _, _ = self.check([], files=LOAD_TEST_FILES, ret=1, err='')
 
         # The output for this test is nondeterministic since we may run
         # two tests in parallel. So, we just test that some of the substrings
@@ -285,125 +343,82 @@ class TestCli(test_case.MainTestCase):
     def test_missing_builder_name(self):
         self.check(['--test-results-server', 'localhost'], ret=2)
 
+    def test_ninja_status_env(self):
+        self.check(['-v', 'output_test.PassTest.test_out'],
+                   files=OUTPUT_TEST_FILES, env={'NINJA_STATUS': 'ns: '},
+                   out=d("""\
+                         ns: output_test.PassTest.test_out passed
+                         1 test run, 0 failures.
+                         """))
+
+    def test_output_for_failures(self):
+        self.check(
+            ['output_test.FailTest'],
+            files=OUTPUT_TEST_FILES,
+            ret=1,
+            rout=d("""\
+                   \[1/1\] output_test.FailTest.test_out_err_fail failed:
+                     hello on stdout
+                     hello on stderr
+                     Traceback \(most recent call last\):
+                       File ".*output_test.py", line 18, in test_out_err_fail
+                         self.fail\(\)
+                     AssertionError: None
+                   1 test run, 1 failure.
+                   """),
+            err='')
+
     def test_retry_limit(self):
-        files = {'fail_test.py': FAILING_TEST}
-        ret, out, _, _ = self.check(['--retry-limit', '2'], files=files)
-        self.assertEqual(ret, 1)
+        _, out, _, _ = self.check(['--retry-limit', '2'],
+                                  files=FAIL_TEST_FILES, ret=1, err='')
         self.assertIn('Retrying failed tests', out)
         lines = out.splitlines()
         self.assertEqual(len([l for l in lines if 'test_fail failed:' in l]),
                          3)
 
-    def test_isolate(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['--isolate', '*test_pass*'], files=files, ret=0)
+    def test_setup_and_teardown_single_child(self):
+        self.check(['--jobs', '1',
+                    '--setup', 'st_test.setupProcess',
+                    '--teardown', 'st_test.teardownProcess'],
+                    files=ST_TEST_FILES, ret=0, err='',
+                    out=d("""\
+                          setupProcess(1): {'passed_in': False, 'calls': 0}
+                          [1/4] st_test.TypTest.test_one passed
+                          [2/4] st_test.TypTest.test_two passed
+                          [3/4] st_test.UnitTest.test_one passed
+                          [4/4] st_test.UnitTest.test_two passed
+                          teardownProcess(1): {'passed_in': False, 'calls': 3}
 
+                          4 tests run, 0 failures.
+                          """))
     def test_skip(self):
-        files = {'fail_test.py': FAILING_TEST}
-        self.check(['--skip', '*test_fail*'], files=files, ret=1,
+        self.check(['--skip', '*test_fail*'], files=FAIL_TEST_FILES, ret=1,
                    out='No tests to run.\n')
 
-        files = {'fail_test.py': FAILING_TEST,
-                 'pass_test.py': PASSING_TEST}
+        files = {'fail_test.py': FAIL_TEST_PY,
+                 'pass_test.py': PASS_TEST_PY}
         self.check(['--skip', '*test_fail*'], files=files, ret=0)
 
+    def test_skips_and_failures(self):
+        # TODO: add real tests here.
+        self.check([], files=SF_TEST_FILES, ret=1)
+
     def test_timing(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['-t'], files=files, ret=0)
-
-    def test_version(self):
-        self.check('--version', ret=0, out=(VERSION + '\n'))
-
-    def test_error(self):
-        files = {'err_test.py': ('import unittest\n'
-                                 'class ErrTest(unittest.TestCase):\n'
-                                 '  def test_err(self):\n'
-                                 '    foo = bar\n')}
-        self.check([''], files=files, ret=1,
-                   rout=('\[1/1\] err_test.ErrTest.test_err failed:\n'
-                         '  Traceback \(most recent call last\):\n'
-                         '    File ".*err_test.py", line 4, in test_err\n'
-                         '      foo = bar\n'
-                         '  NameError: global name \'bar\' is not defined\n'
-                         '1 test run, 1 failure.\n'),
-                   err='')
-
+        self.check(['-t'], files=PASS_TEST_FILES, ret=0)
 
     def test_verbose(self):
-        files = {'output_tests.py': OUTPUT_TESTS}
-        self.check(['-vv', '-j', '1', 'output_tests.PassTest'],
-                   files=files, ret=0,
-                   out=d("""
-                         [1/2] output_tests.PassTest.test_err passed:
+        self.check(['-vv', '-j', '1', 'output_test.PassTest'],
+                   files=OUTPUT_TEST_FILES, ret=0,
+                   out=d("""\
+                         [1/2] output_test.PassTest.test_err passed:
                            hello on stderr
-                         [2/2] output_tests.PassTest.test_out passed:
+                         [2/2] output_test.PassTest.test_out passed:
                            hello on stdout
                          2 tests run, 0 failures.
                          """), err='')
 
-    def test_ninja_status_env(self):
-        files = {'output_tests.py': OUTPUT_TESTS}
-        self.check(['-v', 'output_tests.PassTest.test_out'],
-                   files=files, env={'NINJA_STATUS': 'ns: '},
-                   out=('ns: output_tests.PassTest.test_out passed\n'
-                        '1 test run, 0 failures.\n'))
-
-    def test_output_for_failures(self):
-        files = {'output_tests.py': OUTPUT_TESTS}
-        self.check(
-            ['output_tests.FailTest'],
-            files=files,
-            ret=1,
-            rout=('\[1/1\] output_tests.FailTest.test_out_err_fail failed:\n'
-                  '  hello on stdout\n'
-                  '  hello on stderr\n'
-                  '  Traceback \(most recent call last\):\n'
-                  '    File ".*/output_tests.py", line 18, in '
-                  'test_out_err_fail\n'
-                  '      self.fail\(\)\n'
-                  '  AssertionError: None\n'
-                  '1 test run, 1 failure.\n'),
-            err='')
-
-    def test_debugger(self):
-        files = {'pass_test.py': PASSING_TEST}
-        self.check(['-d'], stdin='quit()\n', files=files, ret=0)
-
-    def test_coverage(self):
-        files = {'pass_test.py': PASSING_TEST}
-        try:
-            import coverage # pylint: disable=W0612
-            self.check(['-c'], files=files, ret=0,
-                       out=('[1/1] pass_test.PassingTest.test_pass passed\n'
-                            '1 test run, 0 failures.\n'
-                            '\n'
-                            'Name        Stmts   Miss  Cover\n'
-                            '-------------------------------\n'
-                            'pass_test       4      0   100%\n'))
-        except ImportError: # pragma: no cover
-            self.check(['-c'], files=files, ret=1,
-                       out='Error: coverage is not installed\n', err='')
-
-    def test_skips_and_failures(self):
-        files = {'sf_test.py': SKIPS_AND_FAILURES}
-        # TODO: add real tests here.
-        self.check([], files=files, ret=1)
-
-    def test_setup_and_teardown_single_child(self):
-        files = {'st_test.py': SETUP_AND_TEARDOWN}
-        self.check(['--jobs', '1',
-                    '--setup', 'st_test.setupProcess',
-                    '--teardown', 'st_test.teardownProcess'],
-                    files=files, ret=0, err='',
-                    out=("setupProcess(1): {'passed_in': False, 'calls': 0}\n"
-                         "[1/4] st_test.TypTest.test_one passed\n"
-                         "[2/4] st_test.TypTest.test_two passed\n"
-                         "[3/4] st_test.UnitTest.test_one passed\n"
-                         "[4/4] st_test.UnitTest.test_two passed"
-                         "teardownProcess(1): "
-                         "{'passed_in': False, 'calls': 3}\n"
-                         "\n"
-                         "4 tests run, 0 failures.\n"))
+    def test_version(self):
+        self.check('--version', ret=0, out=(VERSION + '\n'))
 
 
 class TestMain(TestCli):
@@ -438,10 +453,10 @@ class TestMain(TestCli):
     def test_error(self):
         pass
 
-    def test_verbose(self):
+    def test_output_for_failures(self):
         pass
 
-    def test_output_for_failures(self):
+    def test_verbose(self):
         pass
 
     # TODO: These tests need to execute the real tests (they can't use a

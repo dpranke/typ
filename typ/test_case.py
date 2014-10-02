@@ -16,26 +16,10 @@ import shlex
 import textwrap
 import unittest
 
-from host import Host
+from typ.host import Host
 
 
-def dedent(msg):
-    """textwrap.dedent() with leading and trailing blank lines also removed."""
-    dmsg = textwrap.dedent(msg)
-    lines = dmsg.split('\n')
-
-    def is_blank(line):
-        return all(c in (' ', '\t') for c in line)
-
-    i = 0
-    while is_blank(lines[i]):
-        i += 1
-    j = len(lines) - 1
-    while is_blank(lines[j]):
-        j -= 1
-
-    trailer = '\n' if j < (len(lines) - 1) else ''
-    return '\n'.join(lines[i:j+1]) + trailer
+dedent = textwrap.dedent
 
 
 def convert_newlines(msg):
