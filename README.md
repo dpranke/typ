@@ -23,9 +23,7 @@ Things remaining for 1.0, roughly in priority order:
 
 - Testing intra-method test skipping (a la @unittest.skip) and 
   expected failures
-- Fix CRLF/LF conversion in tests on windows.
 - API polishing
-- Add more testing of the exact output
 - Remove as many of the "pragma: no-cover" hacks as possible and get test
   coverage for the remaining blocks of "uncovered" code:
   - figure out how to get coverage of the command-line based tests

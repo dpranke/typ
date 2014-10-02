@@ -68,7 +68,8 @@ class MainTestCase(TestCase):
 
     def check(self, cmd=None, stdin=None, env=None, aenv=None, files=None,
               prog=None, cwd=None, host=None,
-              ret=None, out=None, rout=None, err=None, exp_files=None,
+              ret=None, out=None, rout=None, err=None, rerr=None,
+              exp_files=None,
               files_to_ignore=None, universal_newlines=True):
         # Too many arguments pylint: disable=R0913
         prog = prog or self.prog or []
@@ -110,6 +111,8 @@ class MainTestCase(TestCase):
             self.assertRegexpMatches(actual_out, rout)
         if err is not None:
             self.assertMultiLineEqual(err, actual_err)
+        if rerr is not None:
+            self.assertRegexpMatches(actual_err, rerr)
         if exp_files:
             self.assert_files(exp_files, actual_files, files_to_ignore)
 

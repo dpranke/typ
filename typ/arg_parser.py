@@ -153,7 +153,7 @@ class ArgumentParser(argparse.ArgumentParser):
                                     'along with --test-result-server')
                 self.exit_status = 2
             if not rargs.test_type:
-                self._print_message('Error: --test_type must be specified '
+                self._print_message('Error: --test-type must be specified '
                                     'along with --test-result-server')
                 self.exit_status = 2
 
@@ -178,7 +178,7 @@ class ArgumentParser(argparse.ArgumentParser):
     # Redefining built-in 'file' pylint: disable=W0622
 
     def _print_message(self, msg, file=None):
-        self._host.print_(msg=msg, stream=file, end='')
+        self._host.print_(msg=msg, stream=file, end='\n')
 
     def print_help(self, file=None):
         self._print_message(msg=self.format_help(), file=file)

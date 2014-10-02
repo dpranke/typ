@@ -201,16 +201,20 @@ class TestCli(test_case.MainTestCase):
     prog = [sys.executable, path_to_main]
 
     def test_bad_arg(self):
-        self.check(['--bad-arg'], ret=2)
-        self.check(['-help'], ret=2)
+        self.check(['--bad-arg'], ret=2, out='',
+                   rerr='.*: error: unrecognized arguments: --bad-arg\n')
+        self.check(['-help'], ret=2, out='',
+                   rerr=(".*: error: argument -h/--help: "
+                         "ignored explicit argument 'elp'\n"))
 
     def test_bad_metadata(self):
-        self.check(['--metadata', 'foo'], ret=2)
+        self.check(['--metadata', 'foo'], ret=2, err='',
+                   out='Error: malformed --metadata "foo"\n')
 
     def test_coverage(self):
         try:
             import coverage # pylint: disable=W0612
-            self.check(['-c'], files=PASS_TEST_FILES, ret=0,
+            self.check(['-c'], files=PASS_TEST_FILES, ret=0, err='',
                        out=d("""
                              [1/1] pass_test.PassingTest.test_pass passed
                              1 test run, 0 failures.
@@ -224,11 +228,16 @@ class TestCli(test_case.MainTestCase):
                        out='Error: coverage is not installed\n', err='')
 
     def test_debugger(self):
-        self.check(['-d'], stdin='quit()\n', files=PASS_TEST_FILES, ret=0)
-
+        _, out, _, _ = self.check(['-d'], stdin='quit()\n',
+                                  files=PASS_TEST_FILES, ret=0, err='')
+        self.assertIn('(Pdb) ', out)
 
     def test_dryrun(self):
-        self.check(['-n'], files=PASS_TEST_FILES, ret=0)
+        self.check(['-n'], files=PASS_TEST_FILES, ret=0, err='',
+                   out=d("""\
+                         [1/1] pass_test.PassingTest.test_pass passed
+                         1 test run, 0 failures.
+                         """))
 
     def test_error(self):
         files = {'err_test.py': d("""\
@@ -248,7 +257,8 @@ class TestCli(test_case.MainTestCase):
                           """))
 
     def test_fail(self):
-        self.check([], files=FAIL_TEST_FILES, ret=1)
+        _, out, _, _  = self.check([], files=FAIL_TEST_FILES, ret=1, err='')
+        self.assertIn('self.fail()', out)
 
     def test_file_list(self):
         files = PASS_TEST_FILES
@@ -266,18 +276,18 @@ class TestCli(test_case.MainTestCase):
         files = PASS_TEST_FILES
         self.check(['-l'], files=files, ret=0,
                    out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', 'pass_test'], files=files, ret=0,
+        self.check(['-l', 'pass_test'], files=files, ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', 'pass_test.py'], files=files, ret=0,
+        self.check(['-l', 'pass_test.py'], files=files, ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', './pass_test.py'], files=files, ret=0,
+        self.check(['-l', './pass_test.py'], files=files, ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', '.'], files=files, ret=0,
+        self.check(['-l', '.'], files=files, ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
         self.check(['-l', 'pass_test.PassingTest.test_pass'], files=files,
-                   ret=0,
+                   ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
-        self.check(['-l', '.'], files=files, ret=0,
+        self.check(['-l', '.'], files=files, ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
 
     def test_find_from_subdirs(self):
@@ -289,21 +299,26 @@ class TestCli(test_case.MainTestCase):
 
         }
         self.check(['-l', '../foo/pass_test.py'], files=files, cwd='bar',
-                   ret=0, out='foo.pass_test.PassingTest.test_pass\n')
+                   ret=0, err='',
+                   out='foo.pass_test.PassingTest.test_pass\n')
         self.check(['-l', 'foo'], files=files, cwd='bar',
-                   ret=0, out='foo.pass_test.PassingTest.test_pass\n')
+                   ret=0, err='',
+                   out='foo.pass_test.PassingTest.test_pass\n')
         self.check(['-l', '--path', '../foo', 'pass_test'],
-                   files=files, cwd='bar', ret=0,
+                   files=files, cwd='bar', ret=0, err='',
                    out='pass_test.PassingTest.test_pass\n')
 
     def test_help(self):
-        self.check(['--help'], ret=0)
+        self.check(['--help'], ret=0, rout='.*', err='')
 
     def test_import_failure(self):
-        self.check(['-l', 'foo'], ret=1, out='')
+        self.check(['-l', 'foo'], ret=1, out='',
+                   err='Failed to load "foo": No module named foo\n')
 
         files = {'foo.py': 'import unittest'}
-        self.check(['-l', 'foo.bar'], files=files, ret=1, out='')
+        self.check(['-l', 'foo.bar'], files=files, ret=1, out='',
+                   err=('Failed to load "foo.bar": '
+                        '\'module\' object has no attribute \'bar\'\n'))
 
     def test_interrupt(self):
         files = {'interrupt_test.py': d("""\
@@ -312,11 +327,13 @@ class TestCli(test_case.MainTestCase):
                                            def test_interrupt(self):
                                                raise KeyboardInterrupt()
                                         """)}
-        self.check(['-j', '1'], files=files, ret=130,
+        self.check(['-j', '1'], files=files, ret=130, out='',
                    err='interrupted, exiting\n')
 
     def test_isolate(self):
-        self.check(['--isolate', '*test_pass*'], files=PASS_TEST_FILES, ret=0)
+        self.check(['--isolate', '*test_pass*'], files=PASS_TEST_FILES, ret=0,
+                   out=('[1/1] pass_test.PassingTest.test_pass passed\n'
+                        '1 test run, 0 failures.\n'), err='')
 
     def test_load_tests_single_worker(self):
         files = LOAD_TEST_FILES
@@ -341,7 +358,13 @@ class TestCli(test_case.MainTestCase):
         self.assertIn('2 tests run, 1 failure.\n', out)
 
     def test_missing_builder_name(self):
-        self.check(['--test-results-server', 'localhost'], ret=2)
+        self.check(['--test-results-server', 'localhost'], ret=2,
+                   out=('Error: --builder-name must be specified '
+                        'along with --test-result-server\n'
+                        'Error: --master-name must be specified '
+                        'along with --test-result-server\n'
+                        'Error: --test-type must be specified '
+                        'along with --test-result-server\n'), err='')
 
     def test_ninja_status_env(self):
         self.check(['-v', 'output_test.PassTest.test_out'],
@@ -349,7 +372,7 @@ class TestCli(test_case.MainTestCase):
                    out=d("""\
                          ns: output_test.PassTest.test_out passed
                          1 test run, 0 failures.
-                         """))
+                         """), err='')
 
     def test_output_for_failures(self):
         self.check(
@@ -393,18 +416,21 @@ class TestCli(test_case.MainTestCase):
                           """))
     def test_skip(self):
         self.check(['--skip', '*test_fail*'], files=FAIL_TEST_FILES, ret=1,
-                   out='No tests to run.\n')
+                   out='No tests to run.\n', err='')
 
         files = {'fail_test.py': FAIL_TEST_PY,
                  'pass_test.py': PASS_TEST_PY}
-        self.check(['--skip', '*test_fail*'], files=files, ret=0)
+        self.check(['-j', '1', '--skip', '*test_fail*'], files=files, ret=0,
+                   out=('[1/2] fail_test.FailingTest.test_fail passed\n'
+                        '[2/2] pass_test.PassingTest.test_pass passed\n'
+                        '2 tests run, 0 failures.\n'), err='')
 
     def test_skips_and_failures(self):
         # TODO: add real tests here.
         self.check([], files=SF_TEST_FILES, ret=1)
 
     def test_timing(self):
-        self.check(['-t'], files=PASS_TEST_FILES, ret=0)
+        self.check(['-t'], files=PASS_TEST_FILES, ret=0, rout='', err='')
 
     def test_verbose(self):
         self.check(['-vv', '-j', '1', 'output_test.PassTest'],
@@ -466,6 +492,9 @@ class TestMain(TestCli):
         pass
 
     def test_load_tests_multiple_workers(self):
+        pass
+
+    def test_import_failure(self):
         pass
 
     def test_setup_and_teardown_single_child(self):
