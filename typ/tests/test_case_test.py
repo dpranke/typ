@@ -16,23 +16,6 @@ from typ import test_case
 
 
 class TestFuncs(test_case.MainTestCase):
-    def test_dedent(self):
-        d = test_case.dedent
-        self.assertEqual(d('foo'), 'foo')
-        self.assertEqual(d("""
-                           foo"""), '\nfoo')
-        self.assertEqual(d("""
-                           foo
-                              bar
-                           """), '\nfoo\n   bar\n')
-        self.assertEqual(d("""
-                           foo
-                              bar
-
-                           foo
-
-                           """), '\nfoo\n   bar\n\nfoo\n\n')
-
     def test_convert_newlines(self):
         cn = test_case.convert_newlines
         self.assertEqual(cn('foo'), 'foo')

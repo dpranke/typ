@@ -13,13 +13,9 @@
 # limitations under the License.
 
 import shlex
-import textwrap
 import unittest
 
 from typ.host import Host
-
-
-dedent = textwrap.dedent
 
 
 def convert_newlines(msg):
@@ -30,11 +26,11 @@ def convert_newlines(msg):
 class TestCase(unittest.TestCase):
     child = None
     context = None
+    maxDiff = 80 * 66
 
 
 class MainTestCase(TestCase):
     prog = None
-    maxDiff = 4096
 
     def _write_files(self, host, files):
         for path, contents in list(files.items()):
@@ -61,7 +57,7 @@ class MainTestCase(TestCase):
     def make_host(self):
         if self.child:
             return self.child.host
-        return Host()
+        return Host() # pragma: no cover
 
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)

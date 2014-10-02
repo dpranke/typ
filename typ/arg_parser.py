@@ -14,6 +14,8 @@
 
 import argparse
 
+from typ.host import Host
+
 class _Bailout(Exception):
     pass
 
@@ -24,112 +26,119 @@ DEFAULT_SUFFIXES = ['*_test.py', '*_unittest.py']
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, host):
-        super(ArgumentParser, self).__init__()
+    def __init__(self, host=None, discovery=True, reporting=True, running=True):
+        super(ArgumentParser, self).__init__(prog='typ')
 
-        self._host = host
+        self._host = host or Host
         self.exit_status = None
 
         self.usage = '%(prog)s [options] [tests...]'
-        self.add_argument('--builder-name',
-                          help=('Builder name to include in the '
-                                'uploaded data.'))
-        self.add_argument('-c', '--coverage', action='store_true',
-                          help='Report coverage information.')
-        self.add_argument('--coverage-omit', action='append',
-                          default=[],
-                          help=('Globs to omit in coverage report '
-                                '(defaults to %s).' % DEFAULT_COVERAGE_OMIT))
-        self.add_argument('-d', '--debugger', action='store_true',
-                          help='Run tests under the debugger.')
-        self.add_argument('-n', '--dry-run', action='store_true',
-                          help=('Do not actually run the tests, act like they '
-                                'succeeded.'))
-        self.add_argument('-f', '--file-list', metavar='FILENAME',
-                          action='store',
-                          help=('Take the list of tests from the file '
-                                '(use "-" for stdin).'))
-        self.add_argument('--isolate', metavar='glob', default=[],
-                          action='append',
-                          help='test globs to run in isolation (serially).')
-        self.add_argument('-j', '--jobs', metavar='N', type=int,
-                          default=host.cpu_count(),
-                          help=('Run N jobs in parallel '
-                                '(defaults to %(default)s).'))
-        self.add_argument('-l', '--list-only', action='store_true',
-                          help=('List all the test names found in the given '
-                               'tests.'))
-        self.add_argument('--master-name',
-                          help=('Buildbot master name to include in the '
-                                'uploaded data.'))
-        self.add_argument('--metadata', action='append', default=[],
-                          help=('Optional key=value metadata that will be '
-                                'included in the results.'))
-        self.add_argument('-P', '--path', action='append', default=[],
-                          help=('Add dir to sys.path (can specify multiple '
-                                'times).'))
-        self.add_argument('-q', '--quiet', action='store_true', default=False,
-                          help='Be as quiet as possible (only print errors).')
-        self.add_argument('--retry-limit', type=int, default=0,
-                          help='Retry each failure up to N times.')
-        self.add_argument('-s', '--status-format',
-                          default=self._host.getenv('NINJA_STATUS',
-                                                    DEFAULT_STATUS_FORMAT),
-                          help=('Format for status updates '
-                                '(uses NINJA_STATUS env var if set, '
-                                 '"%(default)s" otherwise). '))
-        self.add_argument('--skip', metavar='glob', default=[],
-                          action='append',
-                          help=('Globs of test names to skip (can specify '
-                                'multiple times).'))
-        self.add_argument('--suffixes', metavar='glob', default=[],
-                          action='append',
-                          help=('Globs of test filenames to look for ('
-                                'can specify multiple times; defaults to %s).'
-                                % DEFAULT_SUFFIXES))
-        self.add_argument('--terminal-width', type=int,
-                          default=host.terminal_width(),
-                          help=('width to use for output (defaults to '
-                                    '%(default)s; 0 is unbounded).'))
-        self.add_argument('--test-results-server',
-                          help=('If specified, upload the full results to '
-                                'this server.'))
-        self.add_argument('--test-type',
-                          help=('Name of test type to include in the uploaded '
-                                'data (e.g., "telemetry_unittests").'))
-        self.add_argument('-t', '--timing', action='store_true',
-                          help='Print timing info.')
-        self.add_argument('--top-level-dir', default=None,
-                          help=('Top directory of project '
-                                '(used when running subdirs).'))
-        self.add_argument('--write-full-results-to', metavar='FILENAME',
-                          action='store',
-                          help=('If specified, write the full results to '
-                               'that path.'))
-        self.add_argument('--write-trace-to', metavar='FILENAME',
-                          action='store',
-                          help=('If specified, write the trace results to '
-                                'that path.'))
-        self.add_argument('-v', '--verbose', action='count', default=0,
-                          help=('Log verbosely (can specify multiple times '
-                                'for more output).'))
         self.add_argument('-V', '--version', action='store_true',
                           help='Print the typ version and exit.')
 
-        self.add_argument('--overwrite', action='store_true',
-                          default=None,
-                          help=argparse.SUPPRESS)
-        self.add_argument('--no-overwrite', action='store_false',
-                          dest='overwrite', default=None,
-                          help=argparse.SUPPRESS)
-        self.add_argument('--passthrough', action='store_true',
-                          default=False,
-                          help=argparse.SUPPRESS)
-        self.add_argument('--setup', help=argparse.SUPPRESS)
-        self.add_argument('--teardown', help=argparse.SUPPRESS)
-        self.add_argument('--context', help=argparse.SUPPRESS)
-        self.add_argument('tests', nargs='*', default=[],
-                          help=argparse.SUPPRESS)
+        if discovery:
+            self.add_argument('-f', '--file-list', metavar='FILENAME',
+                              action='store',
+                              help=('Takes the list of tests from the file '
+                                    '(use "-" for stdin).'))
+            self.add_argument('--isolate', metavar='glob', default=[],
+                              action='append',
+                              help=('Globs of tests to run in isolation '
+                                    '(serially).'))
+            self.add_argument('-j', '--jobs', metavar='N', type=int,
+                              default=host.cpu_count(),
+                              help=('Runs N jobs in parallel '
+                                    '(defaults to %(default)s).'))
+            self.add_argument('--skip', metavar='glob', default=[],
+                              action='append',
+                              help=('Globs of test names to skip (can specify '
+                                    'multiple times).'))
+            self.add_argument('--suffixes', metavar='glob', default=[],
+                              action='append',
+                              help=('Globs of test filenames to look for ('
+                                    'can specify multiple times; defaults '
+                                    'to %s).' % DEFAULT_SUFFIXES))
+
+        if reporting:
+            self.add_argument('--builder-name',
+                            help=('Builder name to include in the '
+                                    'uploaded data.'))
+            self.add_argument('-c', '--coverage', action='store_true',
+                            help='Reports coverage information.')
+            self.add_argument('--coverage-omit', action='append',
+                            default=[],
+                            help=('Globs to omit when reporting coverage '
+                                  '(defaults to %s).' % DEFAULT_COVERAGE_OMIT))
+            self.add_argument('--master-name',
+                              help=('Buildbot master name to include in the '
+                                    'uploaded data.'))
+            self.add_argument('--metadata', action='append', default=[],
+                              help=('Optional key=value metadata that will be '
+                                    'included in the results.'))
+            self.add_argument('--test-results-server',
+                              help=('If specified, uploads the full results to '
+                                    'this server.'))
+            self.add_argument('--test-type',
+                              help=('Name of test type to include in the '
+                                    'uploaded data (e.g., '
+                                    '"telemetry_unittests").'))
+            self.add_argument('--write-full-results-to', metavar='FILENAME',
+                              action='store',
+                              help=('If specified, writes the full results to '
+                                    'that path.'))
+            self.add_argument('--write-trace-to', metavar='FILENAME',
+                              action='store',
+                              help=('If specified, writes the trace to '
+                                    'that path.'))
+            self.add_argument('tests', nargs='*', default=[],
+                              help=argparse.SUPPRESS)
+
+        if running:
+            self.add_argument('-d', '--debugger', action='store_true',
+                              help='Runs the tests under the debugger.')
+            self.add_argument('-n', '--dry-run', action='store_true',
+                              help=argparse.SUPPRESS)
+            self.add_argument('-l', '--list-only', action='store_true',
+                              help='Lists all the test names found and exits.')
+            self.add_argument('-q', '--quiet', action='store_true',
+                              default=False,
+                              help=('Runs as quietly as possible '
+                                   '(only prints errors).'))
+            self.add_argument('--retry-limit', type=int, default=0,
+                              help='Retries each failure up to N times.')
+            self.add_argument('-s', '--status-format',
+                              default=self._host.getenv('NINJA_STATUS',
+                                                        DEFAULT_STATUS_FORMAT),
+                              help=argparse.SUPPRESS)
+            self.add_argument('--terminal-width', type=int,
+                              default=host.terminal_width(),
+                              help=argparse.SUPPRESS)
+            self.add_argument('-t', '--timing', action='store_true',
+                              help='Prints timing info.')
+            self.add_argument('-v', '--verbose', action='count', default=0,
+                              help=('Prints more stuff (can specify multiple '
+                                    'times for more output).'))
+            self.add_argument('--overwrite', action='store_true',
+                              default=None,
+                              help=argparse.SUPPRESS)
+            self.add_argument('--no-overwrite', action='store_false',
+                              dest='overwrite', default=None,
+                              help=argparse.SUPPRESS)
+            self.add_argument('--passthrough', action='store_true',
+                              default=False,
+                              help=argparse.SUPPRESS)
+            self.add_argument('--setup', help=argparse.SUPPRESS)
+            self.add_argument('--teardown', help=argparse.SUPPRESS)
+            self.add_argument('--context', help=argparse.SUPPRESS)
+
+        if reporting or running:
+            self.add_argument('-P', '--path', action='append', default=[],
+                              help=('Adds dir to sys.path (can specify '
+                                    'multiple times).'))
+            self.add_argument('--top-level-dir', default=None,
+                              help=('Sets the top directory of project '
+                                    '(used when running subdirs).'))
+
 
     def parse_args(self, args=None, namespace=None):
         try:

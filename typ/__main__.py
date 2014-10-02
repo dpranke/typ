@@ -14,11 +14,11 @@
 
 import sys
 
-from typ import main
+from typ import main, spawn_main
 
 
 if __name__ == '__main__':
     if sys.platform == 'win32': # pragma: no cover
-        sys.exit(main.spawn_main())
+        sys.exit(spawn_main())
     else:
-        sys.exit(main.main())
+        sys.exit(main())

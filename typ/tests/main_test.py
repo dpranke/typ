@@ -15,15 +15,16 @@
 import os
 import StringIO
 import sys
+import textwrap
 
 from typ import main
 from typ import test_case
-from typ.host import Host
-from typ.version import VERSION
+from typ import Host
+from typ import VERSION
 from typ.fakes.unittest_fakes import FakeTestLoader
 
 
-d = test_case.dedent
+d = textwrap.dedent
 
 
 PASS_TEST_PY = """
@@ -195,7 +196,8 @@ LOAD_TEST_FILES = {'load_test.py': LOAD_TEST_PY}
 
 
 path_to_main = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'main.py')
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'entry_points.py')
 
 class TestCli(test_case.MainTestCase):
     prog = [sys.executable, path_to_main]
@@ -215,7 +217,7 @@ class TestCli(test_case.MainTestCase):
         try:
             import coverage # pylint: disable=W0612
             self.check(['-c'], files=PASS_TEST_FILES, ret=0, err='',
-                       out=d("""
+                       out=d("""\
                              [1/1] pass_test.PassingTest.test_pass passed
                              1 test run, 0 failures.
 
@@ -462,7 +464,7 @@ class TestMain(TestCli):
         loader = FakeTestLoader(host, orig_sys_path)
 
         try:
-            ret = main.main(argv + ['-j', '1'], host, loader)
+            ret = main(argv + ['-j', '1'], host, loader)
         finally:
             out, err = host.restore_output()
             sys.path = orig_sys_path

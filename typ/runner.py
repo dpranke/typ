@@ -244,11 +244,11 @@ class Runner(object):
                             add_names(suite)
                     else:
                         add_names(loader.loadTestsFromName(test))
-            except AttributeError as e:
+            except AttributeError as e: # pragma: no cover
                 self.print_('Failed to load "%s": %s' % (test, str(e)),
                             stream=h.stderr)
                 ret = 1
-            except ImportError as e:
+            except ImportError as e: # pragma: no cover
                 self.print_('Failed to load "%s": %s' % (test, str(e)),
                             stream=h.stderr)
                 ret = 1
@@ -259,7 +259,7 @@ class Runner(object):
             test_set.parallel_tests = sorted(test_set.parallel_tests)
             test_set.isolated_tests = sorted(test_set.isolated_tests)
             test_set.tests_to_skip = sorted(test_set.tests_to_skip)
-        else:
+        else: # pragma: no cover
             test_set = None
         return ret, test_set
 
