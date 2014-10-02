@@ -634,7 +634,6 @@ def _load_via_load_tests(child, test_name): # pragma: no cover
     # If we couldn't import a test directly, the test may be only loadable
     # via unittest's load_tests protocol. See if we can find a load_tests
     # entry point that will work for this test.
-    h = child.host
     loader = child.loader
     comps = test_name.split('.')
 
@@ -650,7 +649,7 @@ def _load_via_load_tests(child, test_name): # pragma: no cover
             if module:
                 try:
                     suite = loader.loadTestsFromModule(module)
-                except:
+                except Exception:
                     # TODO: Figure out how to handle errors here
                     pass
             child.loaded_suites[name] = suite

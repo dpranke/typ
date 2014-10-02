@@ -9,8 +9,8 @@ Introduction
 typ originated out of work on the Blink and Chromium projects, as a way to 
 provide a friendly interface on top of the Python unittest modules.
 
-It supports test discovery, parallel test execution,
-clean logging of progress and results in the style of the Ninja build tool,
+It supports test discovery, parallel test execution, and clean display of
+progress and results in the style of the Ninja build tool,
 
 When testing Python code it also supports integrated code coverage reporting
 and debugging (pdb) support.
@@ -23,7 +23,8 @@ Things remaining for 1.0, roughly in priority order:
 
 - Testing intra-method test skipping (a la @unittest.skip) and 
   expected failures
-- (Re-)test on Windows, Linux to check for regressions
+- Fix CRLF/LF conversion in tests on windows.
+- API polishing
 - Add more testing of the exact output
 - Remove as many of the "pragma: no-cover" hacks as possible and get test
   coverage for the remaining blocks of "uncovered" code:
@@ -38,12 +39,13 @@ Things remaining for 1.0, roughly in priority order:
   - typ not installed, invoked via -m typ in dir above typ
   - typ installed, invoked via typ/main.py
   - test running tests with absolute paths to test files
+- Implement a non-python file format for testing command line interfaces,
+  clean up testing of exe's.
 
 Possible future work
 --------------------
 
 - support testing javascript, c++/gtest-style binaries
-- Implement a non-python file format for testing command line interfaces
 - Support for test sharding in addition to parallel execution (so that
   run-webkit-tests can re-use as much of the code as possible
 - Support for non-unittest runtest invocation (for run-webkit-tests,
