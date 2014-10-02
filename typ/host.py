@@ -29,6 +29,7 @@ import urllib2
 class Host(object):
     python_interpreter = sys.executable
     sep = os.sep
+    env = os.environ
 
     _orig_stdout = sys.stdout
     _orig_stderr = sys.stderr

@@ -46,7 +46,8 @@ class MainTestCase(TestCase):
     def _read_files(self, host, tmpdir):
         out_files = {}
         for f in host.files_under(tmpdir):
-            out_files[f] = host.read_binary_file(tmpdir, f)
+            key = f.replace(host.sep, '/')
+            out_files[key] = host.read_binary_file(tmpdir, f)
         return out_files
 
     def assert_files(self, expected_files, actual_files, files_to_ignore=None):
@@ -65,7 +66,7 @@ class MainTestCase(TestCase):
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)
 
-    def check(self, cmd=None, stdin=None, env=None, files=None,
+    def check(self, cmd=None, stdin=None, env=None, aenv=None, files=None,
               prog=None, cwd=None, host=None,
               ret=None, out=None, rout=None, err=None, exp_files=None,
               files_to_ignore=None, universal_newlines=True):
@@ -83,6 +84,9 @@ class MainTestCase(TestCase):
                 self._write_files(host, files)
             if cwd:
                 host.chdir(cwd)
+            if aenv:
+                env = host.env.copy()
+                env.update(aenv)
 
             result = self.call(host, prog + argv, stdin=stdin, env=env)
 

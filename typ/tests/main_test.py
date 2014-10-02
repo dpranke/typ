@@ -345,7 +345,7 @@ class TestCli(test_case.MainTestCase):
 
     def test_ninja_status_env(self):
         self.check(['-v', 'output_test.PassTest.test_out'],
-                   files=OUTPUT_TEST_FILES, env={'NINJA_STATUS': 'ns: '},
+                   files=OUTPUT_TEST_FILES, aenv={'NINJA_STATUS': 'ns: '},
                    out=d("""\
                          ns: output_test.PassTest.test_out passed
                          1 test run, 0 failures.

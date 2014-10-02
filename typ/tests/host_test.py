@@ -55,14 +55,15 @@ class TestHost(unittest.TestCase):
             self.assertEqual(h.read_binary_file('binfile'), 'bin contents')
 
             self.assertEqual(sorted(h.files_under(dirpath)),
-                            ['bar/foo.txt', 'binfile'])
+                            ['bar' + h.sep + 'foo.txt', 'binfile'])
 
             mtime = h.mtime(dirpath, 'bar', 'foo.txt')
-            self.assertGreaterEqual(now, mtime)
+            self.assertGreaterEqual(now, mtime-0.1)
             h.remove(dirpath, 'bar', 'foo.txt')
             self.assertFalse(h.exists(dirpath, 'bar', 'foo.txt'))
             self.assertFalse(h.isfile(dirpath, 'bar', 'foo.txt'))
 
+            h.chdir(orig_cwd)
             h.rmtree(dirpath)
             self.assertFalse(h.exists(dirpath))
             self.assertFalse(h.isdir(dirpath))
