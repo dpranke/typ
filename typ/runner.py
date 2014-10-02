@@ -195,10 +195,15 @@ class Runner(object):
                 test_set.parallel_tests.append(name)
 
         def add_names(obj):
+            load_test_failure = 'unittest.loader.LoadTestsFailure.load_test'
             if isinstance(obj, unittest.suite.TestSuite):
                 for el in obj:
                     add_names(el)
+            elif obj.id() == load_test_failure: # pragma: no cover
+                # TODO: log an error?
+                return
             else:
+                assert isinstance(obj, unittest.TestCase)
                 classifier(test_set, obj)
 
         if args.tests:
@@ -524,6 +529,8 @@ class _Child(object):
         self.setup_fn = test_set.setup_fn
         self.teardown_fn = test_set.teardown_fn
         self.context_after_setup = None
+        self.top_level_dir = parent.top_level_dir
+        self.loaded_suites = {}
 
 
 def _setup_process(host, worker_num, child):
@@ -569,11 +576,13 @@ def _run_one_test(child, test_name):
     try:
         suite = child.loader.loadTestsFromName(test_name)
     except Exception as e: # pragma: no cover
-        # TODO: Figure out how to handle failures here.
-        err = 'failed to load %s: %s' % (test_name, str(e))
-        h.restore_output()
-        return Result(test_name, ResultType.Failure, start, 0, child.worker_num,
-                      unexpected=True, code=1, err=err)
+        suite = _load_via_load_tests(child, test_name)
+        if not suite:
+            # TODO: Figure out how to handle failures here.
+            err = 'failed to load %s: %s' % (test_name, str(e))
+            h.restore_output()
+            return Result(test_name, ResultType.Failure, start, 0,
+                          child.worker_num, unexpected=True, code=1, err=err)
 
     tests = list(suite)
     assert len(tests) == 1
@@ -619,3 +628,40 @@ def _run_one_test(child, test_name):
     flaky = False
     return Result(test_name, actual, start, took, child.worker_num,
                   expected, unexpected, flaky, code, out, err)
+
+
+def _load_via_load_tests(child, test_name): # pragma: no cover
+    # If we couldn't import a test directly, the test may be only loadable
+    # via unittest's load_tests protocol. See if we can find a load_tests
+    # entry point that will work for this test.
+    h = child.host
+    loader = child.loader
+    comps = test_name.split('.')
+
+    while comps:
+        name = '.'.join(comps)
+        module = None
+        suite = None
+        if name not in child.loaded_suites:
+            try:
+                module = importlib.import_module(name)
+            except ImportError:
+                pass
+            if module:
+                try:
+                    suite = loader.loadTestsFromModule(module)
+                except:
+                    # TODO: Figure out how to handle errors here
+                    pass
+            child.loaded_suites[name] = suite
+        suite = child.loaded_suites[name]
+        if suite:
+            for test_case in suite:
+                if test_case.id() == test_name:
+                    new_suite = unittest.TestSuite()
+                    new_suite.addTest(test_case)
+                    return new_suite
+        comps.pop()
+    if not comps:
+        return None
+

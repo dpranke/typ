@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 import os
 import StringIO
 import sys
@@ -151,6 +152,28 @@ class TypTest(typ_test_case.TestCase):
         self.context['calls'] += 1
 """
 
+
+LOAD_TESTS = """
+import unittest
+def load_tests(_, _2, _3):
+    class BaseTest(unittest.TestCase):
+        pass
+
+    def method_fail(self):
+        self.fail()
+
+    def method_pass(self):
+        pass
+
+    setattr(BaseTest, "test_fail", method_fail)
+    setattr(BaseTest, "test_pass", method_pass)
+    suite = unittest.TestSuite()
+    suite.addTest(BaseTest("test_fail"))
+    suite.addTest(BaseTest("test_pass"))
+    return suite
+"""
+
+
 path_to_main = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'main.py')
 
@@ -234,6 +257,28 @@ class TestCli(test_case.MainTestCase):
                                        '        raise KeyboardInterrupt()\n')}
         self.check(['-j', '1'], files=files, ret=130,
                    err='interrupted, exiting\n')
+
+    def test_load_tests_single_worker(self):
+        files = {'load_test.py': LOAD_TESTS}
+        self.check(['-j', '1', '-v'], files=files, ret=1, err='', rout=(
+            '\[1/2\] load_test.BaseTest.test_fail failed:\n'
+            '  Traceback \(most recent call last\):\n'
+            '    File ".*load_test.py", line 8, in method_fail\n'
+            '      self.fail\(\)\n'
+            '  AssertionError: None\n'
+            '\[2/2\] load_test.BaseTest.test_pass passed\n'
+            '2 tests run, 1 failure.\n'))
+
+    def test_load_tests_multiple_workers(self):
+        files = {'load_test.py': LOAD_TESTS}
+        _, out, _, _ = self.check([], files=files, ret=1, err='')
+
+        # The output for this test is nondeterministic since we may run
+        # two tests in parallel. So, we just test that some of the substrings
+        # we care about are present.
+        self.assertIn('test_pass passed', out)
+        self.assertIn('test_fail failed', out)
+        self.assertIn('2 tests run, 1 failure.\n', out)
 
     def test_missing_builder_name(self):
         self.check(['--test-results-server', 'localhost'], ret=2)
@@ -399,5 +444,11 @@ class TestMain(TestCli):
     # TODO: These tests need to execute the real tests (they can't use a
     # FakeTestLoader and FakeTestCase) because we're testing
     # the side effects the tests have on setup and teardown.
+    def test_load_tests_single_worker(self):
+        pass
+
+    def test_load_tests_multiple_workers(self):
+        pass
+
     def test_setup_and_teardown_single_child(self):
         pass
