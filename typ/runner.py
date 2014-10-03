@@ -285,7 +285,8 @@ class Runner(object):
             return 1, None
 
         all_tests = [ti.name for ti in
-                     _sort_inputs(test_set.parallel_tests + test_set.isolated_tests +
+                     _sort_inputs(test_set.parallel_tests +
+                                  test_set.isolated_tests +
                                   test_set.tests_to_skip)]
 
         if self.args.list_only:
@@ -657,18 +658,18 @@ def _run_one_test(child, test_input):
         code = 1
         unexpected = True
         err = err + test_result.errors[0][1]
-    elif test_result.skipped:
+    elif test_result.skipped: # pragma: no cover
         actual = ResultType.Skip
         err = err + test_result.skipped[0][1]
-    elif test_result.expectedFailures:
+    elif test_result.expectedFailures: # pragma: no cover
         expected = [ResultType.Failure]
         actual = ResultType.Failure
         code = 1
         err = err + test_result.expectedFailures[0][1]
-    elif test_result.unexpectedSuccesses:
+    elif test_result.unexpectedSuccesses: # pragma: no cover
         expected = [ResultType.Failure]
         unexpected = True
-    else:
+    else: # pragma: no cover
         pass
 
     return Result(test_name, actual, start, took, child.worker_num,
