@@ -428,6 +428,21 @@ class TestCli(test_case.MainTestCase):
                         '[2/2] pass_test.PassingTest.test_pass passed\n'
                         '2 tests run, 0 failures.\n'), err='')
 
+        # This tests that we print test_started updates for skipped tests
+        # properly. It also tests how overwriting works.
+        self.check(['-j', '1', '--overwrite', '--skip', '*test_fail*'],
+                   files=files, ret=0,
+                   out=('[0/2] fail_test.FailingTest.test_fail\r'
+                        '                                     \r'
+                        '[1/2] fail_test.FailingTest.test_fail was skipped\r'
+                        '                                                 \r'
+                        '[1/2] pass_test.PassingTest.test_pass\r'
+                        '                                     \r'
+                        '[2/2] pass_test.PassingTest.test_pass passed\r'
+                        '                                            \r'
+                        '2 tests run, 0 failures.\n'), err='',
+                        universal_newlines=False)
+
     def test_skips_and_failures(self):
         self.check(['-j', '1', '-v', '-v'], files=SF_TEST_FILES, ret=1, err='',
                    rout=d("""\

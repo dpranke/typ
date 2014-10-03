@@ -387,7 +387,7 @@ class Runner(object):
                     stats.started += 1
                     pool.send(test_input)
                     running_jobs.add(test_input.name)
-                    self._print_test_started(stats, test_input.name)
+                    self._print_test_started(stats, test_input)
 
                 result = pool.get()
                 running_jobs.remove(result.name)
@@ -398,9 +398,9 @@ class Runner(object):
         finally:
             pool.join()
 
-    def _print_test_started(self, stats, test_name):
+    def _print_test_started(self, stats, test_input):
         if not self.args.quiet and self.args.overwrite:
-            self.update(stats.format() + test_name,
+            self.update(stats.format() + test_input.name,
                         elide=(not self.args.verbose))
 
     def _print_test_finished(self, stats, result):
