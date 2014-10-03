@@ -23,7 +23,7 @@ if here not in sys.path:
 
 from typ.version import VERSION
 
-with open(os.path.join(here, 'README.md')) as fp:
+with open(os.path.join(here, 'README.rst')) as fp:
     readme = fp.read().strip()
 
 readme_lines = readme.splitlines()
@@ -31,10 +31,10 @@ readme_lines = readme.splitlines()
 setup(
     name='typ',
     packages=['typ'],
-    package_data={'': ['../README.md']},
+    package_data={'': ['../README.rst']},
     entry_points={
         'console_scripts': [
-            'typ=typ.main:main',
+            'typ=typ.entry_points:main',
         ]
     },
     install_requires=[

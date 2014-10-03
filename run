@@ -14,7 +14,7 @@ usage: run COMMAND
 
 Where COMMAND is one of:
   build     build an installable package
-  check     runs lint, build, cover
+  checks    runs lint, build, coverage
   clean     remove any derived objects
   coverage  run test coverage
   develop   install a 'developable' package
@@ -37,12 +37,12 @@ def main(argv):
 def run(cmd):
     if cmd == 'build':
         return call([sys.executable, 'setup.py', 'build', '--quiet'])
-    if cmd == 'check':
+    if cmd == 'checks':
         ret = run('lint')
         if not ret:
             ret = run('build')
         if not ret:
-            ret = run('cover')
+            ret = run('coverage')
         return ret
     if cmd == 'clean':
         return call(['git', 'clean', '-fxd'])
@@ -58,7 +58,7 @@ def run(cmd):
     if cmd == 'format':
         return call('autopep8 --in-place *.py */*.py */*/*.py', shell=True)
     if cmd == 'install':
-        ret = call([sys.executable, 'setup.py', 'install'])
+        ret = call([sys.executable, 'setup.py', 'install', '--user'])
     if cmd == 'lint':
         ret = call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
         if not ret:
