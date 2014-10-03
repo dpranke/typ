@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import optparse
 
 from typ.host import Host
 
@@ -26,15 +27,29 @@ DEFAULT_SUFFIXES = ['*_test.py', '*_unittest.py']
 
 
 class ArgumentParser(argparse.ArgumentParser):
-    def __init__(self, host=None, discovery=True, reporting=True, running=True):
-        super(ArgumentParser, self).__init__(prog='typ')
+    @staticmethod
+    def add_option_group(parser, title, discovery=False,
+                         running=False, reporting=False, skip=None):
+        # TODO: Get rid of this when telemetry upgrades to argparse.
+        ap = ArgumentParser(help=False, version=False, discovery=discovery,
+                            running=running, reporting=reporting)
+        optlist = ap.optparse_options(skip=skip)
+        group = optparse.OptionGroup(parser, title)
+        group.add_options(optlist)
+        parser.add_option_group(group)
 
-        self._host = host or Host
+    def __init__(self, host=None, help=True, version=True, discovery=True,
+                 reporting=True, running=True):
+        super(ArgumentParser, self).__init__(prog='typ', add_help=help)
+
+        self._host = host or Host()
         self.exit_status = None
 
         self.usage = '%(prog)s [options] [tests...]'
-        self.add_argument('-V', '--version', action='store_true',
-                          help='Print the typ version and exit.')
+
+        if version:
+            self.add_argument('-V', '--version', action='store_true',
+                              help='Print the typ version and exit.')
 
         if discovery:
             self.add_argument('-f', '--file-list', metavar='FILENAME',
@@ -46,7 +61,7 @@ class ArgumentParser(argparse.ArgumentParser):
                               help=('Globs of tests to run in isolation '
                                     '(serially).'))
             self.add_argument('-j', '--jobs', metavar='N', type=int,
-                              default=host.cpu_count(),
+                              default=self._host.cpu_count(),
                               help=('Runs N jobs in parallel '
                                     '(defaults to %(default)s).'))
             self.add_argument('--skip', metavar='glob', default=[],
@@ -104,6 +119,9 @@ class ArgumentParser(argparse.ArgumentParser):
                               default=False,
                               help=('Runs as quietly as possible '
                                    '(only prints errors).'))
+            self.add_argument('--passthrough', action='store_true',
+                              default=False,
+                              help='Prints all output while running.')
             self.add_argument('--retry-limit', type=int, default=0,
                               help='Retries each failure up to N times.')
             self.add_argument('-s', '--status-format',
@@ -111,7 +129,7 @@ class ArgumentParser(argparse.ArgumentParser):
                                                         DEFAULT_STATUS_FORMAT),
                               help=argparse.SUPPRESS)
             self.add_argument('--terminal-width', type=int,
-                              default=host.terminal_width(),
+                              default=self._host.terminal_width(),
                               help=argparse.SUPPRESS)
             self.add_argument('-t', '--timing', action='store_true',
                               help='Prints timing info.')
@@ -124,21 +142,17 @@ class ArgumentParser(argparse.ArgumentParser):
             self.add_argument('--no-overwrite', action='store_false',
                               dest='overwrite', default=None,
                               help=argparse.SUPPRESS)
-            self.add_argument('--passthrough', action='store_true',
-                              default=False,
-                              help=argparse.SUPPRESS)
             self.add_argument('--setup', help=argparse.SUPPRESS)
             self.add_argument('--teardown', help=argparse.SUPPRESS)
             self.add_argument('--context', help=argparse.SUPPRESS)
 
-        if reporting or running:
+        if discovery or running:
             self.add_argument('-P', '--path', action='append', default=[],
                               help=('Adds dir to sys.path (can specify '
                                     'multiple times).'))
             self.add_argument('--top-level-dir', default=None,
                               help=('Sets the top directory of project '
                                     '(used when running subdirs).'))
-
 
     def parse_args(self, args=None, namespace=None):
         try:
@@ -200,3 +214,40 @@ class ArgumentParser(argparse.ArgumentParser):
         if message:
             self._print_message(message, file=self._host.stderr)
         raise _Bailout()
+
+    def optparse_options(self, skip=None):
+        skip = skip or []
+        options = []
+        for action in self._actions:
+            args = [flag for flag in action.option_strings if flag not in skip]
+            if not args or action.help == '==SUPPRESS==':
+                # must either be a positional argument like 'tests'
+                # or an option we want to skip altogether.
+                continue
+
+            kwargs = {
+                'default': action.default,
+                'dest': action.dest,
+                'help': action.help,
+                'metavar': action.metavar,
+                'action': _action_str(action)
+            }
+            options.append(optparse.make_option(*args, **kwargs))
+        return options
+
+
+def _action_str(action):
+    if isinstance(action, argparse._StoreTrueAction):
+        return 'store_true'
+    if isinstance(action, argparse._StoreFalseAction): # pragma: no cover
+        return 'store_false'
+    if isinstance(action, argparse._StoreAction):
+        return 'store'
+    if isinstance(action, argparse._CountAction):
+        return 'count'
+    if isinstance(action, argparse._AppendAction):
+        return 'append'
+    if isinstance(action, argparse._HelpAction): # pragma: no cover
+        return 'help'
+    raise ValueError('Unexpected action type %s for %s' %
+                     action.__class__, str(*args)) # pragma: no cover
