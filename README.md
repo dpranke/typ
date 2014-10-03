@@ -1,19 +1,51 @@
 typ (Test Your Program)
 =======================
-
 typ is a simple program for testing command line executables and Python code.
 
-Introduction
+When testing Python code, it is basically a wrapper around the standard
+unittest module, but it provides the following bits of additional
+functionality:
+
+    * Parallel test execution.
+
+    * Clean output in the style of the Ninja build tool.
+
+    * A more flexible mechanism for discovering tests from the
+      command line and controlling how they are run:
+      * Support for importing tests by directory, filename, or module.
+      * Support for specifying tests to skip, tests to run in parallel,
+        and tests that need to be run by themselves
+
+    * Support for producing traces of test times compatible with Chrome's
+      tracing infrastructure (trace_viewer).
+
+    * Integrated test coverage reporting.
+
+    * Integrated support for debugging tests.
+
+    * Support for uploading test results automatically to a server
+      (useful for continuous integration monitoring of test results).
+
+    * An abstraction of operating system functionality called the
+      Host class. This can be used by other python code to write more
+      portable and easily testable code by wrapping the multiprocessing,
+      os, subprocess, and time modules.
+
+    * Simple libraries for integrating Ninja-style statistics and line
+      printing into your own code (the Stats and Printer classes).
+
+    * Support for processing arbitrary arguments from calling code to
+      test cases.
+
+    * Support for once-per-process setup and teardown hooks.
+      (These last two bullet points allow one to write tests that do not
+       require Python globals).
+
+History
 ------------
 
 typ originated out of work on the Blink and Chromium projects, as a way to 
 provide a friendly interface on top of the Python unittest modules.
-
-It supports test discovery, parallel test execution, and clean display of
-progress and results in the style of the Ninja build tool,
-
-When testing Python code it also supports integrated code coverage reporting
-and debugging (pdb) support.
 
 Work remaining
 --------------

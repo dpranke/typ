@@ -14,11 +14,10 @@
 
 """Test Your Project
 
-typ is a Python library and command line utility that can be used to
-test command line executables, and act as an improved wrapper around
-Python's unittest module.
+typ is a simple program for testing command line executables and Python code.
 
-When wrapping unittest, it provides the following bits of additional
+When testing Python code, it is basically a wrapper around the standard
+unittest module, but it provides the following bits of additional
 functionality:
 
     * Parallel test execution.
@@ -32,9 +31,11 @@ functionality:
         and tests that need to be run by themselves
 
     * Support for producing traces of test times compatible with Chrome's
-      tracing infrastructure.
+      tracing infrastructure (trace_viewer).
 
     * Integrated test coverage reporting.
+
+    * Integrated support for debugging tests.
 
     * Support for uploading test results automatically to a server
       (useful for continuous integration monitoring of test results).
@@ -47,6 +48,12 @@ functionality:
     * Simple libraries for integrating Ninja-style statistics and line
       printing into your own code (the Stats and Printer classes).
 
+    * Support for processing arbitrary arguments from calling code to
+      test cases.
+
+    * Support for once-per-process setup and teardown hooks.
+      (These last two bullet points allow one to write tests that do not
+       require Python globals).
 """
 
 from typ.arg_parser import ArgumentParser
