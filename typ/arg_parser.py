@@ -31,16 +31,16 @@ class ArgumentParser(argparse.ArgumentParser):
     def add_option_group(parser, title, discovery=False,
                          running=False, reporting=False, skip=None):
         # TODO: Get rid of this when telemetry upgrades to argparse.
-        ap = ArgumentParser(help=False, version=False, discovery=discovery,
+        ap = ArgumentParser(add_help=False, version=False, discovery=discovery,
                             running=running, reporting=reporting)
         optlist = ap.optparse_options(skip=skip)
         group = optparse.OptionGroup(parser, title)
         group.add_options(optlist)
         parser.add_option_group(group)
 
-    def __init__(self, host=None, help=True, version=True, discovery=True,
+    def __init__(self, host=None, add_help=True, version=True, discovery=True,
                  reporting=True, running=True):
-        super(ArgumentParser, self).__init__(prog='typ', add_help=help)
+        super(ArgumentParser, self).__init__(prog='typ', add_help=add_help)
 
         self._host = host or Host()
         self.exit_status = None
@@ -237,6 +237,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
 
 def _action_str(action):
+    # Access to a protected member pylint: disable=W0212
     if isinstance(action, argparse._StoreTrueAction):
         return 'store_true'
     if isinstance(action, argparse._StoreFalseAction): # pragma: no cover
@@ -249,5 +250,7 @@ def _action_str(action):
         return 'append'
     if isinstance(action, argparse._HelpAction): # pragma: no cover
         return 'help'
+
     raise ValueError('Unexpected action type %s for %s' %
-                     action.__class__, str(*args)) # pragma: no cover
+                     action.__class__,
+                     str(action.option_strings)) # pragma: no cover

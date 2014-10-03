@@ -35,13 +35,27 @@ ResultSet = json_results.ResultSet
 ResultType = json_results.ResultType
 
 
+class TestInput(object):
+    def __init__(self, name, msg='', timeout=None, expected=None):
+        self.name = name
+        self.msg = msg
+        self.timeout = timeout
+        self.expected = expected
+
+
 class TestSet(object):
     def __init__(self, parallel_tests=None, isolated_tests=None,
                  tests_to_skip=None, context=None, setup_fn=None,
                  teardown_fn=None):
-        self.parallel_tests = parallel_tests or []
-        self.isolated_tests = isolated_tests or []
-        self.tests_to_skip = tests_to_skip or []
+
+        def promote(tests):
+            tests = tests or []
+            return [TestInput(test) if isinstance(test, basestring) else test
+                    for test in tests]
+
+        self.parallel_tests = promote(parallel_tests)
+        self.isolated_tests = promote(isolated_tests)
+        self.tests_to_skip = promote(tests_to_skip)
         self.context = context
         self.setup_fn = setup_fn
         self.teardown_fn = teardown_fn
@@ -188,11 +202,12 @@ class Runner(object):
         def default_classifier(test_set, test):
             name = test.id()
             if matches(name, args.skip):
-                test_set.tests_to_skip.append(name)
+                test_set.tests_to_skip.append(TestInput(name,
+                                                        'skipped by request'))
             elif matches(name, args.isolate):
-                test_set.isolated_tests.append(name)
+                test_set.isolated_tests.append(TestInput(name))
             else:
-                test_set.parallel_tests.append(name)
+                test_set.parallel_tests.append(TestInput(name))
 
         def add_names(obj):
             load_test_failure = 'unittest.loader.LoadTestsFailure.load_test'
@@ -269,14 +284,14 @@ class Runner(object):
             self.print_('No tests to run.')
             return 1, None
 
+        all_tests = [ti.name for ti in
+                     sorted(test_set.parallel_tests + test_set.isolated_tests +
+                            test_set.tests_to_skip)]
+
         if self.args.list_only:
-            all_tests = sorted(test_set.parallel_tests +
-                               test_set.isolated_tests)
             self.print_('\n'.join(all_tests))
             return 0, None
 
-        all_tests = sorted(test_set.parallel_tests + test_set.isolated_tests +
-                           test_set.tests_to_skip)
         self._run_one_set(self.stats, result_set, test_set)
 
         failed_tests = json_results.failed_test_names(result_set)
@@ -338,23 +353,24 @@ class Runner(object):
                        test_set.isolated_tests, 1)
 
     def _skip_tests(self, stats, result_set, tests_to_skip):
-        for test_name in tests_to_skip:
+        for test_input in tests_to_skip:
             last = self.host.time()
             stats.started += 1
-            self._print_test_started(stats, test_name)
+            self._print_test_started(stats, test_input)
             now = self.host.time()
-            result = Result(test_name, actual=ResultType.Skip,
+            result = Result(test_input.name, actual=ResultType.Skip,
                             started=last, took=(now - last), worker=0,
-                            expected=[ResultType.Skip])
+                            expected=[ResultType.Skip],
+                            out=test_input.msg)
             result_set.add(result)
             stats.finished += 1
             self._print_test_finished(stats, result)
 
-    def _run_list(self, stats, result_set, test_set, test_names, jobs):
+    def _run_list(self, stats, result_set, test_set, test_inputs, jobs):
         h = self.host
         running_jobs = set()
 
-        jobs = min(len(test_names), jobs)
+        jobs = min(len(test_inputs), jobs)
         if not jobs:
             return
 
@@ -362,13 +378,13 @@ class Runner(object):
         pool = make_pool(h, jobs, _run_one_test, child,
                          _setup_process, _teardown_process)
         try:
-            while test_names or running_jobs:
-                while test_names and (len(running_jobs) < self.args.jobs):
-                    test_name = test_names.pop(0)
+            while test_inputs or running_jobs:
+                while test_inputs and (len(running_jobs) < self.args.jobs):
+                    test_input = test_inputs.pop(0)
                     stats.started += 1
-                    pool.send(test_name)
-                    running_jobs.add(test_name)
-                    self._print_test_started(stats, test_name)
+                    pool.send(test_input)
+                    running_jobs.add(test_input.name)
+                    self._print_test_started(stats, test_input.name)
 
                 result = pool.get()
                 running_jobs.remove(result.name)
@@ -386,8 +402,21 @@ class Runner(object):
 
     def _print_test_finished(self, stats, result):
         stats.add_time()
-        suffix = '%s%s' % (' failed' if result.code else ' passed',
-                           (' %.4fs' % result.took) if self.args.timing else '')
+        if result.actual == ResultType.Failure:
+            result_str = ' failed'
+        elif result.actual == ResultType.Skip:
+            result_str = ' was skipped'
+        elif result.actual == ResultType.Pass:
+            result_str = ' passed'
+        else: # pragma: no cover
+            raise ValueError('Unimplemented result type %s' % result)
+        if result.unexpected:
+            result_str += ' unexpectedly'
+        if self.args.timing:
+            timing_str = ' %.4fs' % result.took
+        else:
+            timing_str = ''
+        suffix = '%s%s' % (result_str, timing_str)
         out = result.out
         err = result.err
         if result.code:
@@ -558,8 +587,9 @@ def _import_name(name):  # pragma: no cover
     return getattr(module, function_name)
 
 
-def _run_one_test(child, test_name):
+def _run_one_test(child, test_input):
     h = child.host
+    test_name = test_input.name
 
     start = h.time()
     if child.dry_run:

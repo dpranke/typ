@@ -21,8 +21,8 @@ from typ import ArgumentParser
 class ArgumentParserTest(unittest.TestCase):
     def test_optparse_options(self):
         parser = optparse.OptionParser()
-        options = ArgumentParser.add_option_group(parser, 'foo',
-                                                  discovery=True,
-                                                  running=True,
-                                                  reporting=True,
-                                                  skip='[-d]')
+        ArgumentParser.add_option_group(parser, 'foo',
+                                        discovery=True,
+                                        running=True,
+                                        reporting=True,
+                                        skip='[-d]')

@@ -250,7 +250,7 @@ class TestCli(test_case.MainTestCase):
                                   """)}
         self.check([''], files=files, ret=1, err='',
                    rout=d("""\
-                          \[1/1\] err_test.ErrTest.test_err failed:
+                          \[1/1\] err_test.ErrTest.test_err failed unexpectedly:
                             Traceback \(most recent call last\):
                               File ".*err_test.py", line 4, in test_err
                                 foo = bar
@@ -340,7 +340,7 @@ class TestCli(test_case.MainTestCase):
     def test_load_tests_single_worker(self):
         files = LOAD_TEST_FILES
         self.check(['-j', '1', '-v'], files=files, ret=1, err='', rout=d("""\
-            \[1/2\] load_test.BaseTest.test_fail failed:
+            \[1/2\] load_test.BaseTest.test_fail failed unexpectedly:
               Traceback \(most recent call last\):
                 File ".*load_test.py", line 8, in method_fail
                   self.fail\(\)
@@ -382,7 +382,7 @@ class TestCli(test_case.MainTestCase):
             files=OUTPUT_TEST_FILES,
             ret=1,
             rout=d("""\
-                   \[1/1\] output_test.FailTest.test_out_err_fail failed:
+                   \[1/1\] output_test.FailTest.test_out_err_fail failed unexpectedly:
                      hello on stdout
                      hello on stderr
                      Traceback \(most recent call last\):
@@ -398,7 +398,8 @@ class TestCli(test_case.MainTestCase):
                                   files=FAIL_TEST_FILES, ret=1, err='')
         self.assertIn('Retrying failed tests', out)
         lines = out.splitlines()
-        self.assertEqual(len([l for l in lines if 'test_fail failed:' in l]),
+        self.assertEqual(len([l for l in lines
+                              if 'test_fail failed unexpectedly:' in l]),
                          3)
 
     def test_setup_and_teardown_single_child(self):
@@ -423,7 +424,7 @@ class TestCli(test_case.MainTestCase):
         files = {'fail_test.py': FAIL_TEST_PY,
                  'pass_test.py': PASS_TEST_PY}
         self.check(['-j', '1', '--skip', '*test_fail*'], files=files, ret=0,
-                   out=('[1/2] fail_test.FailingTest.test_fail passed\n'
+                   out=('[1/2] fail_test.FailingTest.test_fail was skipped\n'
                         '[2/2] pass_test.PassingTest.test_pass passed\n'
                         '2 tests run, 0 failures.\n'), err='')
 
