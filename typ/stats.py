@@ -14,6 +14,7 @@
 
 
 class Stats(object):
+
     def __init__(self, status_format, time_fn, size):
         self.fmt = status_format
         self.finished = 0
@@ -42,7 +43,7 @@ class Stats(object):
                 if cn == 'c':
                     elapsed = self._times[-1] - self._times[0]
                     if elapsed > 0:
-                        out += '%5.1f' % ((len(self._times) - 1)/ elapsed)
+                        out += '%5.1f' % ((len(self._times) - 1) / elapsed)
                     else:
                         out += '-'
                 elif cn == 'e':

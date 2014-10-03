@@ -49,7 +49,7 @@ class FakeHost(object):
 
     def add_to_path(self, *comps):
         absolute_path = self.abspath(*comps)
-        if not absolute_path in sys.path:
+        if absolute_path not in sys.path:
             sys.path.append(absolute_path)
 
     def basename(self, path):
@@ -61,7 +61,7 @@ class FakeHost(object):
 
     def chdir(self, *comps):
         path = self.join(*comps)
-        if not path.startswith('/'): # pragma: no cover
+        if not path.startswith('/'):  # pragma: no cover
             path = self.join(self.cwd, path)
         self.cwd = path
 
@@ -104,7 +104,7 @@ class FakeHost(object):
     def join(self, *comps):
         p = ''
         for c in comps:
-            if c in ('', '.'): # pragma: no cover
+            if c in ('', '.'):  # pragma: no cover
                 continue
             elif c.startswith('/'):
                 p = c
@@ -116,7 +116,7 @@ class FakeHost(object):
 
     def maybe_mkdir(self, *comps):
         path = self.abspath(self.join(*comps))
-        if not path in self.dirs:
+        if path not in self.dirs:
             self.dirs.add(path)
 
     def mkdtemp(self, suffix='', prefix='tmp', dir=None, **_kwargs):
@@ -185,13 +185,14 @@ class FakeHost(object):
         self.files[full_path] = contents
         self.written_files[full_path] = contents
 
-    def fetch(self, url, data=None, headers=None): # pragma: no cover
+    def fetch(self, url, data=None, headers=None):  # pragma: no cover
         resp = self.fetch_responses.get(url, FakeResponse('', url))
         self.fetches.append((url, data, headers, resp))
         return resp
 
 
-class FakeResponse(StringIO): # pragma: no cover
+class FakeResponse(StringIO):  # pragma: no cover
+
     def __init__(self, response, url, code=200):
         StringIO.__init__(self, response)
         self._url = url

@@ -16,6 +16,7 @@ from typ import test_case
 
 
 class TestFuncs(test_case.MainTestCase):
+
     def test_convert_newlines(self):
         cn = test_case.convert_newlines
         self.assertEqual(cn('foo'), 'foo')
@@ -26,6 +27,7 @@ class TestFuncs(test_case.MainTestCase):
 
 
 class TestMainTestCase(test_case.MainTestCase):
+
     def test_basic(self):
         h = self.make_host()
         files = {

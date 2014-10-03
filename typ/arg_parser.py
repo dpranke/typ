@@ -17,6 +17,7 @@ import optparse
 
 from typ.host import Host
 
+
 class _Bailout(Exception):
     pass
 
@@ -27,6 +28,7 @@ DEFAULT_SUFFIXES = ['*_test.py', '*_unittest.py']
 
 
 class ArgumentParser(argparse.ArgumentParser):
+
     @staticmethod
     def add_option_group(parser, title, discovery=False,
                          running=False, reporting=False, skip=None):
@@ -72,23 +74,24 @@ class ArgumentParser(argparse.ArgumentParser):
 
         if reporting:
             self.add_argument('--builder-name',
-                            help=('Builder name to include in the '
+                              help=('Builder name to include in the '
                                     'uploaded data.'))
             self.add_argument('-c', '--coverage', action='store_true',
-                            help='Reports coverage information.')
+                              help='Reports coverage information.')
             self.add_argument('--coverage-omit', action='append',
-                            default=[],
-                            help=('Globs to omit when reporting coverage '
-                                  '(defaults to %s).' % DEFAULT_COVERAGE_OMIT))
+                              default=[],
+                              help=('Globs to omit when reporting coverage '
+                                    '(defaults to %s).' %
+                                    DEFAULT_COVERAGE_OMIT))
             self.add_argument('--master-name',
                               help=('Buildbot master name to include in the '
                                     'uploaded data.'))
             self.add_argument('--metadata', action='append', default=[],
-                              help=('Optional key=value metadata that will be '
-                                    'included in the results.'))
+                              help=('Optional key=value metadata that will '
+                                    'be included in the results.'))
             self.add_argument('--test-results-server',
-                              help=('If specified, uploads the full results to '
-                                    'this server.'))
+                              help=('If specified, uploads the full results '
+                                    'to this server.'))
             self.add_argument('--test-type',
                               help=('Name of test type to include in the '
                                     'uploaded data (e.g., '
@@ -118,7 +121,7 @@ class ArgumentParser(argparse.ArgumentParser):
             self.add_argument('-q', '--quiet', action='store_true',
                               default=False,
                               help=('Runs as quietly as possible '
-                                   '(only prints errors).'))
+                                    '(only prints errors).'))
             self.add_argument('-s', '--status-format',
                               default=self._host.getenv('NINJA_STATUS',
                                                         DEFAULT_STATUS_FORMAT),
@@ -186,11 +189,11 @@ class ArgumentParser(argparse.ArgumentParser):
         if not rargs.coverage_omit:
             rargs.coverage_omit = DEFAULT_COVERAGE_OMIT
 
-        if rargs.debugger: # pragma: no cover
+        if rargs.debugger:  # pragma: no cover
             rargs.jobs = 1
             rargs.passthrough = True
 
-        if rargs.coverage: # pragma: no cover
+        if rargs.coverage:  # pragma: no cover
             rargs.jobs = 1
 
         if rargs.overwrite is None:
@@ -240,7 +243,7 @@ def _action_str(action):
     # Access to a protected member pylint: disable=W0212
     if isinstance(action, argparse._StoreTrueAction):
         return 'store_true'
-    if isinstance(action, argparse._StoreFalseAction): # pragma: no cover
+    if isinstance(action, argparse._StoreFalseAction):  # pragma: no cover
         return 'store_false'
     if isinstance(action, argparse._StoreAction):
         return 'store'
@@ -248,9 +251,9 @@ def _action_str(action):
         return 'count'
     if isinstance(action, argparse._AppendAction):
         return 'append'
-    if isinstance(action, argparse._HelpAction): # pragma: no cover
+    if isinstance(action, argparse._HelpAction):  # pragma: no cover
         return 'help'
 
     raise ValueError('Unexpected action type %s for %s' %
                      action.__class__,
-                     str(action.option_strings)) # pragma: no cover
+                     str(action.option_strings))  # pragma: no cover

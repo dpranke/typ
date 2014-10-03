@@ -10,19 +10,20 @@ from subprocess import call
 
 def usage():
     print("""\
-usage: go COMMAND
+usage: run COMMAND
 
 Where COMMAND is one of:
   build     build an installable package
   check     runs lint, build, cover
   clean     remove any derived objects
-  cover     run test coverage
+  coverage  run test coverage
   develop   install a 'developable' package
+  format    run autopep8 over the source
   install   install a complete package
-  lint      run lint over the osurce
+  lint      run lint over the source
   pull      pull latest sources from repo
   push      push latest sources from repo
-  test      run tests""")
+  tests     run tests""")
 
 
 def main(argv):
@@ -54,10 +55,15 @@ def run(cmd):
         return ret
     if cmd == 'develop':
         ret = call([sys.executable, 'setup.py', 'develop'])
+    if cmd == 'format':
+        return call('autopep8 --in-place *.py */*.py */*/*.py', shell=True)
     if cmd == 'install':
         ret = call([sys.executable, 'setup.py', 'install'])
     if cmd == 'lint':
-        return call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
+        ret = call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
+        if not ret:
+            ret = call('pep8 *.py */*.py */*/*.py', shell=True)
+        return ret
     if cmd == 'install':
         return call([sys.executable, 'setup.py', 'install'])
     if cmd == 'pull':

@@ -19,6 +19,7 @@ from typ import ArgumentParser
 
 
 class ArgumentParserTest(unittest.TestCase):
+
     def test_optparse_options(self):
         parser = optparse.OptionParser()
         ArgumentParser.add_option_group(parser, 'foo',

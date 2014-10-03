@@ -17,7 +17,7 @@ from typ.host import Host
 from typ.pool import make_pool
 
 
-def setup_fn(host, worker_num, context): # pylint: disable=W0613
+def setup_fn(host, worker_num, context):  # pylint: disable=W0613
     context['setup'] = True
     return context
 
@@ -62,4 +62,3 @@ class TestPool(test_case.TestCase):
         pool = make_pool(host, 2, echo_fn, context, setup_fn, teardown_fn)
         final_contexts = pool.join()
         self.assertEqual(final_contexts, [])
-

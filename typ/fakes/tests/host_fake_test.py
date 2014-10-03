@@ -19,6 +19,7 @@ from typ.fakes.host_fake import FakeHost
 
 
 class TestFakeHost(host_test.TestHost):
+
     def host(self):
         return FakeHost()
 

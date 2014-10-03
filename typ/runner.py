@@ -36,6 +36,7 @@ ResultType = json_results.ResultType
 
 
 class TestInput(object):
+
     def __init__(self, name, msg='', timeout=None, expected=None):
         self.name = name
         self.msg = msg
@@ -44,6 +45,7 @@ class TestInput(object):
 
 
 class TestSet(object):
+
     def __init__(self, parallel_tests=None, isolated_tests=None,
                  tests_to_skip=None, context=None, setup_fn=None,
                  teardown_fn=None):
@@ -62,6 +64,7 @@ class TestSet(object):
 
 
 class Runner(object):
+
     def __init__(self, host=None, loader=None):
         self.host = host or Host()
         self.loader = loader or unittest.loader.TestLoader()
@@ -93,7 +96,6 @@ class Runner(object):
         if parser.exit_status is not None:
             return
 
-
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)
 
@@ -107,11 +109,11 @@ class Runner(object):
             return ret, None, None
 
         ret = self._set_up_runner()
-        if ret: # pragma: no cover
+        if ret:  # pragma: no cover
             return ret, None, None
 
         find_start = h.time()
-        if self.cov: # pragma: no cover
+        if self.cov:  # pragma: no cover
             self.cov.start()
 
         full_results = None
@@ -125,7 +127,7 @@ class Runner(object):
         if not ret:
             ret, full_results = self._run_tests(result_set, test_set)
 
-        if self.cov: # pragma: no cover
+        if self.cov:  # pragma: no cover
             self.cov.stop()
         test_end = h.time()
 
@@ -153,7 +155,8 @@ class Runner(object):
         args = self.args
 
         self.stats = Stats(args.status_format, h.time, args.jobs)
-        self.printer = Printer(self.print_, args.overwrite, args.terminal_width)
+        self.printer = Printer(
+            self.print_, args.overwrite, args.terminal_width)
 
         self.top_level_dir = args.top_level_dir
         if not self.top_level_dir:
@@ -173,7 +176,7 @@ class Runner(object):
         for path in args.path:
             h.add_to_path(path)
 
-        if args.coverage: # pragma: no cover
+        if args.coverage:  # pragma: no cover
             try:
                 import coverage
             except ImportError:
@@ -184,11 +187,11 @@ class Runner(object):
 
     def find_tests(self, args, classifier=None,
                    context=None, setup_fn=None, teardown_fn=None):
-        if not context and self.args.context: # pragma: no cover
+        if not context and self.args.context:  # pragma: no cover
             context = json.loads(self.args.context)
-        if not setup_fn and self.args.setup: # pragma: no cover
+        if not setup_fn and self.args.setup:  # pragma: no cover
             setup_fn = _import_name(self.args.setup)
-        if not teardown_fn and self.args.teardown: # pragma: no cover
+        if not teardown_fn and self.args.teardown:  # pragma: no cover
             teardown_fn = _import_name(self.args.teardown)
         test_set = self._make_test_set(context=context,
                                        setup_fn=setup_fn,
@@ -214,7 +217,7 @@ class Runner(object):
             if isinstance(obj, unittest.suite.TestSuite):
                 for el in obj:
                     add_names(el)
-            elif obj.id() == load_test_failure: # pragma: no cover
+            elif obj.id() == load_test_failure:  # pragma: no cover
                 # TODO: log an error?
                 return
             else:
@@ -259,11 +262,11 @@ class Runner(object):
                             add_names(suite)
                     else:
                         add_names(loader.loadTestsFromName(test))
-            except AttributeError as e: # pragma: no cover
+            except AttributeError as e:  # pragma: no cover
                 self.print_('Failed to load "%s": %s' % (test, str(e)),
                             stream=h.stderr)
                 ret = 1
-            except ImportError as e: # pragma: no cover
+            except ImportError as e:  # pragma: no cover
                 self.print_('Failed to load "%s": %s' % (test, str(e)),
                             stream=h.stderr)
                 ret = 1
@@ -274,7 +277,7 @@ class Runner(object):
             test_set.parallel_tests = _sort_inputs(test_set.parallel_tests)
             test_set.isolated_tests = _sort_inputs(test_set.isolated_tests)
             test_set.tests_to_skip = _sort_inputs(test_set.tests_to_skip)
-        else: # pragma: no cover
+        else:  # pragma: no cover
             test_set = None
         return ret, test_set
 
@@ -411,7 +414,7 @@ class Runner(object):
             result_str = ' was skipped'
         elif result.actual == ResultType.Pass:
             result_str = ' passed'
-        else: # pragma: no cover
+        else:  # pragma: no cover
             raise ValueError('Unimplemented result type %s' % result)
         if result.unexpected:
             result_str += ' unexpectedly'
@@ -426,27 +429,27 @@ class Runner(object):
             if out or err:
                 suffix += ':\n'
             self.update(stats.format() + result.name + suffix, elide=False)
-            for l in out.splitlines(): # pragma: no cover
+            for l in out.splitlines():  # pragma: no cover
                 self.print_('  %s' % l)
-            for l in err.splitlines(): # pragma: no cover
+            for l in err.splitlines():  # pragma: no cover
                 self.print_('  %s' % l)
         elif not self.args.quiet:
-            if self.args.verbose > 1 and (out or err): # pragma: no cover
+            if self.args.verbose > 1 and (out or err):  # pragma: no cover
                 suffix += ':\n'
             self.update(stats.format() + result.name + suffix,
                         elide=(not self.args.verbose))
-            if self.args.verbose > 1: # pragma: no cover
+            if self.args.verbose > 1:  # pragma: no cover
                 for l in out.splitlines():
                     self.print_('  %s' % l)
                 for l in err.splitlines():
                     self.print_('  %s' % l)
-            if self.args.verbose: # pragma: no cover
+            if self.args.verbose:  # pragma: no cover
                 self.flush()
 
     def update(self, msg, elide=True):  # pylint: disable=W0613
         self.printer.update(msg, elide=True)
 
-    def flush(self): # pragma: no cover
+    def flush(self):  # pragma: no cover
         self.printer.flush()
 
     def _summarize(self, full_results):
@@ -466,19 +469,19 @@ class Runner(object):
                      '' if num_failures == 1 else 's'))
         self.print_()
 
-    def write_trace(self, trace): # pragma: no cover
+    def write_trace(self, trace):  # pragma: no cover
         if self.args.write_trace_to:
             self.host.write_text_file(
                 self.args.write_trace_to,
                 json.dumps(trace, indent=2) + '\n')
 
-    def write_results(self, full_results): # pragma: no cover
+    def write_results(self, full_results):  # pragma: no cover
         if self.args.write_full_results_to:
             self.host.write_text_file(
                 self.args.write_full_results_to,
                 json.dumps(full_results, indent=2) + '\n')
 
-    def upload_results(self, full_results): # pragma: no cover
+    def upload_results(self, full_results):  # pragma: no cover
         h = self.host
         if not self.args.test_results_server:
             return 0
@@ -492,17 +495,17 @@ class Runner(object):
             if response.code == 200:
                 return 0
             h.print_('Uploading the JSON results failed with %d: "%s"' %
-                        (response.code, response.read()))
+                     (response.code, response.read()))
         except Exception as e:
             h.print_('Uploading the JSON results raised "%s"\n' % str(e))
         return 1
 
     def report_coverage(self):
-        if self.cov: # pragma: no cover
+        if self.cov:  # pragma: no cover
             self.host.print_()
             self.cov.report(show_missing=False, omit=self.args.coverage_omit)
 
-    def exit_code_from_full_results(self, full_results): # pragma: no cover
+    def exit_code_from_full_results(self, full_results):  # pragma: no cover
         return json_results.exit_code_from_full_results(full_results)
 
     def _add_trace_event(self, trace, name, start, end):
@@ -521,7 +524,7 @@ class Runner(object):
             'traceEvents': [],
             'otherData': {},
         }
-        for m in self.args.metadata: # pragma: no cover
+        for m in self.args.metadata:  # pragma: no cover
             k, v = m.split('=')
             trace['otherData'][k] = v
 
@@ -550,6 +553,7 @@ class Runner(object):
 
 
 class _Child(object):
+
     def __init__(self, parent, loader, test_set):
         self.host = None
         self.worker_num = None
@@ -569,7 +573,7 @@ def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
 
-    if child.setup_fn: # pragma: no cover
+    if child.setup_fn:  # pragma: no cover
         child.context_after_setup = child.setup_fn(child, child.context)
     else:
         child.context_after_setup = child.context
@@ -577,7 +581,7 @@ def _setup_process(host, worker_num, child):
 
 
 def _teardown_process(child):
-    if child.teardown_fn: # pragma: no cover
+    if child.teardown_fn:  # pragma: no cover
         child.teardown_fn(child, child.context_after_setup)
     # TODO: Return a more structured result, including something from
     # the teardown function?
@@ -608,7 +612,7 @@ def _run_one_test(child, test_input):
     h.capture_output(divert=not child.passthrough)
     try:
         suite = child.loader.loadTestsFromName(test_name)
-    except Exception as e: # pragma: no cover
+    except Exception as e:  # pragma: no cover
         suite = _load_via_load_tests(child, test_name)
         if not suite:
             # TODO: Figure out how to handle failures here.
@@ -628,7 +632,7 @@ def _run_one_test(child, test_input):
     out = ''
     err = ''
     try:
-        if child.debugger: # pragma: no cover
+        if child.debugger:  # pragma: no cover
             # Access to protected member pylint: disable=W0212
             # TODO: add start_capture() and make it debugger-aware.
             test_func = getattr(test_case, test_case._testMethodName)
@@ -653,30 +657,30 @@ def _run_one_test(child, test_input):
         code = 1
         unexpected = True
         err = err + test_result.failures[0][1]
-    elif test_result.errors: # pragma: no cover
+    elif test_result.errors:  # pragma: no cover
         actual = ResultType.Failure
         code = 1
         unexpected = True
         err = err + test_result.errors[0][1]
-    elif test_result.skipped: # pragma: no cover
+    elif test_result.skipped:  # pragma: no cover
         actual = ResultType.Skip
         err = err + test_result.skipped[0][1]
-    elif test_result.expectedFailures: # pragma: no cover
+    elif test_result.expectedFailures:  # pragma: no cover
         expected = [ResultType.Failure]
         actual = ResultType.Failure
         code = 1
         err = err + test_result.expectedFailures[0][1]
-    elif test_result.unexpectedSuccesses: # pragma: no cover
+    elif test_result.unexpectedSuccesses:  # pragma: no cover
         expected = [ResultType.Failure]
         unexpected = True
-    else: # pragma: no cover
+    else:  # pragma: no cover
         pass
 
     return Result(test_name, actual, start, took, child.worker_num,
                   expected, unexpected, flaky, code, out, err)
 
 
-def _load_via_load_tests(child, test_name): # pragma: no cover
+def _load_via_load_tests(child, test_name):  # pragma: no cover
     # If we couldn't import a test directly, the test may be only loadable
     # via unittest's load_tests protocol. See if we can find a load_tests
     # entry point that will work for this test.

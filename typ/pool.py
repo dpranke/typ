@@ -18,11 +18,10 @@ import pickle
 
 try:
     from enum import Enum
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     Enum = object
 
 from typ.host import Host
-
 
 
 class _MessageType(Enum):
@@ -38,22 +37,23 @@ class _MessageType(Enum):
 def make_pool(host, jobs, callback, context, pre_fn, post_fn):
     try:
         _ = pickle.dumps(context)
-    except Exception as e: # pragma: no cover
+    except Exception as e:  # pragma: no cover
         raise ValueError('context passed to make_pool is not picklable: %s'
                          % str(e))
     try:
         _ = pickle.dumps(pre_fn)
-    except pickle.PickleError: # pragma: no cover
+    except pickle.PickleError:  # pragma: no cover
         raise ValueError('pre_fn passed to make_pool is not picklable')
     try:
         _ = pickle.dumps(post_fn)
-    except pickle.PickleError: # pragma: no cover
+    except pickle.PickleError:  # pragma: no cover
         raise ValueError('post_fn passed to make_pool is not picklable')
     cls = ProcessPool if jobs > 1 else AsyncPool
     return cls(host, jobs, callback, context, pre_fn, post_fn)
 
 
 class ProcessPool(object):
+
     def __init__(self, host, jobs, callback, context, pre_fn, post_fn):
         self.host = host
         self.jobs = jobs
@@ -76,9 +76,9 @@ class ProcessPool(object):
 
     def get(self, block=True, timeout=None):
         msg_type, resp = self.responses.get(block, timeout)
-        if msg_type == _MessageType.Error: # pragma: no cover
+        if msg_type == _MessageType.Error:  # pragma: no cover
             self._handle_error(resp)
-        elif msg_type == _MessageType.Interrupt: # pragma: no cover
+        elif msg_type == _MessageType.Interrupt:  # pragma: no cover
             raise KeyboardInterrupt
         assert msg_type == _MessageType.Response
         return resp
@@ -90,35 +90,40 @@ class ProcessPool(object):
         self.closed = True
 
     def join(self):
-        final_responses = []
         if not self.closed:
+            # We must be aborting; terminate the workers rather than
+            # shutting down cleanly.
             self.requests.close()
             for w in self.workers:
                 w.terminate()
                 w.join()
-        else:
-            for w in self.workers:
-                while True:
-                    msg_type, resp = self.responses.get(True)
-                    if msg_type == _MessageType.Error: # pragma: no cover
-                        self._handle_error(resp)
-                    elif msg_type == _MessageType.Interrupt: # pragma: no cover
-                        raise KeyboardInterrupt
-                    elif msg_type == _MessageType.Done:
-                        break
-                    # TODO: log something about discarding messages?
-                final_responses.append(resp)
-                w.join()
+            self.responses.close()
+            return []
+
+        final_responses = []
+        for w in self.workers:
+            while True:
+                msg_type, resp = self.responses.get(True)
+                if msg_type == _MessageType.Error:  # pragma: no cover
+                    self._handle_error(resp)
+                elif msg_type == _MessageType.Interrupt:  # pragma: no cover
+                    raise KeyboardInterrupt
+                elif msg_type == _MessageType.Done:
+                    break
+                # TODO: log something about discarding messages?
+            final_responses.append(resp)
+            w.join()
         self.responses.close()
         return final_responses
 
-    def _handle_error(self, msg): # pragma: no cover
+    def _handle_error(self, msg):  # pragma: no cover
         worker_num, ex_str = msg
         self.erred = True
         raise Exception("error from worker %d: %s" % (worker_num, ex_str))
 
 
 class AsyncPool(object):
+
     def __init__(self, host, jobs, callback, context, pre_fn, post_fn):
         self.host = host or Host()
         self.jobs = jobs
@@ -148,7 +153,7 @@ class AsyncPool(object):
 
 
 def _loop(requests, responses, host, worker_num,
-          callback, context, pre_fn, post_fn): # pragma: no cover
+          callback, context, pre_fn, post_fn):  # pragma: no cover
     # TODO: Figure out how to get coverage to work w/ subprocesses.
     host = host or Host()
     erred = False

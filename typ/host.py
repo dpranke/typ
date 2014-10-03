@@ -24,8 +24,6 @@ import time
 import urllib2
 
 
-
-
 class Host(object):
     python_interpreter = sys.executable
     sep = os.sep
@@ -46,7 +44,7 @@ class Host(object):
 
     def add_to_path(self, *comps):
         absolute_path = self.abspath(*comps)
-        if not absolute_path in sys.path:
+        if absolute_path not in sys.path:
             sys.path.append(absolute_path)
 
     def basename(self, path):
@@ -155,13 +153,13 @@ class Host(object):
         with open(path, mode) as f:
             f.write(contents)
 
-    def fetch(self, url, data=None, headers=None): # pragma: no cover
+    def fetch(self, url, data=None, headers=None):  # pragma: no cover
         return urllib2.urlopen(urllib2.Request(url, data, headers))
 
     def terminal_width(self):
         """Returns 0 if the width cannot be determined."""
         try:
-            if sys.platform == 'win32': # pragma: no cover
+            if sys.platform == 'win32':  # pragma: no cover
                 # From http://code.activestate.com/recipes/ \
                 #   440694-determine-size-of-console-window-on-windows/
                 from ctypes import windll, create_string_buffer
@@ -188,10 +186,10 @@ class Host(object):
                 import struct
                 import termios
                 packed = fcntl.ioctl(self.stderr.fileno(),
-                                    termios.TIOCGWINSZ, '\0' * 8)
+                                     termios.TIOCGWINSZ, '\0' * 8)
                 _, columns, _, _ = struct.unpack('HHHH', packed)
                 return columns
-        except Exception: # pragma: no cover
+        except Exception:  # pragma: no cover
             # TODO: Figure out how to test this and make coverage see it.
             return 0
 
@@ -209,7 +207,7 @@ class Host(object):
 
         # TODO: Make log capture more robust.
         self._orig_logging_handlers = self.logger.handlers
-        if self._orig_logging_handlers: # pragma: no cover
+        if self._orig_logging_handlers:  # pragma: no cover
             self.logger.handlers = [logging.StreamHandler(self.stderr)]
 
         self.stdout.capture(divert)
@@ -224,19 +222,20 @@ class Host(object):
 
 
 class _TeedStream(io.StringIO):
+
     def __init__(self, stream):
         super(_TeedStream, self).__init__()
         self.stream = stream
         self.capturing = False
         self.diverting = False
 
-    def write(self, msg, *args, **kwargs): # pragma: no cover
+    def write(self, msg, *args, **kwargs):  # pragma: no cover
         if self.capturing:
             super(_TeedStream, self).write(unicode(msg), *args, **kwargs)
         if not self.diverting:
             self.stream.write(unicode(msg), *args, **kwargs)
 
-    def flush(self): # pragma: no cover
+    def flush(self):  # pragma: no cover
         if self.capturing:
             super(_TeedStream, self).flush()
         if not self.diverting:

@@ -16,12 +16,12 @@ import json
 
 try:
     from enum import IntEnum
-except ImportError: # pragma: no cover
+except ImportError:  # pragma: no cover
     Enum = object
     IntEnum = object
 
 
-class ResultType(IntEnum): # no __init__ pylint: disable=W0232
+class ResultType(IntEnum):  # no __init__ pylint: disable=W0232
     Pass = 0
     Failure = 1
     ImageOnlyFailure = 2
@@ -34,9 +34,10 @@ class ResultType(IntEnum): # no __init__ pylint: disable=W0232
                 'Skip'][self]
 
 
-class Result(object): # pragma: no cover
+class Result(object):  # pragma: no cover
     # too many instance attributes  pylint: disable=R0902
     # too many arguments  pylint: disable=R0913
+
     def __init__(self, name, actual, started, took, worker,
                  expected=None, unexpected=False,
                  flaky=False, code=0, out='', err=''):
@@ -53,7 +54,8 @@ class Result(object): # pragma: no cover
         self.err = err
 
 
-class ResultSet(object): # pragma: no cover
+class ResultSet(object):  # pragma: no cover
+
     def __init__(self):
         self.results = []
 
@@ -131,9 +133,11 @@ def failed_test_names(results):
     for r in results.results:
         if r.actual == ResultType.Failure:
             names.add(r.name)
-        elif r.actual == ResultType.Pass and r.name in names: # pragma: no cover
+        elif (r.actual == ResultType.Pass and
+              r.name in names):  # pragma: no cover
             names.remove(r.name)
     return names
+
 
 def _passing_test_names(results):
     return set(r.name for r in results.results if r.actual == ResultType.Pass)

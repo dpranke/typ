@@ -18,6 +18,7 @@ from typ.printer import Printer
 
 
 class TestPrinter(unittest.TestCase):
+
     def setUp(self):
         # 'Invalid name' pylint: disable=C0103
         self.out = []
@@ -58,4 +59,3 @@ class TestPrinter(unittest.TestCase):
                           '\n',
                           'baz',
                           '\n'])
-

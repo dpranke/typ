@@ -18,7 +18,7 @@ import sys
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
-if not here in sys.path:
+if here not in sys.path:
     sys.path.insert(0, here)
 
 from typ.version import VERSION

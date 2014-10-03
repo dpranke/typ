@@ -14,6 +14,7 @@
 
 
 class Printer(object):
+
     def __init__(self, print_, should_overwrite, cols):
         self.print_ = print_
         self.should_overwrite = should_overwrite

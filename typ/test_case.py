@@ -57,7 +57,7 @@ class MainTestCase(TestCase):
     def make_host(self):
         if self.child:
             return self.child.host
-        return Host() # pragma: no cover
+        return Host()  # pragma: no cover
 
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)

@@ -144,7 +144,8 @@ def setupProcess(child, context):
 
 
 def teardownProcess(child, context):
-    child.host.print_('\\nteardownProcess(%d): %s' % (child.worker_num, context))
+    child.host.print_('\\nteardownProcess(%d): %s' %
+                      (child.worker_num, context))
 
 
 class UnitTest(unittest.TestCase):
@@ -199,6 +200,7 @@ path_to_main = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     'entry_points.py')
 
+
 class TestCli(test_case.MainTestCase):
     prog = [sys.executable, path_to_main]
 
@@ -215,7 +217,7 @@ class TestCli(test_case.MainTestCase):
 
     def test_coverage(self):
         try:
-            import coverage # pylint: disable=W0612
+            import coverage  # pylint: disable=W0612
             self.check(['-c'], files=PASS_TEST_FILES, ret=0, err='',
                        out=d("""\
                              [1/1] pass_test.PassingTest.test_pass passed
@@ -225,7 +227,7 @@ class TestCli(test_case.MainTestCase):
                              -------------------------------
                              pass_test       4      0   100%
                              """))
-        except ImportError: # pragma: no cover
+        except ImportError:  # pragma: no cover
             self.check(['-c'], files=PASS_TEST_FILES, ret=1,
                        out='Error: coverage is not installed\n', err='')
 
@@ -248,18 +250,22 @@ class TestCli(test_case.MainTestCase):
                                       def test_err(self):
                                           foo = bar
                                   """)}
-        self.check([''], files=files, ret=1, err='',
-                   rout=d("""\
-                          \[1/1\] err_test.ErrTest.test_err failed unexpectedly:
-                            Traceback \(most recent call last\):
-                              File ".*err_test.py", line 4, in test_err
-                                foo = bar
-                            NameError: global name 'bar' is not defined
-                          1 test run, 1 failure.
-                          """))
+        self.check(
+            [''],
+            files=files,
+            ret=1,
+            err='',
+            rout=d("""\
+                   \[1/1\] err_test.ErrTest.test_err failed unexpectedly:
+                     Traceback \(most recent call last\):
+                       File ".*err_test.py", line 4, in test_err
+                         foo = bar
+                     NameError: global name 'bar' is not defined
+                   1 test run, 1 failure.
+                   """))
 
     def test_fail(self):
-        _, out, _, _  = self.check([], files=FAIL_TEST_FILES, ret=1, err='')
+        _, out, _, _ = self.check([], files=FAIL_TEST_FILES, ret=1, err='')
         self.assertIn('self.fail()', out)
 
     def test_file_list(self):
@@ -381,16 +387,16 @@ class TestCli(test_case.MainTestCase):
             ['output_test.FailTest'],
             files=OUTPUT_TEST_FILES,
             ret=1,
-            rout=d("""\
-                   \[1/1\] output_test.FailTest.test_out_err_fail failed unexpectedly:
-                     hello on stdout
-                     hello on stderr
-                     Traceback \(most recent call last\):
-                       File ".*output_test.py", line 18, in test_out_err_fail
-                         self.fail\(\)
-                     AssertionError: None
-                   1 test run, 1 failure.
-                   """),
+            rout=('\[1/1\] output_test.FailTest.test_out_err_fail '
+                  'failed unexpectedly:\n'
+                  '  hello on stdout\n'
+                  '  hello on stderr\n'
+                  '  Traceback \(most recent call last\):\n'
+                  '    File ".*output_test.py", '
+                  'line 18, in test_out_err_fail\n'
+                  '      self.fail\(\)\n'
+                  '  AssertionError: None\n'
+                  '1 test run, 1 failure.\n'),
             err='')
 
     def test_retry_limit(self):
@@ -406,8 +412,8 @@ class TestCli(test_case.MainTestCase):
         self.check(['--jobs', '1',
                     '--setup', 'st_test.setupProcess',
                     '--teardown', 'st_test.teardownProcess'],
-                    files=ST_TEST_FILES, ret=0, err='',
-                    out=d("""\
+                   files=ST_TEST_FILES, ret=0, err='',
+                   out=d("""\
                           setupProcess(1): {'passed_in': False, 'calls': 0}
                           [1/4] st_test.TypTest.test_one passed
                           [2/4] st_test.TypTest.test_two passed
@@ -417,6 +423,7 @@ class TestCli(test_case.MainTestCase):
 
                           4 tests run, 0 failures.
                           """))
+
     def test_skip(self):
         self.check(['--skip', '*test_fail*'], files=FAIL_TEST_FILES, ret=1,
                    out='No tests to run.\n', err='')
@@ -430,9 +437,9 @@ class TestCli(test_case.MainTestCase):
 
         # This tests that we print test_started updates for skipped tests
         # properly. It also tests how overwriting works.
-        _, out, _, _= self.check(['-j', '1', '--overwrite', '--skip',
-                                  '*test_fail*'], files=files, ret=0,
-                                 err='', universal_newlines=False)
+        _, out, _, _ = self.check(['-j', '1', '--overwrite', '--skip',
+                                   '*test_fail*'], files=files, ret=0,
+                                  err='', universal_newlines=False)
 
         # We test this string separately and call out.strip() to
         # avoid the trailing \r\n we get on windows, while keeping
@@ -451,40 +458,47 @@ class TestCli(test_case.MainTestCase):
 
     def test_skips_and_failures(self):
         self.check(['-j', '1', '-v', '-v'], files=SF_TEST_FILES, ret=1, err='',
-                   rout=d("""\
-                          \[1/9\] sf_test.ExpectedFailures.test_fail failed:
-                            Traceback \(most recent call last\):
-                              File ".*sf_test.py", line 48, in test_fail
-                                self.fail\(\)
-                            AssertionError: None
-                          \[2/9\] sf_test.ExpectedFailures.test_pass passed unexpectedly
-                          \[3/9\] sf_test.SetupClass.test_method1 failed unexpectedly:
-                            in setupClass
-                            Traceback \(most recent call last\):
-                              File ".*sf_test.py", line 37, in setUpClass
-                                assert False, 'setupClass failed'
-                            AssertionError: setupClass failed
-                          \[4/9\] sf_test.SetupClass.test_method2 failed unexpectedly:
-                            in setupClass
-                            Traceback \(most recent call last\):
-                              File ".*sf_test.py", line 37, in setUpClass
-                                assert False, 'setupClass failed'
-                            AssertionError: setupClass failed
-                          \[5/9\] sf_test.SkipClass.test_method was skipped:
-                            skip class
-                          \[6/9\] sf_test.SkipMethods.test_reason was skipped:
-                            reason
-                          \[7/9\] sf_test.SkipMethods.test_skip_if_false failed unexpectedly:
-                            Traceback \(most recent call last\):
-                              File ".*sf_test.py", line 16, in test_skip_if_false
-                                self.fail\(\)
-                            AssertionError: None
-                          \[8/9\] sf_test.SkipMethods.test_skip_if_true was skipped:
-                            reason
-                          \[9/9\] sf_test.SkipSetup.test_notrun was skipped:
-                            setup failed
-                          9 tests run, 4 failures.
-                          """))
+                   rout=('\[1/9\] sf_test.ExpectedFailures.test_fail failed:\n'
+                         '  Traceback \(most recent call last\):\n'
+                         '    File ".*sf_test.py", line 48, in test_fail\n'
+                         '      self.fail\(\)\n'
+                         '  AssertionError: None\n'
+                         '\[2/9\] sf_test.ExpectedFailures.test_pass '
+                         'passed unexpectedly\n'
+                         '\[3/9\] sf_test.SetupClass.test_method1 '
+                         'failed unexpectedly:\n'
+                         '  in setupClass\n'
+                         '  Traceback \(most recent call last\):\n'
+                         '    File ".*sf_test.py", line 37, in setUpClass\n'
+                         '      assert False, \'setupClass failed\'\n'
+                         '  AssertionError: setupClass failed\n'
+                         '\[4/9\] sf_test.SetupClass.test_method2 '
+                         'failed unexpectedly:\n'
+                         '  in setupClass\n'
+                         '  Traceback \(most recent call last\):\n'
+                         '    File ".*sf_test.py", line 37, in setUpClass\n'
+                         '      assert False, \'setupClass failed\'\n'
+                         '  AssertionError: setupClass failed\n'
+                         '\[5/9\] sf_test.SkipClass.test_method '
+                         'was skipped:\n'
+                         '  skip class\n'
+                         '\[6/9\] sf_test.SkipMethods.test_reason '
+                         'was skipped:\n'
+                         '  reason\n'
+                         '\[7/9\] sf_test.SkipMethods.test_skip_if_false '
+                         'failed unexpectedly:\n'
+                         '  Traceback \(most recent call last\):\n'
+                         '    File ".*sf_test.py", line 16, in '
+                         'test_skip_if_false\n'
+                         '      self.fail\(\)\n'
+                         '  AssertionError: None\n'
+                         '\[8/9\] sf_test.SkipMethods.test_skip_if_true '
+                         'was skipped:\n'
+                         '  reason\n'
+                         '\[9/9\] sf_test.SkipSetup.test_notrun '
+                         'was skipped:\n'
+                         '  setup failed\n'
+                         '9 tests run, 4 failures.\n'))
 
     def test_timing(self):
         self.check(['-t'], files=PASS_TEST_FILES, ret=0, rout='', err='')

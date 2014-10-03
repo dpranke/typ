@@ -19,6 +19,7 @@ from typ.host import Host
 
 
 class TestHost(unittest.TestCase):
+
     def host(self):
         return Host()
 
@@ -55,10 +56,10 @@ class TestHost(unittest.TestCase):
             self.assertEqual(h.read_binary_file('binfile'), 'bin contents')
 
             self.assertEqual(sorted(h.files_under(dirpath)),
-                            ['bar' + h.sep + 'foo.txt', 'binfile'])
+                             ['bar' + h.sep + 'foo.txt', 'binfile'])
 
             mtime = h.mtime(dirpath, 'bar', 'foo.txt')
-            self.assertGreaterEqual(now, mtime-0.1)
+            self.assertGreaterEqual(now, mtime - 0.1)
             h.remove(dirpath, 'bar', 'foo.txt')
             self.assertFalse(h.exists(dirpath, 'bar', 'foo.txt'))
             self.assertFalse(h.isfile(dirpath, 'bar', 'foo.txt'))
@@ -102,6 +103,7 @@ class TestHost(unittest.TestCase):
         h = self.host()
 
         class FakeStream(object):
+
             def __init__(self):
                 self.contents = None
                 self.flush_called = False

@@ -23,7 +23,7 @@ import unittest
 # that typ/main.py works when invoked via subprocess on windows in
 # _spawn_main().
 dir_above_typ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if not dir_above_typ in sys.path: # pragma: no cover
+if dir_above_typ not in sys.path:  # pragma: no cover
     sys.path.append(dir_above_typ)
 
 from typ.host import Host
@@ -37,7 +37,7 @@ def main(argv=None, host=None, loader=None):
     return runner.main(argv)
 
 
-def spawn_main(): # pragma: no cover
+def spawn_main():  # pragma: no cover
     # This function is called from __main__.py when running 'python -m typ' on
     # windows.
     #
@@ -60,5 +60,5 @@ def spawn_main(): # pragma: no cover
     return proc.returncode
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     sys.exit(main())

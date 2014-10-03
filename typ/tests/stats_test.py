@@ -18,6 +18,7 @@ from typ.stats import Stats
 
 
 class TestStats(unittest.TestCase):
+
     def test_basic(self):
         s = Stats('foo', lambda: 0, 32)
         self.assertEqual(s.format(), 'foo')

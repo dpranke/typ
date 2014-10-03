@@ -66,7 +66,7 @@ class FakeTestLoader(object):
                 suite.addTest(tc)
         return suite
 
-    def loadTestsFromName(self, name, module=None): # pragma: no cover
+    def loadTestsFromName(self, name, module=None):  # pragma: no cover
         h = self.host()
         comps = name.split('.')
         path = '/'.join(comps)
@@ -110,7 +110,7 @@ class FakeTestLoader(object):
                     # package + module
                     suite = self._loadTestsFromFile(path, d)
                     return unittest.TestSuite([t for t in suite._tests if
-                                                t.id().startswith(name)])
+                                               t.id().startswith(name)])
                 if h.isdir(d, comps[0], comps[1]):
                     # package
                     return self.discover(path)
@@ -127,7 +127,7 @@ class FakeTestLoader(object):
                 # module + class + method
                 suite = self._loadTestsFromFile(path, d)
                 return unittest.TestSuite([t for t in suite._tests if
-                                            t.id() == name])
+                                           t.id() == name])
             if h.isdir(d, comps[0], comps[1]):
                 # package
                 return self.discover(h.join(d, comps[0], comps[1]))
@@ -144,6 +144,7 @@ class FakeTestLoader(object):
 
 
 class FakeTestCase(unittest.TestCase):
+
     def __init__(self, host, name):
         self._host = host
         self._name = name
@@ -156,19 +157,19 @@ class FakeTestCase(unittest.TestCase):
     def id(self):
         return self._name
 
-    def __str__(self): # pragma: no cover
+    def __str__(self):  # pragma: no cover
         return "%s (%s)" % (self._testMethodName, self._class_name)
 
-    def __repr__(self): # pragma: no cover
+    def __repr__(self):  # pragma: no cover
         return "%s testMethod=%s" % (self._class_name, self._testMethodName)
 
     def _run(self):
         if '_fail' in self._testMethodName:
             self.fail()
-        if '_out' in self._testMethodName: # pragma: no cover
+        if '_out' in self._testMethodName:  # pragma: no cover
             self._host.stdout.write('hello on stdout')
             self._host.stdout.flush()
-        if '_err' in self._testMethodName: # pragma: no cover
+        if '_err' in self._testMethodName:  # pragma: no cover
             self._host.stderr.write('hello on stderr')
             self._host.stderr.flush()
         if '_interrupt' in self._testMethodName:
