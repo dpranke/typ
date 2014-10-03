@@ -46,7 +46,7 @@ def run(cmd):
         return ret
     if cmd == 'clean':
         return call(['git', 'clean', '-fxd'])
-    if cmd == 'cover':
+    if cmd == 'coverage':
         ret = call(['coverage', 'erase'])
         if not ret:
             ret = call(['coverage', 'run', '-m', 'typ', '-j', '1'])
@@ -70,7 +70,7 @@ def run(cmd):
         return call(['git', 'pull'])
     if cmd == 'push':
         return call(['git', 'push'])
-    if cmd == 'test':
+    if cmd == 'tests':
         return call([sys.executable, '-m', 'typ'])
     else:
         print('Unknown command "%s"' % cmd)
