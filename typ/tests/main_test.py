@@ -107,7 +107,7 @@ class SkipClass(unittest.TestCase):
 class SetupClass(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        sys.stdout.write('in setupClass\n')
+        sys.stdout.write('in setupClass\\n')
         sys.stdout.flush()
         assert False, 'setupClass failed'
 
@@ -429,8 +429,41 @@ class TestCli(test_case.MainTestCase):
                         '2 tests run, 0 failures.\n'), err='')
 
     def test_skips_and_failures(self):
-        # TODO: add real tests here.
-        self.check([], files=SF_TEST_FILES, ret=1)
+        self.check(['-j', '1', '-v', '-v'], files=SF_TEST_FILES, ret=1, err='',
+                   rout=d("""\
+                          \[1/9\] sf_test.ExpectedFailures.test_fail failed:
+                            Traceback \(most recent call last\):
+                              File ".*sf_test.py", line 48, in test_fail
+                                self.fail\(\)
+                            AssertionError: None
+                          \[2/9\] sf_test.ExpectedFailures.test_pass passed unexpectedly
+                          \[3/9\] sf_test.SetupClass.test_method1 failed unexpectedly:
+                            in setupClass
+                            Traceback \(most recent call last\):
+                              File ".*sf_test.py", line 37, in setUpClass
+                                assert False, 'setupClass failed'
+                            AssertionError: setupClass failed
+                          \[4/9\] sf_test.SetupClass.test_method2 failed unexpectedly:
+                            in setupClass
+                            Traceback \(most recent call last\):
+                              File ".*sf_test.py", line 37, in setUpClass
+                                assert False, 'setupClass failed'
+                            AssertionError: setupClass failed
+                          \[5/9\] sf_test.SkipClass.test_method was skipped:
+                            skip class
+                          \[6/9\] sf_test.SkipMethods.test_reason was skipped:
+                            reason
+                          \[7/9\] sf_test.SkipMethods.test_skip_if_false failed unexpectedly:
+                            Traceback \(most recent call last\):
+                              File ".*sf_test.py", line 16, in test_skip_if_false
+                                self.fail\(\)
+                            AssertionError: None
+                          \[8/9\] sf_test.SkipMethods.test_skip_if_true was skipped:
+                            reason
+                          \[9/9\] sf_test.SkipSetup.test_notrun was skipped:
+                            setup failed
+                          9 tests run, 4 failures.
+                          """))
 
     def test_timing(self):
         self.check(['-t'], files=PASS_TEST_FILES, ret=0, rout='', err='')
@@ -501,4 +534,7 @@ class TestMain(TestCli):
         pass
 
     def test_setup_and_teardown_single_child(self):
+        pass
+
+    def test_skips_and_failures(self):
         pass

@@ -271,9 +271,9 @@ class Runner(object):
         # TODO: Add support for discovering setupProcess/teardownProcess?
 
         if not ret:
-            test_set.parallel_tests = sorted(test_set.parallel_tests)
-            test_set.isolated_tests = sorted(test_set.isolated_tests)
-            test_set.tests_to_skip = sorted(test_set.tests_to_skip)
+            test_set.parallel_tests = _sort_inputs(test_set.parallel_tests)
+            test_set.isolated_tests = _sort_inputs(test_set.isolated_tests)
+            test_set.tests_to_skip = _sort_inputs(test_set.tests_to_skip)
         else: # pragma: no cover
             test_set = None
         return ret, test_set
@@ -285,8 +285,8 @@ class Runner(object):
             return 1, None
 
         all_tests = [ti.name for ti in
-                     sorted(test_set.parallel_tests + test_set.isolated_tests +
-                            test_set.tests_to_skip)]
+                     _sort_inputs(test_set.parallel_tests + test_set.isolated_tests +
+                                  test_set.tests_to_skip)]
 
         if self.args.list_only:
             self.print_('\n'.join(all_tests))
@@ -313,7 +313,7 @@ class Runner(object):
             stats = Stats(self.args.status_format, h.time, 1)
             stats.total = len(failed_tests)
             tests_to_retry = self._make_test_set(
-                isolated_tests=failed_tests,
+                isolated_tests=[TestInput(name) for name in failed_tests],
                 context=test_set.context,
                 setup_fn=test_set.setup_fn,
                 teardown_fn=test_set.teardown_fn)
@@ -339,8 +339,10 @@ class Runner(object):
         parallel_tests = parallel_tests or []
         isolated_tests = isolated_tests or []
         tests_to_skip = tests_to_skip or []
-        return TestSet(sorted(parallel_tests), sorted(isolated_tests),
-                       sorted(tests_to_skip), context, setup_fn, teardown_fn)
+        return TestSet(_sort_inputs(parallel_tests),
+                       _sort_inputs(isolated_tests),
+                       _sort_inputs(tests_to_skip),
+                       context, setup_fn, teardown_fn)
 
     def _run_one_set(self, stats, result_set, test_set):
         stats.total = (len(test_set.parallel_tests) +
@@ -636,26 +638,39 @@ def _run_one_test(child, test_input):
             dbg.runcall(suite.run, test_result)
         else:
             suite.run(test_result)
-        took = h.time() - start
     finally:
         out, err = h.restore_output()
 
-    if test_result.failures:
-        err = err + test_result.failures[0][1]
-        actual = ResultType.Failure
-        code = 1
-    elif test_result.errors: # pragma: no cover
-        err = err + test_result.errors[0][1]
-        actual = ResultType.Failure
-        code = 1
-    else:
-        actual = ResultType.Pass
-        code = 0
-
-    # TODO: handle skips and expected failures.
     expected = [ResultType.Pass]
-    unexpected = (actual==ResultType.Failure)
+    actual = ResultType.Pass
+    code = 0
+    unexpected = False
     flaky = False
+    took = h.time() - start
+    if test_result.failures:
+        actual = ResultType.Failure
+        code = 1
+        unexpected = True
+        err = err + test_result.failures[0][1]
+    elif test_result.errors: # pragma: no cover
+        actual = ResultType.Failure
+        code = 1
+        unexpected = True
+        err = err + test_result.errors[0][1]
+    elif test_result.skipped:
+        actual = ResultType.Skip
+        err = err + test_result.skipped[0][1]
+    elif test_result.expectedFailures:
+        expected = [ResultType.Failure]
+        actual = ResultType.Failure
+        code = 1
+        err = err + test_result.expectedFailures[0][1]
+    elif test_result.unexpectedSuccesses:
+        expected = [ResultType.Failure]
+        unexpected = True
+    else:
+        pass
+
     return Result(test_name, actual, start, took, child.worker_num,
                   expected, unexpected, flaky, code, out, err)
 
@@ -694,3 +709,6 @@ def _load_via_load_tests(child, test_name): # pragma: no cover
     if not comps:
         return None
 
+
+def _sort_inputs(inps):
+    return sorted(inps, key=lambda inp: inp.name)
