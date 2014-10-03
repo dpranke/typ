@@ -60,10 +60,6 @@ class ArgumentParser(argparse.ArgumentParser):
                               action='append',
                               help=('Globs of tests to run in isolation '
                                     '(serially).'))
-            self.add_argument('-j', '--jobs', metavar='N', type=int,
-                              default=self._host.cpu_count(),
-                              help=('Runs N jobs in parallel '
-                                    '(defaults to %(default)s).'))
             self.add_argument('--skip', metavar='glob', default=[],
                               action='append',
                               help=('Globs of test names to skip (can specify '
@@ -111,31 +107,35 @@ class ArgumentParser(argparse.ArgumentParser):
         if running:
             self.add_argument('-d', '--debugger', action='store_true',
                               help='Runs the tests under the debugger.')
-            self.add_argument('-n', '--dry-run', action='store_true',
-                              help=argparse.SUPPRESS)
+            self.add_argument('-j', '--jobs', metavar='N', type=int,
+                              default=self._host.cpu_count(),
+                              help=('Runs N jobs in parallel '
+                                    '(defaults to %(default)s).'))
             self.add_argument('-l', '--list-only', action='store_true',
                               help='Lists all the test names found and exits.')
+            self.add_argument('-n', '--dry-run', action='store_true',
+                              help=argparse.SUPPRESS)
             self.add_argument('-q', '--quiet', action='store_true',
                               default=False,
                               help=('Runs as quietly as possible '
                                    '(only prints errors).'))
-            self.add_argument('--passthrough', action='store_true',
-                              default=False,
-                              help='Prints all output while running.')
-            self.add_argument('--retry-limit', type=int, default=0,
-                              help='Retries each failure up to N times.')
             self.add_argument('-s', '--status-format',
                               default=self._host.getenv('NINJA_STATUS',
                                                         DEFAULT_STATUS_FORMAT),
-                              help=argparse.SUPPRESS)
-            self.add_argument('--terminal-width', type=int,
-                              default=self._host.terminal_width(),
                               help=argparse.SUPPRESS)
             self.add_argument('-t', '--timing', action='store_true',
                               help='Prints timing info.')
             self.add_argument('-v', '--verbose', action='count', default=0,
                               help=('Prints more stuff (can specify multiple '
                                     'times for more output).'))
+            self.add_argument('--passthrough', action='store_true',
+                              default=False,
+                              help='Prints all output while running.')
+            self.add_argument('--retry-limit', type=int, default=0,
+                              help='Retries each failure up to N times.')
+            self.add_argument('--terminal-width', type=int,
+                              default=self._host.terminal_width(),
+                              help=argparse.SUPPRESS)
             self.add_argument('--overwrite', action='store_true',
                               default=None,
                               help=argparse.SUPPRESS)
