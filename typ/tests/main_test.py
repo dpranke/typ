@@ -430,18 +430,24 @@ class TestCli(test_case.MainTestCase):
 
         # This tests that we print test_started updates for skipped tests
         # properly. It also tests how overwriting works.
-        self.check(['-j', '1', '--overwrite', '--skip', '*test_fail*'],
-                   files=files, ret=0,
-                   out=('[0/2] fail_test.FailingTest.test_fail\r'
-                        '                                     \r'
-                        '[1/2] fail_test.FailingTest.test_fail was skipped\r'
-                        '                                                 \r'
-                        '[1/2] pass_test.PassingTest.test_pass\r'
-                        '                                     \r'
-                        '[2/2] pass_test.PassingTest.test_pass passed\r'
-                        '                                            \r'
-                        '2 tests run, 0 failures.\n'), err='',
-                        universal_newlines=False)
+        _, out, _, _= self.check(['-j', '1', '--overwrite', '--skip',
+                                  '*test_fail*'], files=files, ret=0,
+                                 err='', universal_newlines=False)
+
+        # We test this string separately and call out.strip() to
+        # avoid the trailing \r\n we get on windows, while keeping
+        # the \r's elsewhere in the string.
+        self.assertMultiLineEqual(
+            out.strip(),
+            ('[0/2] fail_test.FailingTest.test_fail\r'
+             '                                     \r'
+             '[1/2] fail_test.FailingTest.test_fail was skipped\r'
+             '                                                 \r'
+             '[1/2] pass_test.PassingTest.test_pass\r'
+             '                                     \r'
+             '[2/2] pass_test.PassingTest.test_pass passed\r'
+             '                                            \r'
+             '2 tests run, 0 failures.'))
 
     def test_skips_and_failures(self):
         self.check(['-j', '1', '-v', '-v'], files=SF_TEST_FILES, ret=1, err='',
