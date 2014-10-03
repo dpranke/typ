@@ -233,6 +233,7 @@ class ArgumentParser(argparse.ArgumentParser):
                 'dest': action.dest,
                 'help': action.help,
                 'metavar': action.metavar,
+                'type': action.type,
                 'action': _action_str(action)
             }
             options.append(optparse.make_option(*args, **kwargs))
