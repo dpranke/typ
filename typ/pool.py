@@ -32,6 +32,7 @@ class _MessageType(Enum):
     Close = 3
     Done = 4
     Error = 5
+    Interrupt = 6
 
 
 def make_pool(host, jobs, callback, context, pre_fn, post_fn):
@@ -77,6 +78,8 @@ class ProcessPool(object):
         msg_type, resp = self.responses.get(block, timeout)
         if msg_type == _MessageType.Error: # pragma: no cover
             self._handle_error(resp)
+        elif msg_type == _MessageType.Interrupt: # pragma: no cover
+            raise KeyboardInterrupt
         assert msg_type == _MessageType.Response
         return resp
 
@@ -99,6 +102,8 @@ class ProcessPool(object):
                     msg_type, resp = self.responses.get(True)
                     if msg_type == _MessageType.Error: # pragma: no cover
                         self._handle_error(resp)
+                    elif msg_type == _MessageType.Interrupt: # pragma: no cover
+                        raise KeyboardInterrupt
                     elif msg_type == _MessageType.Done:
                         break
                     # TODO: log something about discarding messages?
@@ -156,6 +161,9 @@ def _loop(requests, responses, host, worker_num,
             assert message_type == _MessageType.Request
             resp = callback(context_after_pre, args)
             responses.put((_MessageType.Response, resp))
+    except KeyboardInterrupt as e:
+        erred = True
+        responses.put((_MessageType.Interrupt, (worker_num, str(e))))
     except Exception as e:
         erred = True
         responses.put((_MessageType.Error, (worker_num, str(e))))
