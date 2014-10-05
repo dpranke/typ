@@ -586,6 +586,3 @@ class TestFakes(TestCli):
     def test_coverage(self):
         # This fails because we cannot get the source code.
         pass
-
-    def test_setup_and_teardown_single_child(self):
-        pass

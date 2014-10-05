@@ -73,6 +73,7 @@ class FakeTestLoader(object):
         self._unittest_loader = None
         self._module_loader = None
         self._module_loader_cls = _FakeLoader
+        self._revive()
 
     def __getstate__(self):
         return {
