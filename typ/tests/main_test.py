@@ -273,6 +273,12 @@ class TestCli(test_case.MainTestCase):
         self.assertIn('fail_test.FailingTest.test_fail failed unexpectedly',
                       out)
 
+    def test_failures_are_not_elided(self):
+        _, out, _, _ = self.check(['--terminal-width=20'],
+                                  files=FAIL_TEST_FILES, ret=1, err='')
+        self.assertIn('[1/1] fail_test.FailingTest.test_fail failed '
+                      'unexpectedly:\n', out)
+
     def test_file_list(self):
         files = PASS_TEST_FILES
         self.check(['-f', '-'], files=files, stdin='pass_test\n', ret=0)

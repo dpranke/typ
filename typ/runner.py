@@ -446,8 +446,8 @@ class Runner(object):
             if self.args.verbose:  # pragma: no cover
                 self.flush()
 
-    def update(self, msg, elide=True):  # pylint: disable=W0613
-        self.printer.update(msg, elide=True)
+    def update(self, msg, elide):
+        self.printer.update(msg, elide)
 
     def flush(self):  # pragma: no cover
         self.printer.flush()
@@ -466,7 +466,7 @@ class Runner(object):
                      '' if num_tests == 1 else 's',
                      timing_clause,
                      num_failures,
-                     '' if num_failures == 1 else 's'))
+                     '' if num_failures == 1 else 's'), elide=False)
         self.print_()
 
     def write_trace(self, trace):  # pragma: no cover
