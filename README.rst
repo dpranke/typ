@@ -60,10 +60,11 @@ Things remaining for 1.0, roughly in priority order:
   - test tests failing a second time
   - test failing uploads
 
+- Get parallel coverage working.
 - MainTestCase.check() improvements:
 
-  - check all arguments and show all errors at once
-  - make multi-line regexp matches easier to follow
+  - check all arguments and show all errors at once?
+  - make multi-line regexp matches easier to follow?
 
 - --debugger improvements:
 

@@ -707,7 +707,7 @@ def _load_via_load_tests(child, test_name):  # pragma: no cover
         if suite:
             for test_case in suite:
                 if not isinstance(test_case, unittest.TestCase):
-                    pdb.set_trace()
+                    pass  # pdb.set_trace()
                 if test_case.id() == test_name:
                     new_suite = unittest.TestSuite()
                     new_suite.addTest(test_case)

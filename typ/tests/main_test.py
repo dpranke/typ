@@ -513,7 +513,7 @@ class TestMain(TestCli):
         return Host()
 
     def make_loader(self, host, orig_sys_path):
-        return unittest.TestLoader()
+        return None # unittest.TestLoader()
 
     def call(self, host, argv, stdin, env):
         if sys.version_info.major == 2 and isinstance(stdin, str):
@@ -523,6 +523,7 @@ class TestMain(TestCli):
             host.env = env
         host.capture_output(divert=not self.child.debugger)
         orig_sys_path = sys.path[:]
+        orig_sys_meta_path = sys.meta_path
         orig_sys_modules = sys.modules.keys()
         loader = self.make_loader(host, orig_sys_path)
 
@@ -535,7 +536,7 @@ class TestMain(TestCli):
                                  orig_sys_modules]
             for k in modules_to_unload:
                 del sys.modules[k]
-            sys.meta_path = []
+            sys.meta_path = orig_sys_meta_path
 
         return ret, out, err
 
