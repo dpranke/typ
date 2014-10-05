@@ -217,19 +217,12 @@ class FakeHost(object):
 
     def capture_output(self, divert=True):
         self._tap_output()
-
-        # TODO: Make log capture more robust.
-        #self._orig_logging_handlers = self.logger.handlers
-        #if self._orig_logging_handlers:  # pragma: no cover
-        #    self.logger.handlers = [logging.StreamHandler(self.stderr)]
-
         self.stdout.capture(divert)
         self.stderr.capture(divert)
 
     def restore_output(self):
         assert isinstance(self.stdout, _TeedStream)
         out, err = (self.stdout.restore(), self.stderr.restore())
-        # self.logger.handlers = self._orig_logging_handlers
         self._untap_output()
         return out, err
 
@@ -268,7 +261,8 @@ class _TeedStream(io.StringIO):
         self.diverting = False
         return msg
 
-class FakeResponse(io.StringIO): # pragma: no cover
+
+class FakeResponse(io.StringIO):  # pragma: no cover
 
     def __init__(self, response, url, code=200):
         io.StringIO.__init__(self, response)

@@ -222,7 +222,7 @@ class TestCli(test_case.MainTestCase):
         self.check([], files=PASS_TEST_FILES,
                    ret=0,
                    out=('[1/1] pass_test.PassingTest.test_pass passed\n'
-                       '1 test run, 0 failures.\n'), err='')
+                        '1 test run, 0 failures.\n'), err='')
 
     def test_coverage(self):
         try:
@@ -241,7 +241,7 @@ class TestCli(test_case.MainTestCase):
                        out='Error: coverage is not installed\n', err='')
 
     def test_debugger(self):
-        if sys.version_info.major == 3: # pragma: no cover
+        if sys.version_info.major == 3:  # pragma: no cover
             self.check(['-d'], files=PASS_TEST_FILES, ret=2,
                        out='Error: --debugger does not work w/ Python3 yet.\n')
         else:
@@ -279,7 +279,8 @@ class TestCli(test_case.MainTestCase):
 
     def test_fail(self):
         _, out, _, _ = self.check([], files=FAIL_TEST_FILES, ret=1, err='')
-        self.assertIn('fail_test.FailingTest.test_fail failed unexpectedly', out)
+        self.assertIn('fail_test.FailingTest.test_fail failed unexpectedly',
+                      out)
 
     def test_file_list(self):
         files = PASS_TEST_FILES
@@ -425,17 +426,17 @@ class TestCli(test_case.MainTestCase):
         self.check(['--jobs', '1',
                     '--setup', 'st_test.setupProcess',
                     '--teardown', 'st_test.teardownProcess'],
-                    files=ST_TEST_FILES, ret=0, err='',
-                    out=d("""\
-                          setupProcess(1): {'calls': 0}
-                          [1/4] st_test.TypTest.test_one passed
-                          [2/4] st_test.TypTest.test_two passed
-                          [3/4] st_test.UnitTest.test_one passed
-                          [4/4] st_test.UnitTest.test_two passed
-                          teardownProcess(1): {'calls': 3}
+                   files=ST_TEST_FILES, ret=0, err='',
+                   out=d("""\
+                         setupProcess(1): {'calls': 0}
+                         [1/4] st_test.TypTest.test_one passed
+                         [2/4] st_test.TypTest.test_two passed
+                         [3/4] st_test.UnitTest.test_one passed
+                         [4/4] st_test.UnitTest.test_two passed
+                         teardownProcess(1): {'calls': 3}
 
-                          4 tests run, 0 failures.
-                          """))
+                         4 tests run, 0 failures.
+                         """))
 
     def test_skip(self):
         self.check(['--skip', '*test_fail*'], files=FAIL_TEST_FILES, ret=1,
@@ -620,9 +621,6 @@ class TestFakes(TestCli):
 
     def test_load_tests_single_worker(self):
         pass
-
-    #def test_load_tests_multiple_workers(self):
-    #    pass
 
     def test_import_failure(self):
         pass

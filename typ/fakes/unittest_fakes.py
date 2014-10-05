@@ -14,7 +14,6 @@
 
 import fnmatch
 import imp
-import re
 import sys
 import unittest
 
@@ -29,7 +28,7 @@ class _FakeLoader(object):
     def _path_for_name(self, fullname):
         return fullname.replace('.', '/') + '.py'
 
-    def find_module(self, fullname, path=None):
+    def find_module(self, fullname, path=None):  # pylint: disable=W0613
         if self.host.isfile(self._path_for_name(fullname)):
             return self
         return None
@@ -51,13 +50,15 @@ class _FakeLoader(object):
             mod.__package__ = str(fullname)
         else:
             mod.__package__ = str(fullname.rpartition('.')[0])
+
+        # pylint: disable=W0122
         exec(code, mod.__dict__)
         return mod
 
     def get_code(self, fullname):
         return self.host.read_text_file(self._path_for_name(fullname))
 
-    def is_package(self, fullname):
+    def is_package(self, fullname):  # pylint: disable=W0613
         return False
 
 
@@ -117,7 +118,6 @@ class FakeTestLoader(object):
     def loadTestsFromName(self, name, module=None):  # pragma: no cover
         self._revive()
         h = self._host
-        module_loader = self._module_loader
 
         comps = name.split('.')
         path = '/'.join(comps)

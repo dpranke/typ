@@ -25,7 +25,7 @@ import time
 
 if sys.version_info.major == 2:
     import urllib2
-else: # pragma: no cover
+else:  # pragma: no cover
     assert sys.version_info.major == 3
     import urllib as urllib2
 
