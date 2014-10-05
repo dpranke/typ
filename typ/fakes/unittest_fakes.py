@@ -38,14 +38,15 @@ class _FakeLoader(object):
         if fullname in sys.modules:
             return sys.modules[fullname]
 
-        if not self.host.isfile(self._path_for_name(fullname)):
+        path = self._path_for_name(fullname)
+        if not self.host.isfile(path):  # pragma: no cover
             return None
         code = self.get_code(fullname)
         is_pkg = self.is_package(fullname)
         mod = sys.modules.setdefault(fullname, imp.new_module(fullname))
-        mod.__file__ = self._path_for_name(fullname)
+        mod.__file__ = path
         mod.__loader__ = self
-        if is_pkg:
+        if is_pkg:  # pragma: no cover
             mod.__path__ = []
             mod.__package__ = str(fullname)
         else:
@@ -82,7 +83,7 @@ class FakeTestLoader(object):
         }
 
     def _revive(self):
-        if not self._host:
+        if not self._host:  # pragma: no cover
             self._host = Host()
         if not self._module_loader:
             self._module_loader = self._module_loader_cls(self._host)
@@ -197,4 +198,5 @@ def _tests_matching_name(suite, name, tests=None):
     add_tests(suite, name)
     if tests:
         return unittest.TestSuite(tests)
-    raise AttributeError
+
+    raise AttributeError  # pragma: no cover

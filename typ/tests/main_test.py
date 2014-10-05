@@ -567,6 +567,7 @@ class TestMain(TestCli):
     def test_coverage(self):
         pass
 
+
 class TestFakes(TestCli):
     prog = []
 
