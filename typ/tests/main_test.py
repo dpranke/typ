@@ -263,19 +263,10 @@ class TestCli(test_case.MainTestCase):
                                       def test_err(self):
                                           foo = bar
                                   """)}
-        self.check(
-            [''],
-            files=files,
-            ret=1,
-            err='',
-            rout=d("""\
-                   \[1/1\] err_test.ErrTest.test_err failed unexpectedly:
-                     Traceback \(most recent call last\):
-                       File ".*err_test.py", line 4, in test_err
-                         foo = bar
-                     NameError: (global )?name 'bar' is not defined
-                   1 test run, 1 failure.
-                   """))
+        _, out, _, _ = self.check( [''], files=files, ret=1, err='')
+        self.assertIn('[1/1] err_test.ErrTest.test_err failed unexpectedly',
+                      out)
+        self.assertIn('1 test run, 1 failure', out)
 
     def test_fail(self):
         _, out, _, _ = self.check([], files=FAIL_TEST_FILES, ret=1, err='')
@@ -359,15 +350,11 @@ class TestCli(test_case.MainTestCase):
 
     def test_load_tests_single_worker(self):
         files = LOAD_TEST_FILES
-        self.check(['-j', '1', '-v'], files=files, ret=1, err='', rout=d("""\
-            \[1/2\] load_test.BaseTest.test_fail failed unexpectedly:
-              Traceback \(most recent call last\):
-                File ".*load_test.py", line 8, in method_fail
-                  self.fail\(\)
-              AssertionError: None
-            \[2/2\] load_test.BaseTest.test_pass passed
-            2 tests run, 1 failure.
-            """))
+        _, out, _, _ = self.check(['-j', '1', '-v'], files=files, ret=1,
+                                  err='')
+        self.assertIn('[1/2] load_test.BaseTest.test_fail failed', out)
+        self.assertIn('[2/2] load_test.BaseTest.test_pass passed', out)
+        self.assertIn('2 tests run, 1 failure.\n', out)
 
     def test_load_tests_multiple_workers(self):
         _, out, _, _ = self.check([], files=LOAD_TEST_FILES, ret=1, err='')
@@ -397,21 +384,14 @@ class TestCli(test_case.MainTestCase):
                          """), err='')
 
     def test_output_for_failures(self):
-        self.check(
-            ['output_test.FailTest'],
-            files=OUTPUT_TEST_FILES,
-            ret=1,
-            rout=('\[1/1\] output_test.FailTest.test_out_err_fail '
-                  'failed unexpectedly:\n'
-                  '  hello on stdout\n'
-                  '  hello on stderr\n'
-                  '  Traceback \(most recent call last\):\n'
-                  '    File ".*output_test.py", '
-                  'line 18, in test_out_err_fail\n'
-                  '      self.fail\(\)\n'
-                  '  AssertionError: None\n'
-                  '1 test run, 1 failure.\n'),
-            err='')
+        _, out, _, _ = self.check(['output_test.FailTest'],
+                                  files=OUTPUT_TEST_FILES,
+                                  ret=1, err='')
+        self.assertIn('[1/1] output_test.FailTest.test_out_err_fail '
+                      'failed unexpectedly:\n'
+                      '  hello on stdout\n'
+                      '  hello on stderr\n', out)
+
 
     def test_retry_limit(self):
         _, out, _, _ = self.check(['--retry-limit', '2'],
@@ -562,10 +542,12 @@ class TestMain(TestCli):
 
         return ret, out, err
 
-    def test_debugger(self):
+    def test_coverage(self):
+        # TODO: This seems to be flaky.
         pass
 
-    def test_coverage(self):
+    def test_debugger(self):
+        # TODO: This fails when run with -j 1 for some reason.
         pass
 
 
@@ -605,28 +587,24 @@ class TestFakes(TestCli):
         pass
 
     def test_debugger(self):
+        # This fails because we cannot get the source code.
         pass
 
     def test_coverage(self):
-        pass
-
-    def test_error(self):
-        pass
-
-    def test_output_for_failures(self):
-        pass
-
-    def test_verbose(self):
-        pass
-
-    def test_load_tests_single_worker(self):
+        # This fails because we cannot get the source code.
         pass
 
     def test_import_failure(self):
+        pass
+
+    def test_output_for_failures(self):
         pass
 
     def test_setup_and_teardown_single_child(self):
         pass
 
     def test_skips_and_failures(self):
+        pass
+
+    def test_verbose(self):
         pass
