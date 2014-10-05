@@ -14,6 +14,8 @@
 
 import fnmatch
 import imp
+import importlib
+import pdb
 import sys
 import unittest
 
@@ -22,30 +24,41 @@ from typ.host import Host
 
 class _FakeLoader(object):
 
-    def __init__(self, host):
+    def __init__(self, host, orig_sys_path):
         self.host = host
+        self.orig_sys_path = orig_sys_path
 
     def _path_for_name(self, fullname):
-        return fullname.replace('.', '/') + '.py'
+        fake_dirs = [d for d in sys.path if d not in self.orig_sys_path]
+        path = None
+        for d in fake_dirs:
+            path = self.host.join(d, fullname.replace('.', '/'))
+            if self.host.isdir(path):
+                break
+            path = path + '.py'
+        if not path:  # pragma: no cover
+            path = self.host.abspath(fullname.replace('.', '/'))
+        return path
 
     def find_module(self, fullname, path=None):  # pylint: disable=W0613
-        if self.host.isfile(self._path_for_name(fullname)):
+        path = self._path_for_name(fullname)
+        if self.host.exists(path):
             return self
         return None
 
     def load_module(self, fullname):
-        if fullname in sys.modules:
+        if fullname in sys.modules:  # pragma: no cover
             return sys.modules[fullname]
 
         path = self._path_for_name(fullname)
-        if not self.host.isfile(path):  # pragma: no cover
-            return None
-        code = self.get_code(fullname)
-        is_pkg = self.is_package(fullname)
+
         mod = sys.modules.setdefault(fullname, imp.new_module(fullname))
         mod.__file__ = path
         mod.__loader__ = self
-        if is_pkg:  # pragma: no cover
+
+        is_pkg = self.is_package(fullname)
+        code = self.get_code(fullname)
+        if is_pkg:
             mod.__path__ = []
             mod.__package__ = str(fullname)
         else:
@@ -56,10 +69,13 @@ class _FakeLoader(object):
         return mod
 
     def get_code(self, fullname):
-        return self.host.read_text_file(self._path_for_name(fullname))
+        path = self._path_for_name(fullname)
+        if self.host.isdir(path):
+            path = self.host.join(path, '__init__.py')
+        return self.host.read_text_file(path)
 
-    def is_package(self, fullname):  # pylint: disable=W0613
-        return False
+    def is_package(self, fullname):
+        return self.host.isdir(self._path_for_name(fullname))
 
 
 class FakeTestLoader(object):
@@ -88,7 +104,8 @@ class FakeTestLoader(object):
         if not self._host:  # pragma: no cover
             self._host = Host()
         if not self._module_loader:
-            self._module_loader = self._module_loader_cls(self._host)
+            self._module_loader = self._module_loader_cls(self._host,
+                                                          self.orig_sys_path)
             sys.meta_path = [self._module_loader]
         if not self._unittest_loader:
             self._unittest_loader = unittest.TestLoader()
@@ -112,8 +129,9 @@ class FakeTestLoader(object):
         rpath = h.relpath(path, top_level_dir)
         module_name = (h.splitext(rpath)[0]).replace(h.sep, '.')
 
-        module_loader = self._module_loader
-        mod = module_loader.load_module(module_name)
+        mod = importlib.import_module(module_name)
+        #module_loader = self._module_loader
+        #mod = module_loader.load_module(module_name)
         return self._unittest_loader.loadTestsFromModule(mod)
 
     def loadTestsFromName(self, name, module=None):  # pragma: no cover

@@ -44,6 +44,7 @@ class Host(object):
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         self.stdin = sys.stdin
+        self.env = os.environ
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))
@@ -95,7 +96,7 @@ class Host(object):
         return os.getcwd()
 
     def getenv(self, key, default=None):
-        return os.getenv(key, default=default)
+        return self.env.get(key, default)
 
     def for_mp(self):
         return None

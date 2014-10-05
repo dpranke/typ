@@ -512,16 +512,19 @@ class TestMain(TestCli):
     def make_host(self):
         return Host()
 
+    def make_loader(self, host, orig_sys_path):
+        return unittest.TestLoader()
+
     def call(self, host, argv, stdin, env):
         if sys.version_info.major == 2 and isinstance(stdin, str):
             stdin = unicode(stdin)
         host.stdin = io.StringIO(stdin)
         if env:
-            host.getenv = env.get
+            host.env = env
         host.capture_output(divert=not self.child.debugger)
         orig_sys_path = sys.path[:]
         orig_sys_modules = sys.modules.keys()
-        loader = unittest.TestLoader()
+        loader = self.make_loader(host, orig_sys_path)
 
         try:
             ret = main(argv + ['-j', '1'], host, loader)
@@ -532,6 +535,7 @@ class TestMain(TestCli):
                                  orig_sys_modules]
             for k in modules_to_unload:
                 del sys.modules[k]
+            sys.meta_path = []
 
         return ret, out, err
 
@@ -544,40 +548,14 @@ class TestMain(TestCli):
         pass
 
 
-class TestFakes(TestCli):
+class TestFakes(TestMain):
     prog = []
 
     def make_host(self):
         return FakeHost()
 
-    def call(self, host, argv, stdin, env):
-        if sys.version_info.major == 2 and isinstance(stdin, str):
-            stdin = unicode(stdin)
-        host.stdin = io.StringIO(stdin)
-        if env:
-            host.env = env
-        host.capture_output(divert=not self.child.debugger)
-        orig_sys_path = sys.path[:]
-        orig_sys_modules = sys.modules.keys()
-        loader = FakeTestLoader(host, orig_sys_path)
-
-        try:
-            ret = main(argv + ['-j', '1'], host, loader)
-        finally:
-            out, err = host.restore_output()
-            sys.path = orig_sys_path
-            modules_to_unload = [k for k in sys.modules if k not in
-                                 orig_sys_modules]
-            for k in modules_to_unload:
-                del sys.modules[k]
-
-        return ret, out, err
-
-    def test_find(self):
-        pass
-
-    def test_find_from_subdirs(self):
-        pass
+    def make_loader(self, host, orig_sys_path):
+        return FakeTestLoader(host, orig_sys_path)
 
     def test_debugger(self):
         # This fails because we cannot get the source code.

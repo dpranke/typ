@@ -126,7 +126,18 @@ class FakeHost(object):
                 p += '/' + c
             else:
                 p = c
+
+        # Handle ./
+        p = p.replace('/./', '/')
+
+        # Handle ../
+        while '/..' in p:
+            comps = p.split('/')
+            idx = comps.index('..')
+            comps = comps[:idx-1] + comps[idx+1:]
+            p = '/'.join(comps)
         return p
+
 
     def maybe_mkdir(self, *comps):
         path = self.abspath(self.join(*comps))
@@ -209,13 +220,20 @@ class FakeHost(object):
     def _tap_output(self):
         # TODO: assigning to sys.stdout/sys.stderr confuses the debugger
         # with some sort of str/unicode problem.
-        self.stdout = sys.stdout = _TeedStream(self.stdout)
-        self.stderr = sys.stderr = _TeedStream(self.stderr)
+        self.stdout = _TeedStream(self.stdout)
+        self.stderr = _TeedStream(self.stderr)
+        if True:
+            sys.stdout = self.stdout
+            sys.stderr = self.stderr
+
 
     def _untap_output(self):
         assert isinstance(self.stdout, _TeedStream)
-        self.stdout = sys.stdout = self.stdout.stream
-        self.stderr = sys.stderr = self.stderr.stream
+        self.stdout = self.stdout.stream
+        self.stderr = self.stderr.stream
+        if True:
+            sys.stdout = self.stdout
+            sys.stderr = self.stderr
 
     def capture_output(self, divert=True):
         self._tap_output()
