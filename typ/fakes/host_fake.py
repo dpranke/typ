@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import sys
-
-# FIXME: make this work w/ python3.
-from StringIO import StringIO
 
 
 class FakeHost(object):
@@ -26,9 +24,9 @@ class FakeHost(object):
     python_interpreter = 'python'
 
     def __init__(self):
-        self.stdin = StringIO()
-        self.stdout = StringIO()
-        self.stderr = StringIO()
+        self.stdin = io.StringIO()
+        self.stdout = io.StringIO()
+        self.stderr = io.StringIO()
         self.sep = '/'
         self.dirs = set([])
         self.files = {}
@@ -57,7 +55,7 @@ class FakeHost(object):
 
     def call(self, argv, stdin=None, env=None):
         self.cmds.append(argv)
-        return 0, '', 'Python 2.7.5\n'
+        return 0, '', ''
 
     def chdir(self, *comps):
         path = self.join(*comps)
@@ -191,10 +189,10 @@ class FakeHost(object):
         return resp
 
 
-class FakeResponse(StringIO):  # pragma: no cover
+class FakeResponse(io.StringIO): # pragma: no cover
 
     def __init__(self, response, url, code=200):
-        StringIO.__init__(self, response)
+        io.StringIO.__init__(self, response)
         self._url = url
         self.code = code
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import OrderedDict
+
 import json
 
 try:
@@ -71,11 +73,14 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
 
     See http://www.chromium.org/developers/the-json-test-results-format
     """
-    full_results = {}
+
+    # We use OrderedDicts here so that the output is stable.
+    full_results = OrderedDict()
+    full_results['version'] = 3
     full_results['interrupted'] = False
     full_results['path_delimiter'] = TEST_SEPARATOR
-    full_results['version'] = 3
     full_results['seconds_since_epoch'] = seconds_since_epoch
+
     for md in metadata:
         key, val = md.split('=', 1)
         full_results[key] = val
@@ -84,25 +89,21 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
     failed_tests = failed_test_names(results)
     skipped_tests = set(all_test_names) - passing_tests - failed_tests
 
-    full_results['num_failures_by_type'] = {
-        'FAIL': len(failed_tests),
-        'PASS': len(passing_tests),
-        'SKIP': len(skipped_tests),
-    }
+    full_results['num_failures_by_type'] = OrderedDict()
+    full_results['num_failures_by_type']['FAIL'] = len(failed_tests)
+    full_results['num_failures_by_type']['PASS'] = len(passing_tests)
+    full_results['num_failures_by_type']['SKIP'] = len(skipped_tests)
 
-    full_results['tests'] = {}
+    full_results['tests'] = OrderedDict()
 
     for test_name in all_test_names:
+        value = OrderedDict()
         if test_name in skipped_tests:
-            value = {
-                'expected': 'SKIP',
-                'actual': 'SKIP',
-            }
+            value['expected'] = 'SKIP'
+            value['actual'] = 'SKIP'
         else:
-            value = {
-                'expected': 'PASS',
-                'actual': _actual_results_for_test(test_name, results)
-            }
+            value['expected'] = 'PASS'
+            value['actual'] = _actual_results_for_test(test_name, results)
             if value['actual'].endswith('FAIL'):
                 value['is_unexpected'] = True
         _add_path_to_trie(full_results['tests'], test_name, value)

@@ -21,7 +21,13 @@ import subprocess
 import sys
 import tempfile
 import time
-import urllib2
+
+
+if sys.version_info.major == 2:
+    import urllib2
+else: # pragma: no cover
+    assert sys.version_info.major == 3
+    import urllib as urllib2
 
 
 class Host(object):
@@ -59,9 +65,11 @@ class Host(object):
                                 stderr=subprocess.PIPE, stdin=stdin_pipe,
                                 env=env)
         if stdin_pipe:
-            proc.stdin.write(stdin)
+            proc.stdin.write(stdin.encode('utf-8'))
         stdout, stderr = proc.communicate()
-        return proc.returncode, stdout, stderr
+
+        # pylint type checking bug - pylint: disable=E1103
+        return proc.returncode, stdout.decode('utf-8'), stderr.decode('utf-8')
 
     def chdir(self, *comps):
         return os.chdir(self.join(*comps))
@@ -231,9 +239,11 @@ class _TeedStream(io.StringIO):
 
     def write(self, msg, *args, **kwargs):  # pragma: no cover
         if self.capturing:
-            super(_TeedStream, self).write(unicode(msg), *args, **kwargs)
+            if sys.version_info.major == 2 and isinstance(msg, str):
+                msg = unicode(msg)
+            super(_TeedStream, self).write(msg, *args, **kwargs)
         if not self.diverting:
-            self.stream.write(unicode(msg), *args, **kwargs)
+            self.stream.write(msg, *args, **kwargs)
 
     def flush(self):  # pragma: no cover
         if self.capturing:

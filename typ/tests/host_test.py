@@ -52,8 +52,9 @@ class TestHost(unittest.TestCase):
             self.assertTrue(h.isfile(dirpath, 'bar', 'foo.txt'))
             self.assertFalse(h.isdir(dirpath, 'bar', 'foo.txt'))
 
-            h.write_binary_file('binfile', 'bin contents')
-            self.assertEqual(h.read_binary_file('binfile'), 'bin contents')
+            h.write_binary_file('binfile', b'bin contents')
+            self.assertEqual(h.read_binary_file('binfile'),
+                             b'bin contents')
 
             self.assertEqual(sorted(h.files_under(dirpath)),
                              ['bar' + h.sep + 'foo.txt', 'binfile'])
@@ -131,16 +132,20 @@ class TestHost(unittest.TestCase):
 
     def test_call(self):
         h = self.host()
-        ret, out, err = h.call([h.python_interpreter, '--version'],
-                               stdin='foo', env={})
+        ret, out, err = h.call(
+            [h.python_interpreter,
+             '-c', 'import sys; sys.stdout.write(sys.stdin.read())'],
+            stdin='foo', env={})
         self.assertEqual(ret, 0)
-        self.assertEqual(out, '')
-        self.assertNotEqual(err, '')
+        self.assertEqual(out, 'foo')
+        self.assertEqual(err, '')
 
-        ret, out, err = h.call([h.python_interpreter, '--version'])
+        ret, out, err = h.call(
+            [h.python_interpreter,
+             '-c', 'import sys; sys.stderr.write("err\\n")'])
         self.assertEqual(ret, 0)
         self.assertEqual(out, '')
-        self.assertNotEqual(err, '')
+        self.assertEqual(err, 'err\n')
 
     def test_add_to_path(self):
         orig_sys_path = sys.path[:]

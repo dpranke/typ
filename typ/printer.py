@@ -29,7 +29,7 @@ class Printer(object):
     def update(self, msg, elide=True):
         msg_len = len(msg)
         if elide and self.cols and msg_len > self.cols - 5:
-            new_len = int(self.cols - 5) / 2
+            new_len = int((self.cols - 5) / 2)
             msg = msg[:new_len] + '...' + msg[-new_len:]
         if self.should_overwrite and self.last_line:
             self.print_('\r' + ' ' * len(self.last_line) + '\r', end='')

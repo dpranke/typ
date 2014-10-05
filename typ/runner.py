@@ -52,7 +52,7 @@ class TestSet(object):
 
         def promote(tests):
             tests = tests or []
-            return [TestInput(test) if isinstance(test, basestring) else test
+            return [test if isinstance(test, TestInput) else TestInput(test)
                     for test in tests]
 
         self.parallel_tests = promote(parallel_tests)

@@ -34,11 +34,11 @@ class TestMainTestCase(test_case.MainTestCase):
             'test.py': """
 import os
 import sys
-print "in:", sys.stdin.read()
-print "out:", os.environ['TEST_VAR']
-print >>sys.stderr, "err"
+sys.stdout.write("in: %s\\n" % sys.stdin.read())
+sys.stdout.write("out: %s\\n" % os.environ['TEST_VAR'])
+sys.stderr.write("err\\n")
 with open("../results", "w") as fp:
-  fp.write(open("../input").read() + " written")
+  fp.write(open("../input", "r").read() + " written")
 """,
             'input': 'results',
             'subdir/x': 'y',

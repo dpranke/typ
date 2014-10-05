@@ -37,13 +37,13 @@ class MainTestCase(TestCase):
             dirname = host.dirname(path)
             if dirname:
                 host.maybe_mkdir(dirname)
-            host.write_binary_file(path, contents)
+            host.write_text_file(path, contents)
 
     def _read_files(self, host, tmpdir):
         out_files = {}
         for f in host.files_under(tmpdir):
             key = f.replace(host.sep, '/')
-            out_files[key] = host.read_binary_file(tmpdir, f)
+            out_files[key] = host.read_text_file(tmpdir, f)
         return out_files
 
     def assert_files(self, expected_files, actual_files, files_to_ignore=None):
@@ -70,7 +70,7 @@ class MainTestCase(TestCase):
         # Too many arguments pylint: disable=R0913
         prog = prog or self.prog or []
         host = host or self.make_host()
-        argv = shlex.split(cmd) if isinstance(cmd, basestring) else cmd or []
+        argv = shlex.split(cmd) if isinstance(cmd, str) else cmd or []
 
         tmpdir = None
         orig_wd = host.getcwd()

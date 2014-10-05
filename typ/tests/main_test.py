@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import io
 import os
-import StringIO
 import sys
 import textwrap
+
 
 from typ import main
 from typ import test_case
@@ -137,7 +138,7 @@ from typ import test_case as typ_test_case
 
 def setupProcess(child, context):
     if context is None:
-        context = {'passed_in': False, 'calls': 0}
+        context = {'calls': 0}
     child.host.print_('setupProcess(%d): %s' % (child.worker_num, context))
     context['calls'] += 1
     return context
@@ -202,7 +203,7 @@ path_to_main = os.path.join(
 
 
 class TestCli(test_case.MainTestCase):
-    prog = [sys.executable, path_to_main]
+    prog = [sys.executable, '-B', path_to_main]
 
     def test_bad_arg(self):
         self.check(['--bad-arg'], ret=2, out='',
@@ -232,9 +233,13 @@ class TestCli(test_case.MainTestCase):
                        out='Error: coverage is not installed\n', err='')
 
     def test_debugger(self):
-        _, out, _, _ = self.check(['-d'], stdin='quit()\n',
-                                  files=PASS_TEST_FILES, ret=0, err='')
-        self.assertIn('(Pdb) ', out)
+        if sys.version_info.major == 3: # pragma: no cover
+            self.check(['-d'], files=PASS_TEST_FILES, ret=2,
+                       out='Error: --debugger does not work w/ Python3 yet.\n')
+        else:
+            _, out, _, _ = self.check(['-d'], stdin='quit()\n',
+                                      files=PASS_TEST_FILES, ret=0, err='')
+            self.assertIn('(Pdb) ', out)
 
     def test_dryrun(self):
         self.check(['-n'], files=PASS_TEST_FILES, ret=0, err='',
@@ -260,7 +265,7 @@ class TestCli(test_case.MainTestCase):
                      Traceback \(most recent call last\):
                        File ".*err_test.py", line 4, in test_err
                          foo = bar
-                     NameError: global name 'bar' is not defined
+                     NameError: (global )?name 'bar' is not defined
                    1 test run, 1 failure.
                    """))
 
@@ -321,7 +326,7 @@ class TestCli(test_case.MainTestCase):
 
     def test_import_failure(self):
         self.check(['-l', 'foo'], ret=1, out='',
-                   err='Failed to load "foo": No module named foo\n')
+                   rerr='Failed to load "foo": No module named \'?foo\'?\n')
 
         files = {'foo.py': 'import unittest'}
         self.check(['-l', 'foo.bar'], files=files, ret=1, out='',
@@ -412,14 +417,14 @@ class TestCli(test_case.MainTestCase):
         self.check(['--jobs', '1',
                     '--setup', 'st_test.setupProcess',
                     '--teardown', 'st_test.teardownProcess'],
-                   files=ST_TEST_FILES, ret=0, err='',
-                   out=d("""\
-                          setupProcess(1): {'passed_in': False, 'calls': 0}
+                    files=ST_TEST_FILES, ret=0, err='',
+                    out=d("""\
+                          setupProcess(1): {'calls': 0}
                           [1/4] st_test.TypTest.test_one passed
                           [2/4] st_test.TypTest.test_two passed
                           [3/4] st_test.UnitTest.test_one passed
                           [4/4] st_test.UnitTest.test_two passed
-                          teardownProcess(1): {'passed_in': False, 'calls': 3}
+                          teardownProcess(1): {'calls': 3}
 
                           4 tests run, 0 failures.
                           """))
@@ -501,7 +506,8 @@ class TestCli(test_case.MainTestCase):
                          '9 tests run, 4 failures.\n'))
 
     def test_timing(self):
-        self.check(['-t'], files=PASS_TEST_FILES, ret=0, rout='', err='')
+        # TODO: check output.
+        self.check(['-t'], files=PASS_TEST_FILES, ret=0)
 
     def test_verbose(self):
         self.check(['-vv', '-j', '1', 'output_test.PassTest'],
@@ -525,7 +531,9 @@ class TestMain(TestCli):
         return Host()
 
     def call(self, host, argv, stdin, env):
-        host.stdin = StringIO.StringIO(stdin)
+        if sys.version_info.major == 2 and isinstance(stdin, str):
+            stdin = unicode(stdin)
+        host.stdin = io.StringIO(stdin)
         if env:
             host.getenv = env.get
         host.capture_output(divert=not self.child.debugger)

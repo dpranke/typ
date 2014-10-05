@@ -52,9 +52,10 @@ class TestMakeUploadRequest(unittest.TestCase):
              'filename="full_results.json"\r\n'
              'Content-Type: application/json\r\n'
              '\r\n'
-             '{"tests": {}, "interrupted": false, "path_delimiter": ".", '
-             '"version": 3, "seconds_since_epoch": 0, '
-             '"num_failures_by_type": {"FAIL": 0, "SKIP": 0, "PASS": 0}}\r\n'
+             '{"version": 3, "interrupted": false, "path_delimiter": ".", '
+             '"seconds_since_epoch": 0, '
+             '"num_failures_by_type": {"FAIL": 0, "PASS": 0, "SKIP": 0}, '
+             '"tests": {}}\r\n'
              '---J-S-O-N-R-E-S-U-L-T-S---B-O-U-N-D-A-R-Y---\r\n'))
 
 

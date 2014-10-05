@@ -30,6 +30,14 @@ class TestFakeHost(host_test.TestHost):
         if sys.platform != 'win32':
             super(TestFakeHost, self).test_add_to_path()
 
+    def test_call(self):
+        h = self.host()
+        ret, out, err = h.call(['echo', 'hello, world'])
+        self.assertEqual(ret, 0)
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+        self.assertEqual(h.cmds, [['echo', 'hello, world']])
+
     def test_for_mp(self):
         h = self.host()
         self.assertNotEqual(h.for_mp(), None)

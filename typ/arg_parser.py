@@ -14,6 +14,7 @@
 
 import argparse
 import optparse
+import sys
 
 from typ.host import Host
 
@@ -190,6 +191,10 @@ class ArgumentParser(argparse.ArgumentParser):
             rargs.coverage_omit = DEFAULT_COVERAGE_OMIT
 
         if rargs.debugger:  # pragma: no cover
+            if sys.version_info.major == 3:
+                self._print_message('Error: --debugger does not work w/ '
+                                    'Python3 yet.')
+                self.exit_status = 2
             rargs.jobs = 1
             rargs.passthrough = True
 

@@ -27,5 +27,5 @@ class ArgumentParserTest(unittest.TestCase):
                                         running=True,
                                         reporting=True,
                                         skip='[-d]')
-        options, args = parser.parse_args(['-j', '1'])
+        options, _ = parser.parse_args(['-j', '1'])
         self.assertEqual(options.jobs, 1)

@@ -60,6 +60,17 @@ Things remaining for 1.0, roughly in priority order:
   - test tests failing a second time
   - test failing uploads
 
+- MainTestCase.check() improvements:
+
+  - check all arguments and show all errors at once
+  - make multi-line regexp matches easier to follow
+
+- --debugger improvements:
+
+  - make it work w/ Python3
+  - make it skip the initial breakpoint
+  - make it play nicely w/ TestCase.check()
+
 - Write documentation
 
 - Write tests for different configurations:
