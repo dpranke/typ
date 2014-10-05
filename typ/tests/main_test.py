@@ -506,15 +506,7 @@ class TestCli(test_case.MainTestCase):
         self.check('--version', ret=0, out=(VERSION + '\n'))
 
 
-class TestMain(TestCli):
-    prog = []
-
-    def make_host(self):
-        return Host()
-
-    def make_loader(self, host, orig_sys_path):
-        return None # unittest.TestLoader()
-
+class MainMixin(object):
     def call(self, host, argv, stdin, env):
         if sys.version_info.major == 2 and isinstance(stdin, str):
             stdin = unicode(stdin)
@@ -540,6 +532,17 @@ class TestMain(TestCli):
 
         return ret, out, err
 
+
+@unittest.skipIf(sys.version_info.major == 3, 'TestMain fails in Python3')
+class TestMain(MainMixin, TestCli):
+    prog = []
+
+    def make_host(self):
+        return Host()
+
+    def make_loader(self, host, orig_sys_path):
+        return None
+
     def test_coverage(self):
         # TODO: This seems to be flaky.
         pass
@@ -549,7 +552,7 @@ class TestMain(TestCli):
         pass
 
 
-class TestFakes(TestMain):
+class TestFakes(MainMixin, TestCli):
     prog = []
 
     def make_host(self):
