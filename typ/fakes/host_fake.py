@@ -261,7 +261,7 @@ class _TeedStream(io.StringIO):
                 msg = unicode(msg)
             super(_TeedStream, self).write(msg, *args, **kwargs)
         if not self.diverting:
-            self.stream.write(unicode(msg), *args, **kwargs)
+            self.stream.write(msg, *args, **kwargs)
 
     def flush(self):  # pragma: no cover
         if self.capturing:
@@ -275,7 +275,9 @@ class _TeedStream(io.StringIO):
         self.diverting = divert
 
     def restore(self):
-        msg = unicode(self.getvalue())
+        msg = self.getvalue()
+        if sys.version_info.major == 2 and isinstance(msg, str):
+            msg = unicode(msg)
         self.truncate(0)
         self.capturing = False
         self.diverting = False
