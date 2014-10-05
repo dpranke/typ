@@ -209,17 +209,13 @@ class FakeHost(object):
     def _tap_output(self):
         # TODO: assigning to sys.stdout/sys.stderr confuses the debugger
         # with some sort of str/unicode problem.
-        # self.stdout = sys.stdout = _TeedStream(self.stdout)
-        # self.stderr = sys.stderr = _TeedStream(self.stderr)
-        self.stdout = _TeedStream(self.stdout)
-        self.stderr = _TeedStream(self.stderr)
+        self.stdout = sys.stdout = _TeedStream(self.stdout)
+        self.stderr = sys.stderr = _TeedStream(self.stderr)
 
     def _untap_output(self):
         assert isinstance(self.stdout, _TeedStream)
-        # self.stdout = sys.stdout = self.stdout.stream
-        # self.stderr = sys.stderr = self.stderr.stream
-        self.stdout = self.stdout.stream
-        self.stderr = self.stderr.stream
+        self.stdout = sys.stdout = self.stdout.stream
+        self.stderr = sys.stderr = self.stderr.stream
 
     def capture_output(self, divert=True):
         self._tap_output()

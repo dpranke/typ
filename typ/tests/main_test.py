@@ -326,12 +326,11 @@ class TestCli(test_case.MainTestCase):
 
     def test_import_failure(self):
         self.check(['-l', 'foo'], ret=1, out='',
-                   rerr='Failed to load "foo": No module named \'?foo\'?\n')
+                   rerr='Failed to load "foo".*')
 
         files = {'foo.py': 'import unittest'}
         self.check(['-l', 'foo.bar'], files=files, ret=1, out='',
-                   err=('Failed to load "foo.bar": '
-                        '\'module\' object has no attribute \'bar\'\n'))
+                   rerr='Failed to load "foo.bar":.*')
 
     def test_interrupt(self):
         files = {'interrupt_test.py': d("""\
@@ -451,52 +450,40 @@ class TestCli(test_case.MainTestCase):
              '2 tests run, 0 failures.'))
 
     def test_skips_and_failures(self):
-        self.check(['-j', '1', '-v', '-v'], files=SF_TEST_FILES, ret=1, err='',
-                   rout=('\[1/9\] sf_test.ExpectedFailures.test_fail failed:\n'
-                         '  Traceback \(most recent call last\):\n'
-                         '    File ".*sf_test.py", line 48, in test_fail\n'
-                         '      self.fail\(\)\n'
-                         '  AssertionError: None\n'
-                         '\[2/9\] sf_test.ExpectedFailures.test_pass '
-                         'passed unexpectedly\n'
-                         '\[3/9\] sf_test.SetupClass.test_method1 '
-                         'failed unexpectedly:\n'
-                         '  in setupClass\n'
-                         '  Traceback \(most recent call last\):\n'
-                         '    File ".*sf_test.py", line 37, in setUpClass\n'
-                         '      assert False, \'setupClass failed\'\n'
-                         '  AssertionError: setupClass failed\n'
-                         '\[4/9\] sf_test.SetupClass.test_method2 '
-                         'failed unexpectedly:\n'
-                         '  in setupClass\n'
-                         '  Traceback \(most recent call last\):\n'
-                         '    File ".*sf_test.py", line 37, in setUpClass\n'
-                         '      assert False, \'setupClass failed\'\n'
-                         '  AssertionError: setupClass failed\n'
-                         '\[5/9\] sf_test.SkipClass.test_method '
-                         'was skipped:\n'
-                         '  skip class\n'
-                         '\[6/9\] sf_test.SkipMethods.test_reason '
-                         'was skipped:\n'
-                         '  reason\n'
-                         '\[7/9\] sf_test.SkipMethods.test_skip_if_false '
-                         'failed unexpectedly:\n'
-                         '  Traceback \(most recent call last\):\n'
-                         '    File ".*sf_test.py", line 16, in '
-                         'test_skip_if_false\n'
-                         '      self.fail\(\)\n'
-                         '  AssertionError: None\n'
-                         '\[8/9\] sf_test.SkipMethods.test_skip_if_true '
-                         'was skipped:\n'
-                         '  reason\n'
-                         '\[9/9\] sf_test.SkipSetup.test_notrun '
-                         'was skipped:\n'
-                         '  setup failed\n'
-                         '9 tests run, 4 failures.\n'))
+        _, out, _, _ = self.check(['-j', '1', '-v', '-v'], files=SF_TEST_FILES,
+                                  ret=1, err='')
+
+        # We do a bunch of assertIn()'s to work around the non-portable
+        # tracebacks.
+        self.assertIn(('[1/9] sf_test.ExpectedFailures.test_fail failed:\n'
+                       '  Traceback '), out)
+        self.assertIn(('[2/9] sf_test.ExpectedFailures.test_pass '
+                       'passed unexpectedly'), out)
+        self.assertIn(('[3/9] sf_test.SetupClass.test_method1 '
+                       'failed unexpectedly:\n'
+                       '  in setupClass\n'), out)
+        self.assertIn(('[4/9] sf_test.SetupClass.test_method2 '
+                       'failed unexpectedly:\n'
+                       '  in setupClass\n'), out)
+        self.assertIn(('[5/9] sf_test.SkipClass.test_method was skipped:\n'
+                       '  skip class\n'), out)
+        self.assertIn(('[6/9] sf_test.SkipMethods.test_reason was skipped:\n'
+                       '  reason\n'), out)
+        self.assertIn(('[7/9] sf_test.SkipMethods.test_skip_if_false '
+                       'failed unexpectedly:\n'
+                       '  Traceback'), out)
+        self.assertIn(('[8/9] sf_test.SkipMethods.test_skip_if_true '
+                       'was skipped:\n'
+                       '  reason\n'
+                       '[9/9] sf_test.SkipSetup.test_notrun was skipped:\n'
+                       '  setup failed\n'
+                       '9 tests run, 4 failures.\n'), out)
 
     def test_timing(self):
-        # TODO: check output.
-        self.check(['-t'], files=PASS_TEST_FILES, ret=0)
+        self.check(['-t'], files=PASS_TEST_FILES, ret=0, err='',
+                   rout=('\[1/1\] pass_test.PassingTest.test_pass passed '
+                         '\d+.\d+s\n'
+                         '1 test run in \d+.\d+s, 0 failures.'))
 
     def test_verbose(self):
         self.check(['-vv', '-j', '1', 'output_test.PassTest'],
@@ -594,17 +581,5 @@ class TestFakes(TestCli):
         # This fails because we cannot get the source code.
         pass
 
-    def test_import_failure(self):
-        pass
-
-    def test_output_for_failures(self):
-        pass
-
     def test_setup_and_teardown_single_child(self):
-        pass
-
-    def test_skips_and_failures(self):
-        pass
-
-    def test_verbose(self):
         pass
