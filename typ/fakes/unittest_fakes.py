@@ -13,11 +13,51 @@
 # limitations under the License.
 
 import fnmatch
+import imp
 import re
 import sys
 import unittest
 
 from typ.host import Host
+
+
+class _FakeLoader(object):
+
+    def __init__(self, host):
+        self.host = host
+
+    def _path_for_name(self, fullname):
+        return fullname.replace('.', '/') + '.py'
+
+    def find_module(self, fullname, path=None):
+        if self.host.isfile(self._path_for_name(fullname)):
+            return self
+        return None
+
+    def load_module(self, fullname):
+        if fullname in sys.modules:
+            return sys.modules[fullname]
+
+        if not self.host.isfile(self._path_for_name(fullname)):
+            return None
+        code = self.get_code(fullname)
+        is_pkg = self.is_package(fullname)
+        mod = sys.modules.setdefault(fullname, imp.new_module(fullname))
+        mod.__file__ = self._path_for_name(fullname)
+        mod.__loader__ = self
+        if is_pkg:
+            mod.__path__ = []
+            mod.__package__ = str(fullname)
+        else:
+            mod.__package__ = str(fullname.rpartition('.')[0])
+        exec(code, mod.__dict__)
+        return mod
+
+    def get_code(self, fullname):
+        return self.host.read_text_file(self._path_for_name(fullname))
+
+    def is_package(self, fullname):
+        return False
 
 
 class FakeTestLoader(object):
@@ -28,17 +68,32 @@ class FakeTestLoader(object):
     def __init__(self, host, orig_sys_path):
         self._host = host
         self.orig_sys_path = orig_sys_path
+        self._unittest_loader = None
+        self._module_loader = None
+        self._module_loader_cls = _FakeLoader
 
     def __getstate__(self):
-        return {'orig_sys_path': self.orig_sys_path, '_host': None}
+        return {
+            'orig_sys_path': self.orig_sys_path,
+            '_module_loader_cls': self._module_loader_cls,
+            '_host': self._host,
+            '_module_loader': None,
+            '_unittest_loader': None,
+        }
 
-    def host(self):
+    def _revive(self):
         if not self._host:
             self._host = Host()
-        return self._host
+        if not self._module_loader:
+            self._module_loader = self._module_loader_cls(self._host)
+            sys.meta_path = [self._module_loader]
+        if not self._unittest_loader:
+            self._unittest_loader = unittest.TestLoader()
 
     def discover(self, start_dir, pattern='test*.py', top_level_dir=None):
-        h = self.host()
+        self._revive()
+        h = self._host
+
         all_files = h.files_under(start_dir)
         matching_files = [f for f in all_files if
                           fnmatch.fnmatch(h.basename(f), pattern)]
@@ -49,25 +104,20 @@ class FakeTestLoader(object):
         return suite
 
     def _loadTestsFromFile(self, path, top_level_dir='.'):
-        h = self.host()
+        self._revive()
+        h = self._host
         rpath = h.relpath(path, top_level_dir)
         module_name = (h.splitext(rpath)[0]).replace(h.sep, '.')
-        class_name = ''
-        suite = unittest.TestSuite()
-        for l in h.read_text_file(path).splitlines():
-            m = re.match('class (.+)\(', l)
-            if m:
-                class_name = m.group(1)
-            m = re.match('.+def (.+)\(', l)
-            if m:
-                method_name = m.group(1)
-                tc = FakeTestCase(h, '%s.%s.%s' % (module_name, class_name,
-                                                   method_name))
-                suite.addTest(tc)
-        return suite
+
+        module_loader = self._module_loader
+        mod = module_loader.load_module(module_name)
+        return self._unittest_loader.loadTestsFromModule(mod)
 
     def loadTestsFromName(self, name, module=None):  # pragma: no cover
-        h = self.host()
+        self._revive()
+        h = self._host
+        module_loader = self._module_loader
+
         comps = name.split('.')
         path = '/'.join(comps)
         test_path_dirs = [d for d in sys.path if d not in self.orig_sys_path]
@@ -84,11 +134,7 @@ class FakeTestLoader(object):
                 if h.isfile(path):
                     # module
                     suite = self._loadTestsFromFile(path, d)
-                    matching_tests = [t for t in suite._tests if
-                                      t.id().startswith(name)]
-                    if not matching_tests:
-                        raise AttributeError()
-                    return unittest.TestSuite(matching_tests)
+                    return _tests_matching_name(suite, name)
                 if h.isdir(d, path):
                     # package
                     return self.discover(path)
@@ -98,19 +144,14 @@ class FakeTestLoader(object):
             if h.isfile(comps[0] + '.py'):
                 # module + class
                 suite = self._loadTestsFromFile(comps[0] + '.py')
-                matching_tests = [t for t in suite._tests if
-                                  t.id().startswith(name)]
-                if not matching_tests:
-                    raise AttributeError()
-                return unittest.TestSuite(matching_tests)
+                return _tests_matching_name(suite, name)
 
             for d in test_path_dirs:
                 path = h.join(d, comps[0], comps[1] + '.py')
                 if h.isfile(path):
                     # package + module
                     suite = self._loadTestsFromFile(path, d)
-                    return unittest.TestSuite([t for t in suite._tests if
-                                               t.id().startswith(name)])
+                    return _tests_matching_name(suite, name)
                 if h.isdir(d, comps[0], comps[1]):
                     # package
                     return self.discover(path)
@@ -126,8 +167,7 @@ class FakeTestLoader(object):
             if h.isfile(path):
                 # module + class + method
                 suite = self._loadTestsFromFile(path, d)
-                return unittest.TestSuite([t for t in suite._tests if
-                                           t.id() == name])
+                return _tests_matching_name(suite, name)
             if h.isdir(d, comps[0], comps[1]):
                 # package
                 return self.discover(h.join(d, comps[0], comps[1]))
@@ -136,41 +176,25 @@ class FakeTestLoader(object):
             if h.isfile(h.join(d, fname)):
                 # module + class
                 suite = self._loadTestsFromFile(comps[0] + '.py', d)
-                return unittest.TestSuite([t for t in suite._tests if
-                                           t.id().startswith(name)])
+                return _tests_matching_name(suite, name)
 
         # no match
         return unittest.TestSuite()
 
 
-class FakeTestCase(unittest.TestCase):
+def _tests_matching_name(suite, name, tests=None):
+    def add_tests(obj, name):
+        if isinstance(obj, unittest.TestSuite):
+            for el in obj:
+                add_tests(el, name)
+        else:
+            assert isinstance(obj, unittest.TestCase)
+            if obj.id().startswith(name):
+                tests.append(obj)
 
-    def __init__(self, host, name):
-        self._host = host
-        self._name = name
-        comps = self._name.split('.')
-        self._class_name = comps[:-1]
-        method_name = comps[-1]
-        setattr(self, method_name, self._run)
-        super(FakeTestCase, self).__init__(method_name)
-
-    def id(self):
-        return self._name
-
-    def __str__(self):  # pragma: no cover
-        return "%s (%s)" % (self._testMethodName, self._class_name)
-
-    def __repr__(self):  # pragma: no cover
-        return "%s testMethod=%s" % (self._class_name, self._testMethodName)
-
-    def _run(self):
-        if '_fail' in self._testMethodName:
-            self.fail()
-        if '_out' in self._testMethodName:  # pragma: no cover
-            self._host.stdout.write('hello on stdout')
-            self._host.stdout.flush()
-        if '_err' in self._testMethodName:  # pragma: no cover
-            self._host.stderr.write('hello on stderr')
-            self._host.stderr.flush()
-        if '_interrupt' in self._testMethodName:
-            raise KeyboardInterrupt()
+    if tests is None:
+        tests = []
+    add_tests(suite, name)
+    if tests:
+        return unittest.TestSuite(tests)
+    raise AttributeError

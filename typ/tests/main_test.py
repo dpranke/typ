@@ -16,10 +16,12 @@ import io
 import os
 import sys
 import textwrap
+import unittest
 
 
 from typ import main
 from typ import test_case
+from typ import FakeHost
 from typ import Host
 from typ import VERSION
 from typ.fakes.unittest_fakes import FakeTestLoader
@@ -216,6 +218,12 @@ class TestCli(test_case.MainTestCase):
         self.check(['--metadata', 'foo'], ret=2, err='',
                    out='Error: malformed --metadata "foo"\n')
 
+    def test_basic(self):
+        self.check([], files=PASS_TEST_FILES,
+                   ret=0,
+                   out=('[1/1] pass_test.PassingTest.test_pass passed\n'
+                       '1 test run, 0 failures.\n'), err='')
+
     def test_coverage(self):
         try:
             import coverage  # pylint: disable=W0612
@@ -271,7 +279,7 @@ class TestCli(test_case.MainTestCase):
 
     def test_fail(self):
         _, out, _, _ = self.check([], files=FAIL_TEST_FILES, ret=1, err='')
-        self.assertIn('self.fail()', out)
+        self.assertIn('fail_test.FailingTest.test_fail failed unexpectedly', out)
 
     def test_file_list(self):
         files = PASS_TEST_FILES
@@ -538,6 +546,42 @@ class TestMain(TestCli):
             host.getenv = env.get
         host.capture_output(divert=not self.child.debugger)
         orig_sys_path = sys.path[:]
+        orig_sys_modules = sys.modules.keys()
+        loader = unittest.TestLoader()
+
+        try:
+            ret = main(argv + ['-j', '1'], host, loader)
+        finally:
+            out, err = host.restore_output()
+            sys.path = orig_sys_path
+            modules_to_unload = [k for k in sys.modules if k not in
+                                 orig_sys_modules]
+            for k in modules_to_unload:
+                del sys.modules[k]
+
+        return ret, out, err
+
+    def test_debugger(self):
+        pass
+
+    def test_coverage(self):
+        pass
+
+class TestFakes(TestCli):
+    prog = []
+
+    def make_host(self):
+        return FakeHost()
+
+    def call(self, host, argv, stdin, env):
+        if sys.version_info.major == 2 and isinstance(stdin, str):
+            stdin = unicode(stdin)
+        host.stdin = io.StringIO(stdin)
+        if env:
+            host.env = env
+        host.capture_output(divert=not self.child.debugger)
+        orig_sys_path = sys.path[:]
+        orig_sys_modules = sys.modules.keys()
         loader = FakeTestLoader(host, orig_sys_path)
 
         try:
@@ -545,10 +589,19 @@ class TestMain(TestCli):
         finally:
             out, err = host.restore_output()
             sys.path = orig_sys_path
+            modules_to_unload = [k for k in sys.modules if k not in
+                                 orig_sys_modules]
+            for k in modules_to_unload:
+                del sys.modules[k]
 
         return ret, out, err
 
-    # TODO: figure out how to make these tests pass w/ trapping output.
+    def test_find(self):
+        pass
+
+    def test_find_from_subdirs(self):
+        pass
+
     def test_debugger(self):
         pass
 
@@ -564,14 +617,11 @@ class TestMain(TestCli):
     def test_verbose(self):
         pass
 
-    # TODO: These tests need to execute the real tests (they can't use a
-    # FakeTestLoader and FakeTestCase) because we're testing
-    # the side effects the tests have on setup and teardown.
     def test_load_tests_single_worker(self):
         pass
 
-    def test_load_tests_multiple_workers(self):
-        pass
+    #def test_load_tests_multiple_workers(self):
+    #    pass
 
     def test_import_failure(self):
         pass

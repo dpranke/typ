@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import io
 import sys
 
@@ -27,6 +28,7 @@ class FakeHost(object):
         self.stdin = io.StringIO()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
+        self.env = {}
         self.sep = '/'
         self.dirs = set([])
         self.files = {}
@@ -38,6 +40,20 @@ class FakeHost(object):
         self.mtimes = {}
         self.cmds = []
         self.cwd = '/tmp'
+
+    def __getstate__(self):
+        d = copy.copy(self.__dict__)
+        del d['stderr']
+        del d['stdout']
+        del d['stdin']
+        return d
+
+    def __setstate__(self, d):
+        for k, v in d.items():
+            setattr(self, k, v)
+        self.stdin = io.StringIO()
+        self.stdout = io.StringIO()
+        self.stderr = io.StringIO()
 
     def abspath(self, *comps):
         relpath = self.join(*comps)
@@ -76,6 +92,7 @@ class FakeHost(object):
 
     def files_under(self, top):
         files = []
+        top = self.abspath(top)
         for f in self.files:
             if self.files[f] is not None and f.startswith(top):
                 files.append(self.relpath(f, top))
@@ -85,8 +102,7 @@ class FakeHost(object):
         return self.cwd
 
     def getenv(self, key, default=None):
-        assert key
-        return default
+        return self.env.get(key, default)
 
     def for_mp(self):
         return self
@@ -131,7 +147,9 @@ class FakeHost(object):
 
     def print_(self, msg='', end='\n', stream=None):
         stream = stream or self.stdout
-        stream.write(str(msg) + end)
+        if sys.version_info.major == 2 and isinstance(msg, str):
+            msg = unicode(msg)
+        stream.write(msg + end)
         stream.flush()
 
     def read_binary_file(self, *comps):
@@ -188,6 +206,67 @@ class FakeHost(object):
         self.fetches.append((url, data, headers, resp))
         return resp
 
+    def _tap_output(self):
+        self.stdout = sys.stdout = _TeedStream(self.stdout)
+        self.stderr = sys.stderr = _TeedStream(self.stderr)
+
+    def _untap_output(self):
+        assert isinstance(self.stdout, _TeedStream)
+        self.stdout = sys.stdout = self.stdout.stream
+        self.stderr = sys.stderr = self.stderr.stream
+
+    def capture_output(self, divert=True):
+        self._tap_output()
+
+        # TODO: Make log capture more robust.
+        #self._orig_logging_handlers = self.logger.handlers
+        #if self._orig_logging_handlers:  # pragma: no cover
+        #    self.logger.handlers = [logging.StreamHandler(self.stderr)]
+
+        self.stdout.capture(divert)
+        self.stderr.capture(divert)
+
+    def restore_output(self):
+        assert isinstance(self.stdout, _TeedStream)
+        out, err = (self.stdout.restore(), self.stderr.restore())
+        # self.logger.handlers = self._orig_logging_handlers
+        self._untap_output()
+        return out, err
+
+
+class _TeedStream(io.StringIO):
+
+    def __init__(self, stream):
+        super(_TeedStream, self).__init__()
+        self.stream = stream
+        self.capturing = False
+        self.diverting = False
+
+    def write(self, msg, *args, **kwargs):  # pragma: no cover
+        if self.capturing:
+            if sys.version_info.major == 2 and isinstance(msg, str):
+                msg = unicode(msg)
+            super(_TeedStream, self).write(msg, *args, **kwargs)
+        if not self.diverting:
+            self.stream.write(msg, *args, **kwargs)
+
+    def flush(self):  # pragma: no cover
+        if self.capturing:
+            super(_TeedStream, self).flush()
+        if not self.diverting:
+            self.stream.flush()
+
+    def capture(self, divert=True):
+        self.truncate(0)
+        self.capturing = True
+        self.diverting = divert
+
+    def restore(self):
+        msg = self.getvalue()
+        self.truncate(0)
+        self.capturing = False
+        self.diverting = False
+        return msg
 
 class FakeResponse(io.StringIO): # pragma: no cover
 
