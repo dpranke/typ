@@ -51,7 +51,8 @@ def run(cmd):
         if not ret:
             ret = call(['coverage', 'run', '-m', 'typ', '-j', '1'])
         if not ret:
-            ret = call(['coverage', 'report', '--omit', '*/site-packages/*'])
+            ret = call(['coverage', 'report', '-i',
+                        '--omit', '*/site-packages/*'])
         return ret
     if cmd == 'develop':
         ret = call([sys.executable, 'setup.py', 'develop'])
@@ -61,9 +62,8 @@ def run(cmd):
         ret = call([sys.executable, 'setup.py', 'install', '--user'])
     if cmd == 'lint':
         ret = call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
-        if not ret:
-            ret = call('pep8 *.py */*.py */*/*.py', shell=True)
-        return ret
+        sret = call('pep8 *.py */*.py */*/*.py', shell=True)
+        return ret or sret
     if cmd == 'install':
         return call([sys.executable, 'setup.py', 'install'])
     if cmd == 'pull':
