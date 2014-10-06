@@ -56,8 +56,8 @@ Things remaining for 1.0, roughly in priority order:
 
   - figure out how to get coverage of the command-line based tests
   - figure out how to get output trapping working inside tests
-  - add fakes for coverage and pdb
-  - test tests failing a second time
+  - add fakes for coverage and pdb?
+  - test loadTestsFromName failing in run_one_test()
   - test failing uploads
 
 - Get parallel coverage working.
