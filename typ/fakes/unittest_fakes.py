@@ -15,7 +15,6 @@
 import fnmatch
 import imp
 import importlib
-import pdb
 import sys
 import unittest
 
@@ -130,8 +129,6 @@ class FakeTestLoader(object):
         module_name = (h.splitext(rpath)[0]).replace(h.sep, '.')
 
         mod = importlib.import_module(module_name)
-        #module_loader = self._module_loader
-        #mod = module_loader.load_module(module_name)
         return self._unittest_loader.loadTestsFromModule(mod)
 
     def loadTestsFromName(self, name, module=None):  # pragma: no cover

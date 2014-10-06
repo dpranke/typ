@@ -263,7 +263,7 @@ class TestCli(test_case.MainTestCase):
                                       def test_err(self):
                                           foo = bar
                                   """)}
-        _, out, _, _ = self.check( [''], files=files, ret=1, err='')
+        _, out, _, _ = self.check([''], files=files, ret=1, err='')
         self.assertIn('[1/1] err_test.ErrTest.test_err failed unexpectedly',
                       out)
         self.assertIn('1 test run, 1 failure', out)
@@ -396,7 +396,6 @@ class TestCli(test_case.MainTestCase):
                       'failed unexpectedly:\n'
                       '  hello on stdout\n'
                       '  hello on stderr\n', out)
-
 
     def test_retry_limit(self):
         _, out, _, _ = self.check(['--retry-limit', '2'],
@@ -540,7 +539,7 @@ class TestMain(MainMixin, TestCli):
     def make_host(self):
         return Host()
 
-    def make_loader(self, host, orig_sys_path):
+    def make_loader(self, host, orig_sys_path):  # pylint: disable=W0613
         return None
 
     def test_coverage(self):

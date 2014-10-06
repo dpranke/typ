@@ -138,7 +138,6 @@ class FakeHost(object):
             p = '/'.join(comps)
         return p
 
-
     def maybe_mkdir(self, *comps):
         path = self.abspath(self.join(*comps))
         if path not in self.dirs:
@@ -226,7 +225,6 @@ class FakeHost(object):
             sys.stdout = self.stdout
             sys.stderr = self.stderr
 
-
     def _untap_output(self):
         assert isinstance(self.stdout, _TeedStream)
         self.stdout = self.stdout.stream
@@ -276,8 +274,6 @@ class _TeedStream(io.StringIO):
 
     def restore(self):
         msg = self.getvalue()
-        if sys.version_info.major == 2 and isinstance(msg, str):
-            msg = unicode(msg)
         self.truncate(0)
         self.capturing = False
         self.diverting = False
