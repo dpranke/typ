@@ -48,8 +48,6 @@ Things remaining for 1.0, roughly in priority order:
 
 - Handling failed module imports more cleanly (catch syntax errors better,
   etc.).
-- Change coverage reporting to only include stuff under top_level_dir
-  by default (and to include all files, including uncovered/unimported ones).
 - Add input validation on all of the public APIs.
 - Remove as many of the "pragma: no-cover" hacks as possible and get test
   coverage for the remaining blocks of "uncovered" code:

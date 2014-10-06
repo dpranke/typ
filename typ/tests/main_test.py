@@ -227,14 +227,21 @@ class TestCli(test_case.MainTestCase):
     def test_coverage(self):
         try:
             import coverage  # pylint: disable=W0612
-            self.check(['-c'], files=PASS_TEST_FILES, ret=0, err='',
+            files = {
+                'pass_test.py': PASS_TEST_PY,
+                'fail_test.py': FAIL_TEST_PY,
+            }
+            self.check(['-c', 'pass_test'], files=files, ret=0, err='',
                        out=d("""\
                              [1/1] pass_test.PassingTest.test_pass passed
                              1 test run, 0 failures.
 
                              Name        Stmts   Miss  Cover
                              -------------------------------
+                             fail_test       4      4     0%
                              pass_test       4      0   100%
+                             -------------------------------
+                             TOTAL           8      4    50%
                              """))
         except ImportError:  # pragma: no cover
             self.check(['-c'], files=PASS_TEST_FILES, ret=1,

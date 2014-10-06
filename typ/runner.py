@@ -182,7 +182,10 @@ class Runner(object):
             except ImportError:
                 h.print_("Error: coverage is not installed")
                 return 1
-            self.cov = coverage.coverage()
+            source = self.args.coverage_source
+            if not source:
+                source = [self.top_level_dir] + self.args.path
+            self.cov = coverage.coverage(source=source)
         return 0
 
     def find_tests(self, args, classifier=None,

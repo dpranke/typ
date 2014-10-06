@@ -79,6 +79,11 @@ class ArgumentParser(argparse.ArgumentParser):
                                     'uploaded data.'))
             self.add_argument('-c', '--coverage', action='store_true',
                               help='Reports coverage information.')
+            self.add_argument('--coverage-source', action='append',
+                              default=[],
+                              help=('Directories to include when running and '
+                                    'reporting coverage (defaults to '
+                                    '--top-level-dir plus --path)'))
             self.add_argument('--coverage-omit', action='append',
                               default=[],
                               help=('Globs to omit when reporting coverage '

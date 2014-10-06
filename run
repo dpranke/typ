@@ -49,10 +49,10 @@ def run(cmd):
     if cmd == 'coverage':
         ret = call(['coverage', 'erase'])
         if not ret:
-            ret = call(['coverage', 'run', '-m', 'typ', '-j', '1'])
+            ret = call(['coverage', 'run', '--source', 'typ',
+                         '-m', 'typ', '-j', '1'])
         if not ret:
-            ret = call(['coverage', 'report', '-i',
-                        '--omit', '*/site-packages/*'])
+            ret = call(['coverage', 'report'])
         return ret
     if cmd == 'develop':
         ret = call([sys.executable, 'setup.py', 'develop'])
