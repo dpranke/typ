@@ -38,7 +38,7 @@ History
 -------
 
 typ originated out of work on the Blink and Chromium projects, as a way to
-provide a friendly interface on top of the Python unittest modules.
+provide a friendlier interface to the Python unittest modules.
 
 Work remaining
 --------------
@@ -46,8 +46,6 @@ Work remaining
 typ is still a work in progress, but it's getting close to being done.
 Things remaining for 1.0, roughly in priority order:
 
-- Handling failed module imports more cleanly (catch syntax errors better,
-  etc.).
 - Add input validation on all of the public APIs.
 - Remove as many of the "pragma: no-cover" hacks as possible and get test
   coverage for the remaining blocks of "uncovered" code:
@@ -58,18 +56,8 @@ Things remaining for 1.0, roughly in priority order:
   - test loadTestsFromName failing in run_one_test()
   - test failing uploads
 
-- Get parallel coverage working.
-- MainTestCase.check() improvements:
-
-  - check all arguments and show all errors at once?
-  - make multi-line regexp matches easier to follow?
-
-- --debugger improvements:
-
-  - make it work w/ Python3
-  - make it skip the initial breakpoint
-  - make it play nicely w/ TestCase.check()
-
+- Make --debugger work with Python3
+- Make parallel coverage work.
 - Write documentation
 
 - Write tests for different configurations:
@@ -84,6 +72,16 @@ Things remaining for 1.0, roughly in priority order:
 
 Possible future work
 --------------------
+
+- MainTestCase.check() improvements:
+
+  - check all arguments and show all errors at once?
+  - make multi-line regexp matches easier to follow?
+
+- --debugger improvements:
+
+  - make it skip the initial breakpoint
+  - make it play nicely w/ TestCase.check()
 
 - Support testing javascript, c++/gtest-style binaries.
 - Support for test sharding in addition to parallel execution (so that

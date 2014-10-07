@@ -63,6 +63,10 @@ class TestSet(object):
         self.teardown_fn = teardown_fn
 
 
+class _AddTestsError(Exception):
+    pass
+
+
 class Runner(object):
 
     def __init__(self, host=None, loader=None):
@@ -196,93 +200,70 @@ class Runner(object):
             setup_fn = _import_name(self.args.setup)
         if not teardown_fn and self.args.teardown:  # pragma: no cover
             teardown_fn = _import_name(self.args.teardown)
+
         test_set = self._make_test_set(context=context,
                                        setup_fn=setup_fn,
                                        teardown_fn=teardown_fn)
 
-        h = self.host
+        names = self._name_list_from_args(args)
+        classifier = classifier or _default_classifier(args)
 
-        def matches(name, globs):
-            return any(fnmatch.fnmatch(name, glob) for glob in globs)
-
-        def default_classifier(test_set, test):
-            name = test.id()
-            if matches(name, args.skip):
-                test_set.tests_to_skip.append(TestInput(name,
-                                                        'skipped by request'))
-            elif matches(name, args.isolate):
-                test_set.isolated_tests.append(TestInput(name))
-            else:
-                test_set.parallel_tests.append(TestInput(name))
-
-        def add_names(obj):
-            load_test_failure = 'unittest.loader.LoadTestsFailure.load_test'
-            if isinstance(obj, unittest.suite.TestSuite):
-                for el in obj:
-                    add_names(el)
-            elif obj.id() == load_test_failure:  # pragma: no cover
-                # TODO: log an error?
-                return
-            else:
-                assert isinstance(obj, unittest.TestCase)
-                classifier(test_set, obj)
-
-        if args.tests:
-            tests = args.tests
-        elif args.file_list:
-            if args.file_list == '-':
-                s = h.stdin.read()
-            else:
-                s = h.read_text_file(args.file_list)
-            tests = [line.strip() for line in s.splitlines()]
-        else:
-            tests = ['.']
-
-        ret = 0
-        loader = self.loader
-        suffixes = args.suffixes
-        top_level_dir = self.top_level_dir
-        classifier = classifier or default_classifier
-        for test in tests:
+        for name in names:
             try:
-                if h.isfile(test):
-                    name = h.relpath(test, top_level_dir)
-                    if name.endswith('.py'):
-                        name = name[:-3]
-                    name = name.replace(h.sep, '.')
-                    add_names(loader.loadTestsFromName(name))
-                elif h.isdir(test):
-                    for suffix in suffixes:
-                        add_names(loader.discover(test, suffix, top_level_dir))
-                else:
-                    possible_dir = test.replace('.', h.sep)
-                    if h.isdir(top_level_dir, possible_dir):
-                        for suffix in suffixes:
-                            suite = loader.discover(h.join(top_level_dir,
-                                                           possible_dir),
-                                                    suffix,
-                                                    top_level_dir)
-                            add_names(suite)
-                    else:
-                        add_names(loader.loadTestsFromName(test))
-            except AttributeError as e:  # pragma: no cover
-                self.print_('Failed to load "%s": %s' % (test, str(e)),
-                            stream=h.stderr)
-                ret = 1
-            except ImportError as e:  # pragma: no cover
-                self.print_('Failed to load "%s": %s' % (test, str(e)),
-                            stream=h.stderr)
-                ret = 1
+                self._add_tests_to_set(test_set, args.suffixes,
+                                       self.top_level_dir, classifier, name)
+            except (AttributeError, ImportError, SyntaxError
+                    ) as e:  # pragma: no cover
+                self.print_('Failed to load "%s": %s' % (name, e))
+                return 1, None
+            except _AddTestsError as e:
+                self.print_(str(e))
+                return 1, None
 
         # TODO: Add support for discovering setupProcess/teardownProcess?
 
-        if not ret:
-            test_set.parallel_tests = _sort_inputs(test_set.parallel_tests)
-            test_set.isolated_tests = _sort_inputs(test_set.isolated_tests)
-            test_set.tests_to_skip = _sort_inputs(test_set.tests_to_skip)
-        else:  # pragma: no cover
-            test_set = None
-        return ret, test_set
+        test_set.parallel_tests = _sort_inputs(test_set.parallel_tests)
+        test_set.isolated_tests = _sort_inputs(test_set.isolated_tests)
+        test_set.tests_to_skip = _sort_inputs(test_set.tests_to_skip)
+        return 0, test_set
+
+    def _name_list_from_args(self, args):
+        if args.tests:
+            names = args.tests
+        elif args.file_list:
+            if args.file_list == '-':
+                s = self.host.stdin.read()
+            else:
+                s = self.host.read_text_file(args.file_list)
+            names = [line.strip() for line in s.splitlines()]
+        else:
+            names = ['.']
+        return names
+
+    def _add_tests_to_set(self, test_set, suffixes, top_level_dir, classifier,
+                          name):
+        h = self.host
+        loader = self.loader
+        add_tests = _test_adder(test_set, classifier)
+
+        if h.isfile(name):
+            rpath = h.relpath(name, top_level_dir)
+            if rpath.endswith('.py'):
+                rpath = rpath[:-3]
+            module = rpath.replace(h.sep, '.')
+            add_tests(loader.loadTestsFromName(module))
+        elif h.isdir(name):
+            for suffix in suffixes:
+                add_tests(loader.discover(name, suffix, top_level_dir))
+        else:
+            possible_dir = name.replace('.', h.sep)
+            if h.isdir(top_level_dir, possible_dir):
+                for suffix in suffixes:
+                    path = h.join(top_level_dir, possible_dir)
+                    suite = loader.discover(path, suffix, top_level_dir)
+                    add_tests(suite)
+            else:
+                add_tests(loader.loadTestsFromName(name))
 
     def _run_tests(self, result_set, test_set):
         h = self.host
@@ -553,6 +534,48 @@ class Runner(object):
             }
             trace['traceEvents'].append(event)
         return trace
+
+
+def _matches(name, globs):
+    return any(fnmatch.fnmatch(name, glob) for glob in globs)
+
+
+def _default_classifier(args):
+    def default_classifier(test_set, test):
+        name = test.id()
+        if _matches(name, args.skip):
+            test_set.tests_to_skip.append(TestInput(name,
+                                                    'skipped by request'))
+        elif _matches(name, args.isolate):
+            test_set.isolated_tests.append(TestInput(name))
+        else:
+            test_set.parallel_tests.append(TestInput(name))
+    return default_classifier
+
+
+def _test_adder(test_set, classifier):
+    def add_tests(obj):
+        load_test_failure = 'unittest.loader.LoadTestsFailure'
+        if isinstance(obj, unittest.suite.TestSuite):
+            for el in obj:
+                add_tests(el)
+        elif (obj.id().startswith('unittest.loader.LoadTestsFailure') or
+              obj.id().startswith('unittest.loader.ModuleImportFailure')):
+            # Access to protected member pylint: disable=W0212
+            module_name = obj._testMethodName
+            try:
+                method = getattr(obj, obj._testMethodName)
+                method()
+            except Exception as e:
+                if 'LoadTests' in obj.id():
+                    raise _AddTestsError('%s.load_tests() failed: %s'
+                                         % (module_name, str(e)))
+                else:
+                    raise _AddTestsError(str(e))
+        else:
+            assert isinstance(obj, unittest.TestCase)
+            classifier(test_set, obj)
+    return add_tests
 
 
 class _Child(object):

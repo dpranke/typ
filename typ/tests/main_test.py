@@ -16,12 +16,10 @@ import io
 import os
 import sys
 import textwrap
-import unittest
 
 
 from typ import main
 from typ import test_case
-from typ import FakeHost
 from typ import Host
 from typ import VERSION
 from typ.fakes.unittest_fakes import FakeTestLoader
@@ -337,13 +335,41 @@ class TestCli(test_case.MainTestCase):
     def test_help(self):
         self.check(['--help'], ret=0, rout='.*', err='')
 
-    def test_import_failure(self):
-        self.check(['-l', 'foo'], ret=1, out='',
-                   rerr='Failed to load "foo".*')
+    def test_import_failure_missing_file(self):
+        self.check(['-l', 'foo'], ret=1, err='',
+                   rout='Failed to load "foo".*')
 
+    def test_import_failure_missing_package(self):
+        files = {'foo.py': d("""\
+                             import unittest
+                             import package_that_does_not_exist
+
+                             class ImportFailureTest(unittest.TestCase):
+                                def test_case(self):
+                                    pass
+                             """)}
+        self.check(['-l', 'foo.py'], files=files, ret=1, err='',
+                   rout=('Failed to load "foo.py": No module named '
+                         '\'?package_that_does_not_exist\'?\n'))
+
+    def test_import_failure_no_tests(self):
         files = {'foo.py': 'import unittest'}
-        self.check(['-l', 'foo.bar'], files=files, ret=1, out='',
-                   rerr='Failed to load "foo.bar":.*')
+        self.check(['-l', 'foo.bar'], files=files, ret=1, err='',
+                   rout='Failed to load "foo.bar":.*')
+
+    def test_import_failure_syntax_error(self):
+        files = {'syn_test.py': d("""\
+                             import unittest
+
+                             class SyntaxErrorTest(unittest.TestCase):
+                                 def test_syntax_error_in_test(self):
+                                     syntax error
+                             """)}
+        _, out, _, _ = self.check([], files=files, ret=1, err='')
+        self.assertIn('Failed to import test module: syn_test', out)
+        self.assertIn(('    syntax error\n'
+                       '               ^\n'
+                       'SyntaxError: invalid syntax\n'), out)
 
     def test_interrupt(self):
         files = {'interrupt_test.py': d("""\
@@ -359,6 +385,16 @@ class TestCli(test_case.MainTestCase):
         self.check(['--isolate', '*test_pass*'], files=PASS_TEST_FILES, ret=0,
                    out=('[1/1] pass_test.PassingTest.test_pass passed\n'
                         '1 test run, 0 failures.\n'), err='')
+
+    def test_load_tests_failure(self):
+        files = {'foo_test.py': d("""\
+                                  import unittest
+
+                                  def load_tests(_, _2, _3):
+                                      raise ValueError('this should fail')
+                                  """)}
+        self.check([], files=files, ret=1, err='',
+                   out=('foo_test.load_tests() failed: this should fail\n'))
 
     def test_load_tests_single_worker(self):
         files = LOAD_TEST_FILES
@@ -555,13 +591,25 @@ class TestMain(TestCli):
     # TODO: These tests need to execute the real tests (they can't use a
     # FakeTestLoader and FakeTestCase) because we're testing
     # the side effects the tests have on setup and teardown.
+    def test_import_failure_missing_file(self):
+        pass
+
+    def test_import_failure_missing_package(self):
+        pass
+
+    def test_import_failure_no_tests(self):
+        pass
+
+    def test_import_failure_syntax_error(self):
+        pass
+
+    def test_load_tests_failure(self):
+        pass
+
     def test_load_tests_single_worker(self):
         pass
 
     def test_load_tests_multiple_workers(self):
-        pass
-
-    def test_import_failure(self):
         pass
 
     def test_setup_and_teardown_single_child(self):
