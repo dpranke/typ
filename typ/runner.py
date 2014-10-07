@@ -216,7 +216,7 @@ class Runner(object):
                     ) as e:  # pragma: no cover
                 self.print_('Failed to load "%s": %s' % (name, e))
                 return 1, None
-            except _AddTestsError as e:
+            except _AddTestsError as e:  # pragma: no cover
                 self.print_(str(e))
                 return 1, None
 
@@ -555,12 +555,12 @@ def _default_classifier(args):
 
 def _test_adder(test_set, classifier):
     def add_tests(obj):
-        load_test_failure = 'unittest.loader.LoadTestsFailure'
         if isinstance(obj, unittest.suite.TestSuite):
             for el in obj:
                 add_tests(el)
         elif (obj.id().startswith('unittest.loader.LoadTestsFailure') or
-              obj.id().startswith('unittest.loader.ModuleImportFailure')):
+              obj.id().startswith('unittest.loader.ModuleImportFailure')
+             ):  # pragma: no cover
             # Access to protected member pylint: disable=W0212
             module_name = obj._testMethodName
             try:
