@@ -19,6 +19,7 @@ import json
 import pdb
 import unittest
 
+from collections import OrderedDict
 
 from typ import json_results
 from typ.arg_parser import ArgumentParser
@@ -453,19 +454,19 @@ class Runner(object):
                      '' if num_failures == 1 else 's'), elide=False)
         self.print_()
 
-    def write_trace(self, trace):  # pragma: no cover
+    def write_trace(self, trace):
         if self.args.write_trace_to:
             self.host.write_text_file(
                 self.args.write_trace_to,
                 json.dumps(trace, indent=2) + '\n')
 
-    def write_results(self, full_results):  # pragma: no cover
+    def write_results(self, full_results):
         if self.args.write_full_results_to:
             self.host.write_text_file(
                 self.args.write_full_results_to,
                 json.dumps(full_results, indent=2) + '\n')
 
-    def upload_results(self, full_results):  # pragma: no cover
+    def upload_results(self, full_results):
         h = self.host
         if not self.args.test_results_server:
             return 0
@@ -489,9 +490,6 @@ class Runner(object):
             self.host.print_()
             self.cov.report(show_missing=False, omit=self.args.coverage_omit)
 
-    def exit_code_from_full_results(self, full_results):  # pragma: no cover
-        return json_results.exit_code_from_full_results(full_results)
-
     def _add_trace_event(self, trace, name, start, end):
         event = {
             'name': name,
@@ -504,10 +502,9 @@ class Runner(object):
         trace['traceEvents'].append(event)
 
     def _trace_from_results(self, result_set):
-        trace = {
-            'traceEvents': [],
-            'otherData': {},
-        }
+        trace = OrderedDict()
+        trace['traceEvents'] = []
+        trace['otherData'] = {}
         for m in self.args.metadata:  # pragma: no cover
             k, v = m.split('=')
             trace['otherData'][k] = v
@@ -515,23 +512,24 @@ class Runner(object):
         for result in result_set.results:
             started = int((result.started - self.stats.started_time) * 1000000)
             took = int(result.took * 1000000)
-            event = {
-                'name': result.name,
-                'dur': took,
-                'ts': started,
-                'ph': 'X',  # "Complete" events
-                'pid': 0,
-                'tid': result.worker,
-                'args': {
-                    'expected': [str(r) for r in result.expected],
-                    'actual': str(result.actual),
-                    'out': result.out,
-                    'err': result.err,
-                    'code': result.code,
-                    'unexpected': result.unexpected,
-                    'flaky': result.flaky,
-                },
-            }
+            event = OrderedDict()
+            event['name'] = result.name
+            event['dur'] = took
+            event['ts'] = started
+            event['ph'] = 'X'  # "Complete" events
+            event['pid'] = 0
+            event['tid'] = result.worker
+
+            args = OrderedDict()
+            args['expected'] = sorted(str(r) for r in result.expected)
+            args['actual'] = str(result.actual)
+            args['out'] = result.out
+            args['err'] = result.err
+            args['code'] = result.code
+            args['unexpected'] = result.unexpected
+            args['flaky'] = result.flaky
+            event['args'] = args
+
             trace['traceEvents'].append(event)
         return trace
 

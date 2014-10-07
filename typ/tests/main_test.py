@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import io
+import json
 import os
 import sys
 import textwrap
@@ -546,6 +547,21 @@ class TestCli(test_case.MainTestCase):
 
     def test_version(self):
         self.check('--version', ret=0, out=(VERSION + '\n'))
+
+    def test_write_trace_to(self):
+        _, _, _, files = self.check(['--write-trace-to', 'trace.json'],
+                                    files=PASS_TEST_FILES)
+        self.assertIn('trace.json', files)
+        trace_obj = json.loads(files['trace.json'])
+        self.assertEqual(trace_obj['otherData'], {})
+        self.assertEqual(len(trace_obj['traceEvents']), 5)
+        event = trace_obj['traceEvents'][0]
+        self.assertEqual(event['name'], 'pass_test.PassingTest.test_pass')
+        self.assertEqual(event['ph'], 'X')
+        self.assertEqual(event['pid'], 0)
+        self.assertEqual(event['tid'], 1)
+        self.assertEqual(event['args']['expected'], ['Pass'])
+        self.assertEqual(event['args']['actual'], 'Pass')
 
 
 class TestMain(TestCli):
