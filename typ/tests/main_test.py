@@ -23,6 +23,7 @@ from typ import main
 from typ import test_case
 from typ import Host
 from typ import VERSION
+from typ.fakes import test_result_server_fake
 from typ.fakes.unittest_fakes import FakeTestLoader
 
 
@@ -534,6 +535,62 @@ class TestCli(test_case.MainTestCase):
                          '\d+.\d+s\n'
                          '1 test run in \d+.\d+s, 0 failures.'))
 
+    def test_test_results_server(self):
+        server = test_result_server_fake.start()
+        self.assertNotEqual(server, None, 'could not start fake server')
+
+        try:
+            self.check(['--test-results-server',
+                        '%s:%d' % server.server_address,
+                        '--master-name', 'fake_master',
+                        '--builder-name', 'fake_builder',
+                        '--test-type', 'typ_tests',
+                        '--metadata', 'foo=bar'],
+                       files=PASS_TEST_FILES, ret=0, err='',
+                       out=('[1/1] pass_test.PassingTest.test_pass passed\n'
+                            '1 test run, 0 failures.\n'))
+
+        finally:
+            posts = server.stop()
+
+        self.assertEqual(len(posts), 1)
+        payload = posts[0][2]
+        self.assertIn('"test_pass": {"expected": "PASS", "actual": "PASS"}',
+                      payload)
+        self.assertTrue(payload.endswith('--\r\n'))
+        self.assertNotEqual(server.log.getvalue(), '')
+
+    def test_test_results_server_error(self):
+        server = test_result_server_fake.start(code=500)
+        self.assertNotEqual(server, None, 'could not start fake server')
+
+        try:
+            self.check(['--test-results-server',
+                        '%s:%d' % server.server_address,
+                        '--master-name', 'fake_master',
+                        '--builder-name', 'fake_builder',
+                        '--test-type', 'typ_tests',
+                        '--metadata', 'foo=bar'],
+                       files=PASS_TEST_FILES, ret=1, err='',
+                       out=('[1/1] pass_test.PassingTest.test_pass passed\n'
+                            '1 test run, 0 failures.\n'
+                            'Uploading the JSON results raised '
+                            '"HTTP Error 500: OK"\n'))
+
+        finally:
+            _ = server.stop()
+
+    def test_test_results_server_not_running(self):
+        self.check(['--test-results-server', 'localhost:99999',
+                    '--master-name', 'fake_master',
+                    '--builder-name', 'fake_builder',
+                    '--test-type', 'typ_tests',
+                    '--metadata', 'foo=bar'],
+                   files=PASS_TEST_FILES, ret=1, err='',
+                   rout=('\[1/1\] pass_test.PassingTest.test_pass passed\n'
+                         '1 test run, 0 failures.\n'
+                         'Uploading the JSON results raised .*\n'))
+
     def test_verbose(self):
         self.check(['-vv', '-j', '1', 'output_test.PassTest'],
                    files=OUTPUT_TEST_FILES, ret=0,
@@ -547,6 +604,23 @@ class TestCli(test_case.MainTestCase):
 
     def test_version(self):
         self.check('--version', ret=0, out=(VERSION + '\n'))
+
+    def test_write_full_results_to(self):
+        _, _, _, files = self.check(['--write-full-results-to',
+                                     'results.json'], files=PASS_TEST_FILES)
+        self.assertIn('results.json', files)
+        results = json.loads(files['results.json'])
+        self.assertEqual(results['interrupted'], False)
+        self.assertEqual(results['path_delimiter'], '.')
+        self.assertEqual(results['tests'],
+                         {u'pass_test': {
+                             u'PassingTest': {
+                                 u'test_pass': {
+                                     u'actual': u'PASS',
+                                     u'expected': u'PASS',
+                                 }
+                             }
+                         }})
 
     def test_write_trace_to(self):
         _, _, _, files = self.check(['--write-trace-to', 'trace.json'],

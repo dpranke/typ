@@ -162,7 +162,8 @@ class Host(object):
         with open(path, mode) as f:
             f.write(contents)
 
-    def fetch(self, url, data=None, headers=None):  # pragma: no cover
+    def fetch(self, url, data=None, headers=None):
+        headers = headers or {}
         return urllib2.urlopen(urllib2.Request(url, data, headers))
 
     def terminal_width(self):

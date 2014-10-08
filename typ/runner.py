@@ -471,18 +471,15 @@ class Runner(object):
         if not self.args.test_results_server:
             return 0
 
-        url, data, content_type = json_results.make_upload_request(
+        url, content_type, data = json_results.make_upload_request(
             self.args.test_results_server, self.args.builder_name,
             self.args.master_name, self.args.test_type,
             full_results)
         try:
             response = h.fetch(url, data, {'Content-Type': content_type})
-            if response.code == 200:
-                return 0
-            h.print_('Uploading the JSON results failed with %d: "%s"' %
-                     (response.code, response.read()))
+            return 0
         except Exception as e:
-            h.print_('Uploading the JSON results raised "%s"\n' % str(e))
+            h.print_('Uploading the JSON results raised "%s"' % str(e))
         return 1
 
     def report_coverage(self):
@@ -558,7 +555,7 @@ def _test_adder(test_set, classifier):
                 add_tests(el)
         elif (obj.id().startswith('unittest.loader.LoadTestsFailure') or
               obj.id().startswith('unittest.loader.ModuleImportFailure')
-             ):  # pragma: no cover
+              ):  # pragma: no cover
             # Access to protected member pylint: disable=W0212
             module_name = obj._testMethodName
             try:
