@@ -2,80 +2,139 @@
 
 from __future__ import print_function
 
+import argparse
+import subprocess
 import sys
 
 
-from subprocess import call
+DEFAULT_PRAGMAS = ['no cover', 'untested', 'win']
 
 
-def usage():
-    print("""\
-usage: run COMMAND
-
-Where COMMAND is one of:
-  build     build an installable package
-  checks    runs lint, build, coverage
-  clean     remove any derived objects
-  coverage  run test coverage
-  develop   install a 'developable' package
-  format    run autopep8 over the source
-  install   install a complete package
-  lint      run lint over the source
-  pull      pull latest sources from repo
-  push      push latest sources from repo
-  tests     run tests""")
+def call(*args, **kwargs):
+    sys.exit(subprocess.call(*args, **kwargs))
 
 
 def main(argv):
-    if len(argv) != 1 or argv[0] in ('-h', '--help', 'help'):
-        usage()
-        return 2
+    parser = argparse.ArgumentParser()
+    subps = parser.add_subparsers()
 
-    return run(argv[0])
+    subp = subps.add_parser('build', help='build the package')
+    subp.set_defaults(func=run_build)
+
+    subp = subps.add_parser('clean', help='Remove any local files.')
+    subp.set_defaults(func=run_clean)
+
+    subp = subps.add_parser('coverage',
+                            help='Run the tests and report code coverage.')
+    subp.set_defaults(func=run_coverage)
+    subp.add_argument('--missing', action='store_true', default=False,
+                      help='Show missing lines.')
+    subp.add_argument('--no-pragmas', action='store_true', default=False,
+                      help='Show all uncovered lines (no pragmas).')
+    subp.add_argument('--pragmas', action='append', default=[],
+                      help=('The coverage pragmas to honor '
+                            '(defaults to %s)' % DEFAULT_PRAGMAS))
+
+    subp = subps.add_parser('develop',
+                             help='Install a symlinked package locally.')
+    subp.set_defaults(func=run_develop)
+    subp.add_argument('--system', action='store_true',
+                      help=('Install to the system site-package dir '
+                            'rather than the user\'s (requires root).'))
+
+    subp = subps.add_parser('format',
+                            help='Reformat the source code.')
+    subp.set_defaults(func=run_format)
+
+    subp = subps.add_parser('help',
+                            help='Get help on a subcommand.')
+    subp.add_argument(nargs='?', action='store', dest='subcommand',
+                      help='The command to get help for.')
+    subp.set_defaults(func=run_help)
+
+    subp = subps.add_parser('install',
+                            help='build the package and install locally.')
+    subp.set_defaults(func=run_install)
+    subp.add_argument('--system', action='store_true',
+                      help=('Install to the system site-package dir '
+                            'rather than the user\'s (requires root).'))
+
+    subp = subps.add_parser('lint',
+                            help='run lint over the source')
+    subp.set_defaults(func=run_lint)
+
+    subp = subps.add_parser('tests',
+                            help='run the tests')
+    subp.set_defaults(func=run_tests)
+
+    args = parser.parse_args(argv)
+    args.func(args)
 
 
-def run(cmd):
-    if cmd == 'build':
-        return call([sys.executable, 'setup.py', 'build', '--quiet'])
-    if cmd == 'checks':
-        ret = run('lint')
-        if not ret:
-            ret = run('build')
-        if not ret:
-            ret = run('coverage')
-        return ret
-    if cmd == 'clean':
-        return call(['git', 'clean', '-fxd'])
-    if cmd == 'coverage':
-        ret = call(['coverage', 'erase'])
-        if not ret:
-            ret = call(['coverage', 'run', '--source', 'typ',
-                         '-m', 'typ', '-j', '1'])
-        if not ret:
-            ret = call(['coverage', 'report'])
-        return ret
-    if cmd == 'develop':
-        ret = call([sys.executable, 'setup.py', 'develop'])
-    if cmd == 'format':
-        return call('autopep8 --in-place *.py */*.py */*/*.py', shell=True)
-    if cmd == 'install':
-        ret = call([sys.executable, 'setup.py', 'install', '--user'])
-    if cmd == 'lint':
-        ret = call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
-        sret = call('pep8 *.py */*.py */*/*.py', shell=True)
-        return ret or sret
-    if cmd == 'install':
-        return call([sys.executable, 'setup.py', 'install'])
-    if cmd == 'pull':
-        return call(['git', 'pull'])
-    if cmd == 'push':
-        return call(['git', 'push'])
-    if cmd == 'tests':
-        return call([sys.executable, '-m', 'typ'])
+def run_build(args):
+    call([sys.executable, 'setup.py', 'build', '--quiet'])
+
+
+def run_clean(args):
+    call(['git', 'clean', '-fxd'])
+
+
+def run_coverage(args):
+    try:
+        import coverage
+        from coverage.execfile import run_python_module
+        cov = coverage.coverage(source=['typ'])
+
+        cov.clear_exclude()
+
+        if args.no_pragmas:
+            args.pragmas = []
+        elif not args.pragmas:
+            args.pragmas = DEFAULT_PRAGMAS
+        for pragma in args.pragmas:
+            cov.exclude('pragma: %s' % pragma)
+
+        cov.start()
+        try:
+            run_python_module('typ', ['typ', '-j', '1'])
+        except SystemExit as e:
+            ret = e.code
+        cov.stop()
+        cov.report(show_missing=args.missing)
+        sys.exit(e.code)
+    except ImportError:
+        print("coverage is not available")
+        sys.exit(1)
+
+
+def run_develop(args):
+    call([sys.executable, 'setup.py', 'develop'])
+
+
+def run_format(args):
+    call('autopep8 --in-place *.py */*.py */*/*.py', shell=True)
+
+
+def run_help(args):
+    if args.subcommand:
+        main([args.subcommand, '--help'])
+    main(['--help'])
+
+
+def run_install(args):
+    if args.system:
+        argv = []
     else:
-        print('Unknown command "%s"' % cmd)
-        usage()
-        return 2
+        argv = ['--user']
+    call([sys.executable, 'setup.py', 'install'] + argv)
+
+def run_lint(args):
+    call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
+    call('pep8 *.py */*.py */*/*.py', shell=True)
+
+
+def run_tests(args):
+    call([sys.executable, '-m', 'typ'])
 
 
 if __name__ == '__main__':
