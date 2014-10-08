@@ -54,7 +54,6 @@ Things remaining for 1.0, roughly in priority order:
   - figure out how to get output trapping working inside tests
   - add fakes for coverage and pdb?
   - test loadTestsFromName failing in run_one_test()
-  - test failing uploads
 
 - Make --debugger work with Python3
 - Make parallel coverage work.
