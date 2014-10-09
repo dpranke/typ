@@ -244,15 +244,16 @@ class _TeedStream(io.StringIO):
         self.capturing = False
         self.diverting = False
 
-    def write(self, msg, *args, **kwargs):  # pragma: untested
+    def write(self, msg, *args, **kwargs):
         if self.capturing:
-            if sys.version_info.major == 2 and isinstance(msg, str):
+            if (sys.version_info.major == 2 and
+                    isinstance(msg, str)):  # pragma: python2
                 msg = unicode(msg)
             super(_TeedStream, self).write(msg, *args, **kwargs)
         if not self.diverting:
             self.stream.write(msg, *args, **kwargs)
 
-    def flush(self):  # pragma: untested
+    def flush(self):
         if self.capturing:
             super(_TeedStream, self).flush()
         if not self.diverting:
