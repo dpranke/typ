@@ -145,7 +145,7 @@ class TestHost(unittest.TestCase):
              '-c', 'import sys; sys.stderr.write("err\\n")'])
         self.assertEqual(ret, 0)
         self.assertEqual(out, '')
-        self.assertEqual(err, 'err\n')
+        self.assertIn(err, ('err\n', 'err\r\n'))
 
     def test_add_to_path(self):
         orig_sys_path = sys.path[:]

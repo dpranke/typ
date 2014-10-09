@@ -123,7 +123,6 @@ class Runner(object):
             self.cov.erase()
             self.cov.start()
 
-
         full_results = None
         result_set = ResultSet()
 
@@ -448,7 +447,10 @@ class Runner(object):
         num_tests = self.stats.finished
         num_failures = json_results.num_failures(full_results)
 
-        if not self.args.quiet and self.args.timing:
+        if self.args.quiet and num_failures == 0:
+            return
+
+        if self.args.timing:
             timing_clause = ' in %.1fs' % (self.host.time() -
                                            self.stats.started_time)
         else:

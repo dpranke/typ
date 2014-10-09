@@ -449,6 +449,9 @@ class TestCli(test_case.MainTestCase):
                       '  hello on stdout\n'
                       '  hello on stderr\n', out)
 
+    def test_quiet(self):
+        self.check(['-q'], files=PASS_TEST_FILES, ret=0, err='', out='')
+
     def test_retry_limit(self):
         _, out, _, _ = self.check(['--retry-limit', '2'],
                                   files=FAIL_TEST_FILES, ret=1, err='')
