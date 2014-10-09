@@ -112,6 +112,8 @@ def main(argv=None):
 
     args.pragma = args.pragma or DEFAULT_PRAGMAS
 
+    if args.show:
+        args.show_missing = True
     for pragma in args.show:
         if pragma in args.pragma:
             args.pragma.remove(pragma)
