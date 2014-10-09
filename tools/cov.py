@@ -129,6 +129,7 @@ def main(argv=None):
     except SystemExit as e:
         ret = e.code
     cov.stop()
+    cov.save()
     cov.report(show_missing=args.show_missing)
     return ret
 

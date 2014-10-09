@@ -56,7 +56,6 @@ class MainTestCase(TestCase):
         # If we are ever called by unittest directly, and not through typ,
         # this will probably fail.
         assert(self.child)
-
         return self.child.host
 
     def call(self, host, argv, stdin, env):
@@ -85,6 +84,12 @@ class MainTestCase(TestCase):
                 env = host.env.copy()
                 env.update(aenv)
 
+            if self.child.debugger:  # pragma: untested
+                host.print_('')
+                host.print_('cd %s' % tmpdir, stream=host.stdout.stream)
+                host.print_(' '.join(prog + argv), stream=host.stdout.stream)
+                host.print_('')
+                import pdb; pdb.set_trace()
             result = self.call(host, prog + argv, stdin=stdin, env=env)
 
             actual_ret, actual_out, actual_err = result

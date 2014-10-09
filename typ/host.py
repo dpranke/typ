@@ -31,9 +31,6 @@ else:  # pragma: python3
     from urllib.request import urlopen, Request  # pylint: disable=F0401,E0611
 
 
-is_debugging = False
-
-
 class Host(object):
     python_interpreter = sys.executable
     is_python3 = bool(sys.version_info.major == 3)
@@ -51,14 +48,6 @@ class Host(object):
         self.stderr = sys.stderr
         self.stdin = sys.stdin
         self.env = os.environ
-
-    def set_debugging(self, flag):  # pragma: untested
-        # TODO: We currently use this to work around typ's brokenness
-        # when running -d under python3. We may or may not actually need
-        # this hook.
-        # pylint: disable=W0603
-        global is_debugging
-        is_debugging = flag
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))

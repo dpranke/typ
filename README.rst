@@ -62,7 +62,6 @@ Possible future work
 - --debugger improvements:
 
   - make it skip the initial breakpoint?
-  - make it play nicely w/ TestCase.check()?
 
 - Support testing javascript, java, c++/gtest-style binaries?
 - Support for test sharding in addition to parallel execution (so that

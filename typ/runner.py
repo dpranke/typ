@@ -650,12 +650,6 @@ def _run_one_test(child, test_input):
     test_name = test_input.name
 
     start = h.time()
-    if child.dry_run:
-        return Result(test_name, ResultType.Pass, start, 0, child.worker_num,
-                      pid=pid)
-
-    if h.is_python3 and child.debugger:  # pragma: untested
-        h.set_debugging(True)
 
     # It is important to capture the output before loading the test
     # to ensure that
@@ -689,14 +683,10 @@ def _run_one_test(child, test_input):
     out = ''
     err = ''
     try:
-        if child.debugger:  # pragma: untested
-            # Access to protected member pylint: disable=W0212
-            test_func = getattr(test_case, test_case._testMethodName)
-            fname = inspect.getsourcefile(test_func)
-            lineno = inspect.getsourcelines(test_func)[1] + 1
-            dbg = pdb.Pdb(stdout=h.stdout)
-            dbg.set_break(fname, lineno)
-            dbg.runcall(suite.run, test_result)
+        if child.dry_run:
+            pass
+        elif child.debugger:  # pragma: untested
+            _run_under_debugger(h, test_case, suite, test_result)
         else:
             suite.run(test_result)
     finally:
@@ -705,6 +695,17 @@ def _run_one_test(child, test_input):
     took = h.time() - start
     return _result_from_test_result(test_result, test_name, start, took, out,
                                     err, child.worker_num, pid)
+
+
+def _run_under_debugger(host, test_case, suite,
+                        test_result):  # pragma: untested
+    # Access to protected member pylint: disable=W0212
+    test_func = getattr(test_case, test_case._testMethodName)
+    fname = inspect.getsourcefile(test_func)
+    lineno = inspect.getsourcelines(test_func)[1] + 1
+    dbg = pdb.Pdb(stdout=host.stdout.stream)
+    dbg.set_break(fname, lineno)
+    dbg.runcall(suite.run, test_result)
 
 
 def _result_from_test_result(test_result, test_name, start, took, out, err,
