@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import argparse
+import os
 import sys
 import textwrap
 
@@ -37,17 +37,21 @@ else:
 
 
 def add_arguments(parser):
-    parser.add_argument('--show-missing', action='store_true',
-                        default=False, help='Show missing lines.')
     parser.add_argument('--no-pragmas', action='store_true', default=False,
                         help='Show all uncovered lines (no pragmas).')
+    parser.add_argument('--path', action='append', default=[],
+                        help='Prepend given directories to sys.path.')
+    parser.add_argument('--pragma', action='append', default=[],
+                        help=('The coverage pragmas to honor '
+                              '(defaults to %s).' % DEFAULT_PRAGMAS))
     parser.add_argument('--show', action='append', default=[],
                         help='Show code protected by the specified pragmas '
                              '(uses all pragmas *except* for the ones '
                              'specified).')
-    parser.add_argument('--pragma', action='append', default=[],
-                        help=('The coverage pragmas to honor '
-                              '(defaults to %s).' % DEFAULT_PRAGMAS))
+    parser.add_argument('--show-missing', action='store_true',
+                        default=False, help='Show missing lines.')
+    parser.add_argument('--source', action='append', default=[],
+                        help='Limit coverage data to the given directories.')
 
     parser.formatter_class = argparse.RawTextHelpFormatter
     parser.epilog = textwrap.dedent("""
@@ -69,12 +73,16 @@ def add_arguments(parser):
 
 def argv_from_args(args):
     argv = []
-    if args.show_missing:
-        argv.append('--show-missing')
     if args.no_pragmas:
         argv.append('--no-pragmas')
+    for arg in args.path:
+        argv.extend(['--path', arg])
     for arg in args.show:
         argv.extend(['--show', arg])
+    if args.show_missing:
+        argv.append('--show-missing')
+    for arg in args.source:
+        argv.extend(['--source', arg])
     for arg in args.pragma:
         argv.extend(['--pragma', arg])
     return argv
@@ -85,6 +93,10 @@ def main(argv=None):
     add_arguments(parser)
     args, remaining_args = parser.parse_known_args(argv)
 
+    for path in args.path:
+        if path not in sys.path:
+            sys.path.append(path)
+
     try:
         import coverage
         from coverage.execfile import run_python_module, run_python_file
@@ -92,7 +104,7 @@ def main(argv=None):
         print("Error: coverage is not available.")
         sys.exit(1)
 
-    cov = coverage.coverage(source=['typ'])
+    cov = coverage.coverage(source=args.source)
     cov.erase()
     cov.clear_exclude()
 
