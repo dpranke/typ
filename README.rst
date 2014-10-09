@@ -47,14 +47,7 @@ typ is still a work in progress, but it's getting close to being done.
 Things remaining for 1.0, roughly in priority order:
 
 - Add input validation on all of the public APIs.
-- Get test coverage for the remaining untested code:
-
-  - figure out how to get coverage of the command-line based tests
-  - figure out how to get output trapping working inside tests
-  - add fakes for coverage and pdb?
-  - test loadTestsFromName failing in run_one_test()
-
-- Make --debugger work with Python3
+- Get test coverage for the remaining untested code.
 - Make parallel coverage work.
 - Implement a non-python file format for testing command line interfaces,
   clean up testing of exe's.
@@ -70,11 +63,11 @@ Possible future work
 
 - --debugger improvements:
 
-  - make it skip the initial breakpoint
-  - make it play nicely w/ TestCase.check()
+  - make it skip the initial breakpoint?
+  - make it play nicely w/ TestCase.check()?
 
-- Support testing javascript, c++/gtest-style binaries.
+- Support testing javascript, java, c++/gtest-style binaries?
 - Support for test sharding in addition to parallel execution (so that
-  run-webkit-tests can re-use as much of the code as possible.
+  run-webkit-tests can re-use as much of the code as possible)?
 - Support for non-unittest runtest invocation (for run-webkit-tests,
   other harnesses?)

@@ -660,11 +660,10 @@ def _run_one_test(child, test_input):
     try:
         if child.debugger:  # pragma: untested
             # Access to protected member pylint: disable=W0212
-            # TODO: add start_capture() and make it debugger-aware.
             test_func = getattr(test_case, test_case._testMethodName)
             fname = inspect.getsourcefile(test_func)
             lineno = inspect.getsourcelines(test_func)[1] + 1
-            dbg = pdb.Pdb()
+            dbg = pdb.Pdb(stdout=h.stdout)
             dbg.set_break(fname, lineno)
             dbg.runcall(suite.run, test_result)
         else:

@@ -226,10 +226,6 @@ class Host(object):
         self.stderr = sys.stderr = self.stderr.stream
 
     def capture_output(self, divert=True):
-        if self.is_python3 and is_debugging:  # pragma: untested
-            # TODO: fix the debugging in python3
-            return
-
         self._tap_output()
 
         # TODO: Make log capture more robust.
@@ -241,10 +237,6 @@ class Host(object):
         self.stderr.capture(divert)
 
     def restore_output(self):
-        if self.is_python3 and is_debugging:  # pragma: untested
-            # TODO: fix the debugging in python3
-            return '', ''
-
         assert isinstance(self.stdout, _TeedStream)
         out, err = (self.stdout.restore(), self.stderr.restore())
         self.logger.handlers = self._orig_logging_handlers
