@@ -88,6 +88,9 @@ class ArgumentParser(argparse.ArgumentParser):
                               help=('Globs to omit when reporting coverage '
                                     '(defaults to %s).' %
                                     DEFAULT_COVERAGE_OMIT))
+            self.add_argument('--coverage-show-missing', action='store_true',
+                              help=('Show missing line ranges in coverage '
+                                    'report.'))
             self.add_argument('--master-name',
                               help=('Buildbot master name to include in the '
                                     'uploaded data.'))
@@ -197,10 +200,6 @@ class ArgumentParser(argparse.ArgumentParser):
         if rargs.debugger:  # pragma: untested
             rargs.jobs = 1
             rargs.passthrough = True
-
-        if rargs.coverage:  # pragma: untested
-            # TODO: make coverage work in parallel
-            rargs.jobs = 1
 
         if rargs.overwrite is None:
             rargs.overwrite = self._host.stdout.isatty() and not rargs.verbose

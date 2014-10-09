@@ -17,7 +17,7 @@ functionality:
 
 * Support for producing traces of test times compatible with Chrome's
   tracing infrastructure (trace_viewer).
-* Integrated test coverage reporting.
+* Integrated test coverage reporting (including parallel coverage).
 * Integrated support for debugging tests.
 * Support for uploading test results automatically to a server
   (useful for continuous integration monitoring of test results).
@@ -48,9 +48,7 @@ Things remaining for 1.0, roughly in priority order:
 
 - Add input validation on all of the public APIs.
 - Get test coverage for the remaining untested code.
-- Make parallel coverage work.
-- Implement a non-python file format for testing command line interfaces,
-  clean up testing of exe's.
+- Implement a non-python file format for testing command line interfaces
 - Write documentation
 
 Possible future work

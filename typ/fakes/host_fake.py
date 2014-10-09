@@ -99,14 +99,17 @@ class FakeHost(object):
                 files.append(self.relpath(f, top))
         return files
 
+    def for_mp(self):
+        return self
+
     def getcwd(self):
         return self.cwd
 
     def getenv(self, key, default=None):
         return self.env.get(key, default)
 
-    def for_mp(self):
-        return self
+    def getpid(self):  # pragma: untested
+        return 1
 
     def isdir(self, *comps):
         path = self.abspath(*comps)

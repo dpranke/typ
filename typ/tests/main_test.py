@@ -639,7 +639,6 @@ class TestCli(test_case.MainTestCase):
         event = trace_obj['traceEvents'][0]
         self.assertEqual(event['name'], 'pass_test.PassingTest.test_pass')
         self.assertEqual(event['ph'], 'X')
-        self.assertEqual(event['pid'], 0)
         self.assertEqual(event['tid'], 1)
         self.assertEqual(event['args']['expected'], ['Pass'])
         self.assertEqual(event['args']['actual'], 'Pass')

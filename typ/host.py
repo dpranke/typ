@@ -112,6 +112,9 @@ class Host(object):
     def getenv(self, key, default=None):
         return self.env.get(key, default)
 
+    def getpid(self):
+        return os.getpid()
+
     def for_mp(self):
         return None
 

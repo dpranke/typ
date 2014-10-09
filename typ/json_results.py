@@ -34,7 +34,7 @@ class Result(object):
 
     def __init__(self, name, actual, started, took, worker,
                  expected=None, unexpected=False,
-                 flaky=False, code=0, out='', err=''):
+                 flaky=False, code=0, out='', err='', pid=0):
         self.name = name
         self.actual = actual
         self.started = started
@@ -46,6 +46,7 @@ class Result(object):
         self.code = code
         self.out = out
         self.err = err
+        self.pid = pid
 
 
 class ResultSet(object):

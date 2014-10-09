@@ -76,6 +76,7 @@ class Runner(object):
         self.printer = None
         self.stats = None
         self.cov = None
+        self.coverage_source = None
         self.top_level_dir = None
         self.args = None
 
@@ -119,7 +120,9 @@ class Runner(object):
 
         find_start = h.time()
         if self.cov:  # pragma: no cover
+            self.cov.erase()
             self.cov.start()
+
 
         full_results = None
         result_set = ResultSet()
@@ -134,6 +137,7 @@ class Runner(object):
 
         if self.cov:  # pragma: no cover
             self.cov.stop()
+            self.cov.save()
         test_end = h.time()
 
         trace = self._trace_from_results(result_set)
@@ -143,13 +147,13 @@ class Runner(object):
             upload_ret = self.upload_results(full_results)
             if not ret:
                 ret = upload_ret
-            self.report_coverage()
             reporting_end = h.time()
             self._add_trace_event(trace, 'run', find_start, reporting_end)
             self._add_trace_event(trace, 'discovery', find_start, find_end)
             self._add_trace_event(trace, 'testing', find_end, test_end)
             self._add_trace_event(trace, 'reporting', test_end, reporting_end)
             self.write_trace(trace)
+            self.report_coverage()
         else:
             upload_ret = 0
 
@@ -174,7 +178,7 @@ class Runner(object):
                 top_dir = h.getcwd()
             while h.exists(top_dir, '__init__.py'):
                 top_dir = h.dirname(top_dir)
-            self.top_level_dir = top_dir
+            self.top_level_dir = h.abspath(top_dir)
 
         h.add_to_path(self.top_level_dir)
 
@@ -190,7 +194,10 @@ class Runner(object):
             source = self.args.coverage_source
             if not source:
                 source = [self.top_level_dir] + self.args.path
-            self.cov = coverage.coverage(source=source)
+            self.coverage_source = source
+            self.cov = coverage.coverage(source=self.coverage_source,
+                                         data_suffix=True)
+            self.cov.erase()
         return 0
 
     def find_tests(self, args, classifier=None,
@@ -484,9 +491,13 @@ class Runner(object):
             return 1
 
     def report_coverage(self):
-        if self.cov:  # pragma: no cover
+        if self.args.coverage:  # pragma: no cover
             self.host.print_()
-            self.cov.report(show_missing=False, omit=self.args.coverage_omit)
+            import coverage
+            cov = coverage.coverage(data_suffix=True)
+            cov.combine()
+            cov.report(show_missing=self.args.coverage_show_missing,
+                       omit=self.args.coverage_omit)
 
     def _add_trace_event(self, trace, name, start, end):
         event = {
@@ -494,7 +505,7 @@ class Runner(object):
             'ts': int((start - self.stats.started_time) * 1000000),
             'dur': int((end - start) * 1000000),
             'ph': 'X',
-            'pid': 0,
+            'pid': self.host.getpid(),
             'tid': 0,
         }
         trace['traceEvents'].append(event)
@@ -515,7 +526,7 @@ class Runner(object):
             event['dur'] = took
             event['ts'] = started
             event['ph'] = 'X'  # "Complete" events
-            event['pid'] = 0
+            event['pid'] = result.pid
             event['tid'] = result.worker
 
             args = OrderedDict()
@@ -580,6 +591,8 @@ class _Child(object):
         self.host = None
         self.worker_num = None
         self.debugger = parent.args.debugger
+        self.coverage = parent.args.coverage and parent.args.jobs > 1
+        self.coverage_source = parent.coverage_source
         self.dry_run = parent.args.dry_run
         self.loader = loader
         self.passthrough = parent.args.passthrough
@@ -589,11 +602,19 @@ class _Child(object):
         self.context_after_setup = None
         self.top_level_dir = parent.top_level_dir
         self.loaded_suites = {}
+        self.cov = None
 
 
 def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
+
+    if child.coverage:  # pragma: untested
+        import coverage
+        child.cov = coverage.coverage(source=child.coverage_source,
+                                      data_suffix=True)
+        child.cov._warn_no_data = False
+        child.cov.start()
 
     if child.setup_fn:  # pragma: untested
         child.context_after_setup = child.setup_fn(child, child.context)
@@ -607,6 +628,11 @@ def _teardown_process(child):
         child.teardown_fn(child, child.context_after_setup)
     # TODO: Return a more structured result, including something from
     # the teardown function?
+
+    if child.cov:  # pragma: untested
+        child.cov.stop()
+        child.cov.save()
+
     return child.worker_num
 
 
@@ -618,11 +644,13 @@ def _import_name(name):  # pragma: untested
 
 def _run_one_test(child, test_input):
     h = child.host
+    pid = h.getpid()
     test_name = test_input.name
 
     start = h.time()
     if child.dry_run:
-        return Result(test_name, ResultType.Pass, start, 0, child.worker_num)
+        return Result(test_name, ResultType.Pass, start, 0, child.worker_num,
+                      pid=pid)
 
     if h.is_python3 and child.debugger:  # pragma: untested
         h.set_debugging(True)
@@ -645,7 +673,8 @@ def _run_one_test(child, test_input):
             err = 'failed to load %s: %s' % (test_name, str(e))
             h.restore_output()
             return Result(test_name, ResultType.Failure, start, 0,
-                          child.worker_num, unexpected=True, code=1, err=err)
+                          child.worker_num, unexpected=True, code=1,
+                          err=err, pid=pid)
 
     tests = list(suite)
     assert len(tests) == 1
@@ -673,11 +702,11 @@ def _run_one_test(child, test_input):
 
     took = h.time() - start
     return _result_from_test_result(test_result, test_name, start, took, out,
-                                    err, child.worker_num)
+                                    err, child.worker_num, pid)
 
 
 def _result_from_test_result(test_result, test_name, start, took, out, err,
-                             worker_num):
+                             worker_num, pid):
     flaky = False
     if test_result.failures:
         expected = [ResultType.Pass]
@@ -715,7 +744,7 @@ def _result_from_test_result(test_result, test_name, start, took, out, err,
         unexpected = False
 
     return Result(test_name, actual, start, took, worker_num,
-                  expected, unexpected, flaky, code, out, err)
+                  expected, unexpected, flaky, code, out, err, pid)
 
 
 def _load_via_load_tests(child, test_name):  # pragma: untested
