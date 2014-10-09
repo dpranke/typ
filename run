@@ -12,9 +12,12 @@ from tools import cov
 
 is_python3 = bool(sys.version_info.major == 3)
 has_python34 = False
+verbose = False
 
 
 def call(*args, **kwargs):
+    if verbose:
+        print(' '.join(args[0]))
     ret = subprocess.call(*args, **kwargs)
     if ret != 0:
         sys.exit(ret)
@@ -22,6 +25,9 @@ def call(*args, **kwargs):
 
 def main(argv):
     parser = argparse.ArgumentParser()
+    parser.add_argument('--no3', action='store_true',
+                        help='Do not run the tests under Python 3.')
+    parser.add_argument('-v', '--verbose', action='store_true')
     subps = parser.add_subparsers()
 
     subp = subps.add_parser('build', help='build the package')
@@ -69,12 +75,16 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
+    global verbose
+    if args.verbose:
+        verbose = True
     global has_python34
-    try:
-        ver = subprocess.check_output(['python3', '--version'])
-        has_python34 = ver.split()[1] >= '3.4'
-    except:
-        pass
+    if not args.no3:
+        try:
+            ver = subprocess.check_output(['python3', '--version'])
+            has_python34 = ver.split()[1] >= '3.4'
+        except:
+            pass
     args.func(args)
 
 
