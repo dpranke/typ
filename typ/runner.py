@@ -203,9 +203,9 @@ class Runner(object):
                    context=None, setup_fn=None, teardown_fn=None):
         if not context and self.args.context:  # pragma: untested
             context = json.loads(self.args.context)
-        if not setup_fn and self.args.setup:  # pragma: untested
+        if not setup_fn and self.args.setup:
             setup_fn = _import_name(self.args.setup)
-        if not teardown_fn and self.args.teardown:  # pragma: untested
+        if not teardown_fn and self.args.teardown:
             teardown_fn = _import_name(self.args.teardown)
 
         test_set = self._make_test_set(context=context,
@@ -399,14 +399,16 @@ class Runner(object):
 
     def _print_test_finished(self, stats, result):
         stats.add_time()
+
+        assert result.actual in [ResultType.Failure, ResultType.Skip,
+                                 ResultType.Pass]
         if result.actual == ResultType.Failure:
             result_str = ' failed'
         elif result.actual == ResultType.Skip:
             result_str = ' was skipped'
         elif result.actual == ResultType.Pass:
             result_str = ' passed'
-        else:  # pragma: untested
-            raise ValueError('Unimplemented result type %s' % result)
+
         if result.unexpected:
             result_str += ' unexpectedly'
         if self.args.timing:
@@ -611,14 +613,14 @@ def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
 
-    if child.coverage:  # pragma: untested
+    if child.coverage:  # pragma: no cover
         import coverage
         child.cov = coverage.coverage(source=child.coverage_source,
                                       data_suffix=True)
         child.cov._warn_no_data = False
         child.cov.start()
 
-    if child.setup_fn:  # pragma: untested
+    if child.setup_fn:
         child.context_after_setup = child.setup_fn(child, child.context)
     else:
         child.context_after_setup = child.context
@@ -626,12 +628,12 @@ def _setup_process(host, worker_num, child):
 
 
 def _teardown_process(child):
-    if child.teardown_fn:  # pragma: untested
+    if child.teardown_fn:
         child.teardown_fn(child, child.context_after_setup)
     # TODO: Return a more structured result, including something from
     # the teardown function?
 
-    if child.cov:  # pragma: untested
+    if child.cov:  # pragma: no cover
         child.cov.stop()
         child.cov.save()
 
@@ -662,9 +664,9 @@ def _run_one_test(child, test_input):
 
     try:
         suite = child.loader.loadTestsFromName(test_name)
-    except Exception as e:  # pragma: untested
+    except Exception as e:
         suite = _load_via_load_tests(child, test_name)
-        if not suite:
+        if not suite:  # pragma: untested
             # TODO: Figure out how to handle failures here.
             err = 'failed to load %s: %s' % (test_name, str(e))
             h.restore_output()
@@ -685,7 +687,7 @@ def _run_one_test(child, test_input):
     try:
         if child.dry_run:
             pass
-        elif child.debugger:  # pragma: untested
+        elif child.debugger:  # pragma: no cover
             _run_under_debugger(h, test_case, suite, test_result)
         else:
             suite.run(test_result)
@@ -698,7 +700,7 @@ def _run_one_test(child, test_input):
 
 
 def _run_under_debugger(host, test_case, suite,
-                        test_result):  # pragma: untested
+                        test_result):  # pragma: no cover
     # Access to protected member pylint: disable=W0212
     test_func = getattr(test_case, test_case._testMethodName)
     fname = inspect.getsourcefile(test_func)
@@ -717,13 +719,13 @@ def _result_from_test_result(test_result, test_name, start, took, out, err,
         code = 1
         unexpected = True
         err = err + test_result.failures[0][1]
-    elif test_result.errors:  # pragma: untested
+    elif test_result.errors:
         expected = [ResultType.Pass]
         actual = ResultType.Failure
         code = 1
         unexpected = True
         err = err + test_result.errors[0][1]
-    elif test_result.skipped:  # pragma: untested
+    elif test_result.skipped:
         expected = [ResultType.Skip]
         actual = ResultType.Skip
         err = err + test_result.skipped[0][1]
@@ -750,12 +752,13 @@ def _result_from_test_result(test_result, test_name, start, took, out, err,
                   expected, unexpected, flaky, code, out, err, pid)
 
 
-def _load_via_load_tests(child, test_name):  # pragma: untested
+def _load_via_load_tests(child, test_name):
     # If we couldn't import a test directly, the test may be only loadable
     # via unittest's load_tests protocol. See if we can find a load_tests
     # entry point that will work for this test.
     loader = child.loader
     comps = test_name.split('.')
+    new_suite = unittest.TestSuite()
 
     while comps:
         name = '.'.join(comps)
@@ -769,22 +772,19 @@ def _load_via_load_tests(child, test_name):  # pragma: untested
             if module:
                 try:
                     suite = loader.loadTestsFromModule(module)
-                except Exception:
+                except Exception:  # pragma: untested
                     # TODO: Figure out how to handle errors here
                     pass
             child.loaded_suites[name] = suite
         suite = child.loaded_suites[name]
         if suite:
             for test_case in suite:
-                if not isinstance(test_case, unittest.TestCase):
-                    pass  # pdb.set_trace()
+                assert isinstance(test_case, unittest.TestCase)
                 if test_case.id() == test_name:
-                    new_suite = unittest.TestSuite()
                     new_suite.addTest(test_case)
-                    return new_suite
+                    break
         comps.pop()
-    if not comps:
-        return None
+    return new_suite
 
 
 def _sort_inputs(inps):

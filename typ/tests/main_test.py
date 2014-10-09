@@ -24,7 +24,6 @@ from typ import test_case
 from typ import Host
 from typ import VERSION
 from typ.fakes import test_result_server_fake
-from typ.fakes.unittest_fakes import FakeTestLoader
 
 
 is_python3 = bool(sys.version_info.major == 3)
@@ -211,7 +210,8 @@ path_to_main = os.path.join(
 
 
 class TestCli(test_case.MainTestCase):
-    prog = [sys.executable, '-B', path_to_main]
+    prog = [sys.executable, path_to_main]
+    files_to_ignore = ['*.pyc']
 
     def test_bad_arg(self):
         self.check(['--bad-arg'], ret=2, out='',
@@ -658,60 +658,25 @@ class TestMain(TestCli):
         host.stdin = io.StringIO(stdin)
         if env:
             host.getenv = env.get
-        host.capture_output(divert=not self.child.debugger)
+        host.capture_output()
         orig_sys_path = sys.path[:]
-        loader = FakeTestLoader(host, orig_sys_path)
+        orig_sys_modules = list(sys.modules.keys())
+        loader = None
 
         try:
             ret = main(argv + ['-j', '1'], host, loader)
         finally:
             out, err = host.restore_output()
+            modules_to_unload = []
+            for k in sys.modules:
+                if k not in orig_sys_modules:
+                    modules_to_unload.append(k)
+            for k in modules_to_unload:
+                del sys.modules[k]
             sys.path = orig_sys_path
 
         return ret, out, err
 
-    # TODO: figure out how to make these tests pass w/ trapping output.
     def test_debugger(self):
-        pass
-
-    def test_coverage(self):
-        pass
-
-    def test_error(self):
-        pass
-
-    def test_output_for_failures(self):
-        pass
-
-    def test_verbose(self):
-        pass
-
-    # TODO: These tests need to execute the real tests (they can't use a
-    # FakeTestLoader and FakeTestCase) because we're testing
-    # the side effects the tests have on setup and teardown.
-    def test_import_failure_missing_file(self):
-        pass
-
-    def test_import_failure_missing_package(self):
-        pass
-
-    def test_import_failure_no_tests(self):
-        pass
-
-    def test_import_failure_syntax_error(self):
-        pass
-
-    def test_load_tests_failure(self):
-        pass
-
-    def test_load_tests_single_worker(self):
-        pass
-
-    def test_load_tests_multiple_workers(self):
-        pass
-
-    def test_setup_and_teardown_single_child(self):
-        pass
-
-    def test_skips_and_failures(self):
+        # TODO: this test seems to hang under coverage.
         pass

@@ -197,7 +197,7 @@ class ArgumentParser(argparse.ArgumentParser):
         if not rargs.coverage_omit:
             rargs.coverage_omit = DEFAULT_COVERAGE_OMIT
 
-        if rargs.debugger:  # pragma: untested
+        if rargs.debugger:  # pragma: no cover
             rargs.jobs = 1
             rargs.passthrough = True
 

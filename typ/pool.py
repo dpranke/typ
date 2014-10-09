@@ -149,7 +149,7 @@ class AsyncPool(object):
 
 
 def _loop(requests, responses, host, worker_num,
-          callback, context, pre_fn, post_fn):  # pragma: untested
+          callback, context, pre_fn, post_fn):  # pragma: no cover
     # TODO: Figure out how to get coverage to work w/ subprocesses.
     host = host or Host()
     erred = False
