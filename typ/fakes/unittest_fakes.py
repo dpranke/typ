@@ -66,7 +66,7 @@ class FakeTestLoader(object):
                 suite.addTest(tc)
         return suite
 
-    def loadTestsFromName(self, name, module=None):  # pragma: no cover
+    def loadTestsFromName(self, name, module=None):  # pragma: untested
         h = self.host()
         comps = name.split('.')
         path = '/'.join(comps)
@@ -157,19 +157,19 @@ class FakeTestCase(unittest.TestCase):
     def id(self):
         return self._name
 
-    def __str__(self):  # pragma: no cover
+    def __str__(self):  # pragma: untested
         return "%s (%s)" % (self._testMethodName, self._class_name)
 
-    def __repr__(self):  # pragma: no cover
+    def __repr__(self):  # pragma: untested
         return "%s testMethod=%s" % (self._class_name, self._testMethodName)
 
     def _run(self):
         if '_fail' in self._testMethodName:
             self.fail()
-        if '_out' in self._testMethodName:  # pragma: no cover
+        if '_out' in self._testMethodName:  # pragma: untested
             self._host.stdout.write('hello on stdout')
             self._host.stdout.flush()
-        if '_err' in self._testMethodName:  # pragma: no cover
+        if '_err' in self._testMethodName:  # pragma: untested
             self._host.stderr.write('hello on stderr')
             self._host.stderr.flush()
         if '_interrupt' in self._testMethodName:

@@ -23,15 +23,21 @@ import tempfile
 import time
 
 
-if sys.version_info.major == 2:
-    import urllib2
-else:  # pragma: no cover
+if sys.version_info.major == 2:  # pragma: python2
+    from urllib2 import urlopen, Request
+else:  # pragma: python3
+    # pylint: disable=E0611
     assert sys.version_info.major == 3
-    import urllib as urllib2
+    from urllib.request import urlopen, Request  # pylint: disable=F0401,E0611
+
+
+is_debugging = False
 
 
 class Host(object):
     python_interpreter = sys.executable
+    is_python3 = bool(sys.version_info.major == 3)
+
     sep = os.sep
     env = os.environ
 
@@ -45,6 +51,14 @@ class Host(object):
         self.stderr = sys.stderr
         self.stdin = sys.stdin
         self.env = os.environ
+
+    def set_debugging(self, flag):  # pragma: untested
+        # TODO: We currently use this to work around typ's brokenness
+        # when running -d under python3. We may or may not actually need
+        # this hook.
+        # pylint: disable=W0603
+        global is_debugging
+        is_debugging = flag
 
     def abspath(self, *comps):
         return os.path.abspath(self.join(*comps))
@@ -164,12 +178,12 @@ class Host(object):
 
     def fetch(self, url, data=None, headers=None):
         headers = headers or {}
-        return urllib2.urlopen(urllib2.Request(url, data, headers))
+        return urlopen(Request(url, data.encode('utf8'), headers))
 
     def terminal_width(self):
         """Returns 0 if the width cannot be determined."""
         try:
-            if sys.platform == 'win32':  # pragma: no cover
+            if sys.platform == 'win32':  # pragma: win32
                 # From http://code.activestate.com/recipes/ \
                 #   440694-determine-size-of-console-window-on-windows/
                 from ctypes import windll, create_string_buffer
@@ -191,7 +205,7 @@ class Host(object):
                     # line feed.
                     return right - left
                 return 0
-            else:
+            else:  # pragma: no win32
                 import fcntl
                 import struct
                 import termios
@@ -199,8 +213,7 @@ class Host(object):
                                      termios.TIOCGWINSZ, '\0' * 8)
                 _, columns, _, _ = struct.unpack('HHHH', packed)
                 return columns
-        except Exception:  # pragma: no cover
-            # TODO: Figure out how to test this and make coverage see it.
+        except Exception:  # pragma: untested
             return 0
 
     def _tap_output(self):
@@ -213,17 +226,25 @@ class Host(object):
         self.stderr = sys.stderr = self.stderr.stream
 
     def capture_output(self, divert=True):
+        if self.is_python3 and is_debugging:  # pragma: untested
+            # TODO: fix the debugging in python3
+            return
+
         self._tap_output()
 
         # TODO: Make log capture more robust.
         self._orig_logging_handlers = self.logger.handlers
-        if self._orig_logging_handlers:  # pragma: no cover
+        if self._orig_logging_handlers:  # pragma: untested
             self.logger.handlers = [logging.StreamHandler(self.stderr)]
 
         self.stdout.capture(divert)
         self.stderr.capture(divert)
 
     def restore_output(self):
+        if self.is_python3 and is_debugging:  # pragma: untested
+            # TODO: fix the debugging in python3
+            return '', ''
+
         assert isinstance(self.stdout, _TeedStream)
         out, err = (self.stdout.restore(), self.stderr.restore())
         self.logger.handlers = self._orig_logging_handlers
@@ -239,7 +260,7 @@ class _TeedStream(io.StringIO):
         self.capturing = False
         self.diverting = False
 
-    def write(self, msg, *args, **kwargs):  # pragma: no cover
+    def write(self, msg, *args, **kwargs):  # pragma: untested
         if self.capturing:
             if sys.version_info.major == 2 and isinstance(msg, str):
                 msg = unicode(msg)
@@ -247,7 +268,7 @@ class _TeedStream(io.StringIO):
         if not self.diverting:
             self.stream.write(msg, *args, **kwargs)
 
-    def flush(self):  # pragma: no cover
+    def flush(self):  # pragma: untested
         if self.capturing:
             super(_TeedStream, self).flush()
         if not self.diverting:

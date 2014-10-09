@@ -14,10 +14,20 @@
 
 """A fake implementation of test-results.appspot.com."""
 
-import SimpleHTTPServer
-import SocketServer
 import io
+import sys
 import threading
+
+
+if sys.version_info.major == 2:  # pragma: python2
+    from SimpleHTTPServer import SimpleHTTPRequestHandler as HTTPRequestHandler
+    from SocketServer import TCPServer
+else:  # pragma: python3
+    assert sys.version_info.major == 3
+    unicode = str  # pylint: disable=W0622
+    from http.server import BaseHTTPRequestHandler  # pylint: disable=F0401
+    HTTPRequestHandler = BaseHTTPRequestHandler
+    from socketserver import TCPServer  # pylint: disable=F0401
 
 
 def start(code=200):
@@ -33,12 +43,11 @@ def _run(server):
     server.serve_forever(0.05)
 
 
-class _Server(SocketServer.TCPServer):
+class _Server(TCPServer):
 
     def __init__(self, code):
         self.allow_reuse_address = True
-        SocketServer.TCPServer.__init__(self, ('localhost', 0),
-                                        _RequestHandler)
+        TCPServer.__init__(self, ('localhost', 0), _RequestHandler)
         self.log = io.StringIO()
         self.requests = []
         self.main_thread = None
@@ -50,11 +59,10 @@ class _Server(SocketServer.TCPServer):
         return self.requests
 
 
-class _RequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+class _RequestHandler(HTTPRequestHandler):
 
     def __init__(self, *args, **kwargs):
-        SimpleHTTPServer.SimpleHTTPRequestHandler.__init__(self, *args,
-                                                           **kwargs)
+        HTTPRequestHandler.__init__(self, *args, **kwargs)
 
     # 'Invalid Name' pylint: disable=C0103
     def do_POST(self):
@@ -62,8 +70,9 @@ class _RequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         length = int(self.headers['content-length'])
         payload = self.rfile.read(length)
         self.server.requests.append(('post', path, payload))
-        self.send_response(self.server.code, 'OK')
+        self.send_response(self.server.code)
+        self.end_headers()
 
     # 'Redefining built-in' pylint: disable=W0622
     def log_message(self, format, *args):
-        self.server.log.write(unicode("%s\n" % (format % args)))
+        self.server.log.write(unicode('%s\n' % (format % args)))

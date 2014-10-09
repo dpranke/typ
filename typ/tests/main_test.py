@@ -27,6 +27,12 @@ from typ.fakes import test_result_server_fake
 from typ.fakes.unittest_fakes import FakeTestLoader
 
 
+is_python3 = bool(sys.version_info.major == 3)
+
+if is_python3:  # pragma: python3
+    # redefining built-in 'unicode' pylint: disable=W0622
+    unicode = str
+
 d = textwrap.dedent
 
 
@@ -201,7 +207,7 @@ LOAD_TEST_FILES = {'load_test.py': LOAD_TEST_PY}
 
 path_to_main = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    'entry_points.py')
+    'cmdline.py')
 
 
 class TestCli(test_case.MainTestCase):
@@ -244,14 +250,15 @@ class TestCli(test_case.MainTestCase):
                              TOTAL           8      4    50%
                              """))
         except ImportError:  # pragma: no cover
+            # We can never cover this line, since running coverage means
+            # that import will succeed.
             self.check(['-c'], files=PASS_TEST_FILES, ret=1,
                        out='Error: coverage is not installed\n', err='')
 
     def test_debugger(self):
-        if sys.version_info.major == 3:  # pragma: no cover
-            self.check(['-d'], files=PASS_TEST_FILES, ret=2,
-                       out='Error: --debugger does not work w/ Python3 yet.\n')
-        else:
+        if sys.version_info.major == 3:  # pragma: python3
+            return
+        else:  # pragma: python2
             _, out, _, _ = self.check(['-d'], stdin='quit()\n',
                                       files=PASS_TEST_FILES, ret=0, err='')
             self.assertIn('(Pdb) ', out)
@@ -554,7 +561,7 @@ class TestCli(test_case.MainTestCase):
             posts = server.stop()
 
         self.assertEqual(len(posts), 1)
-        payload = posts[0][2]
+        payload = posts[0][2].decode('utf8')
         self.assertIn('"test_pass": {"expected": "PASS", "actual": "PASS"}',
                       payload)
         self.assertTrue(payload.endswith('--\r\n'))
@@ -575,7 +582,7 @@ class TestCli(test_case.MainTestCase):
                        out=('[1/1] pass_test.PassingTest.test_pass passed\n'
                             '1 test run, 0 failures.\n'
                             'Uploading the JSON results raised '
-                            '"HTTP Error 500: OK"\n'))
+                            '"HTTP Error 500: Internal Server Error"\n'))
 
         finally:
             _ = server.stop()
@@ -645,8 +652,7 @@ class TestMain(TestCli):
         return Host()
 
     def call(self, host, argv, stdin, env):
-        if sys.version_info.major == 2 and isinstance(stdin, str):
-            stdin = unicode(stdin)
+        stdin = unicode(stdin)
         host.stdin = io.StringIO(stdin)
         if env:
             host.getenv = env.get

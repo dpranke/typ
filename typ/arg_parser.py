@@ -14,7 +14,6 @@
 
 import argparse
 import optparse
-import sys
 
 from typ.host import Host
 
@@ -195,15 +194,12 @@ class ArgumentParser(argparse.ArgumentParser):
         if not rargs.coverage_omit:
             rargs.coverage_omit = DEFAULT_COVERAGE_OMIT
 
-        if rargs.debugger:  # pragma: no cover
-            if sys.version_info.major == 3:
-                self._print_message('Error: --debugger does not work w/ '
-                                    'Python3 yet.')
-                self.exit_status = 2
+        if rargs.debugger:  # pragma: untested
             rargs.jobs = 1
             rargs.passthrough = True
 
-        if rargs.coverage:  # pragma: no cover
+        if rargs.coverage:  # pragma: untested
+            # TODO: make coverage work in parallel
             rargs.jobs = 1
 
         if rargs.overwrite is None:
@@ -252,19 +248,18 @@ class ArgumentParser(argparse.ArgumentParser):
 
 def _action_str(action):
     # Access to a protected member pylint: disable=W0212
-    if isinstance(action, argparse._StoreTrueAction):
-        return 'store_true'
-    if isinstance(action, argparse._StoreFalseAction):  # pragma: no cover
-        return 'store_false'
-    if isinstance(action, argparse._StoreAction):
-        return 'store'
-    if isinstance(action, argparse._CountAction):
-        return 'count'
+    assert action.__class__ in (
+        argparse._AppendAction,
+        argparse._CountAction,
+        argparse._StoreAction,
+        argparse._StoreTrueAction
+    )
+
     if isinstance(action, argparse._AppendAction):
         return 'append'
-    if isinstance(action, argparse._HelpAction):  # pragma: no cover
-        return 'help'
-
-    raise ValueError('Unexpected action type %s for %s' %
-                     action.__class__,
-                     str(action.option_strings))  # pragma: no cover
+    if isinstance(action, argparse._CountAction):
+        return 'count'
+    if isinstance(action, argparse._StoreAction):
+        return 'store'
+    if isinstance(action, argparse._StoreTrueAction):
+        return 'store_true'

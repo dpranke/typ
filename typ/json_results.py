@@ -16,27 +16,19 @@ from collections import OrderedDict
 
 import json
 
-try:
-    from enum import IntEnum
-except ImportError:  # pragma: no cover
-    Enum = object
-    IntEnum = object
+
+class ResultType(object):
+    Pass = 'Pass'
+    Failure = 'Failure'
+    ImageOnlyFailure = 'ImageOnlyFailure'
+    Timeout = 'Timeout'
+    Crash = 'Crash'
+    Skip = 'Skip'
+
+    values = (Pass, Failure, ImageOnlyFailure, Timeout, Crash, Skip)
 
 
-class ResultType(IntEnum):  # no __init__ pylint: disable=W0232
-    Pass = 0
-    Failure = 1
-    ImageOnlyFailure = 2
-    Timeout = 3
-    Crash = 4
-    Skip = 5
-
-    def __str__(self):
-        return ['Pass', 'Fail', 'ImageOnlyFailure', 'Timeout', 'Crash',
-                'Skip'][self]
-
-
-class Result(object):  # pragma: no cover
+class Result(object):
     # too many instance attributes  pylint: disable=R0902
     # too many arguments  pylint: disable=R0913
 
@@ -56,7 +48,7 @@ class Result(object):  # pragma: no cover
         self.err = err
 
 
-class ResultSet(object):  # pragma: no cover
+class ResultSet(object):
 
     def __init__(self):
         self.results = []
@@ -135,7 +127,7 @@ def failed_test_names(results):
         if r.actual == ResultType.Failure:
             names.add(r.name)
         elif (r.actual == ResultType.Pass and
-              r.name in names):  # pragma: no cover
+              r.name in names):  # pragma: untested
             names.remove(r.name)
     return names
 

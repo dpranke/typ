@@ -34,12 +34,10 @@ setup(
     package_data={'': ['../README.rst']},
     entry_points={
         'console_scripts': [
-            'typ=typ.entry_points:main',
+            'typ=typ.cmdline:main',
         ]
     },
     install_requires=[
-        'coverage>=3.7.1',
-        'enum34>=1.0',
     ],
     version=VERSION,
     author='Dirk Pranke',
@@ -54,6 +52,8 @@ setup(
         'License :: OSI Approved :: Apache',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
         'Topic :: Software Development :: Testing',
     ],
 )

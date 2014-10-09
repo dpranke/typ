@@ -16,37 +16,33 @@ import copy
 import multiprocessing
 import pickle
 
-try:
-    from enum import Enum
-except ImportError:  # pragma: no cover
-    Enum = object
-
 from typ.host import Host
 
 
-class _MessageType(Enum):
-    # Class has no __init__ pylint: disable=W0232
-    Request = 1
-    Response = 2
-    Close = 3
-    Done = 4
-    Error = 5
-    Interrupt = 6
+class _MessageType(object):
+    Request = 'Request'
+    Response = 'Response'
+    Close = 'Close'
+    Done = 'Done'
+    Error = 'Error'
+    Interrupt = 'Interrupt'
+
+    values = [Request, Response, Close, Done, Error, Interrupt]
 
 
 def make_pool(host, jobs, callback, context, pre_fn, post_fn):
     try:
         _ = pickle.dumps(context)
-    except Exception as e:  # pragma: no cover
+    except Exception as e:  # pragma: untested
         raise ValueError('context passed to make_pool is not picklable: %s'
                          % str(e))
     try:
         _ = pickle.dumps(pre_fn)
-    except pickle.PickleError:  # pragma: no cover
+    except pickle.PickleError:  # pragma: untested
         raise ValueError('pre_fn passed to make_pool is not picklable')
     try:
         _ = pickle.dumps(post_fn)
-    except pickle.PickleError:  # pragma: no cover
+    except pickle.PickleError:  # pragma: untested
         raise ValueError('post_fn passed to make_pool is not picklable')
     cls = ProcessPool if jobs > 1 else AsyncPool
     return cls(host, jobs, callback, context, pre_fn, post_fn)
@@ -76,9 +72,9 @@ class ProcessPool(object):
 
     def get(self, block=True, timeout=None):
         msg_type, resp = self.responses.get(block, timeout)
-        if msg_type == _MessageType.Error:  # pragma: no cover
+        if msg_type == _MessageType.Error:  # pragma: untested
             self._handle_error(resp)
-        elif msg_type == _MessageType.Interrupt:  # pragma: no cover
+        elif msg_type == _MessageType.Interrupt:  # pragma: untested
             raise KeyboardInterrupt
         assert msg_type == _MessageType.Response
         return resp
@@ -104,9 +100,9 @@ class ProcessPool(object):
         for w in self.workers:
             while True:
                 msg_type, resp = self.responses.get(True)
-                if msg_type == _MessageType.Error:  # pragma: no cover
+                if msg_type == _MessageType.Error:  # pragma: untested
                     self._handle_error(resp)
-                elif msg_type == _MessageType.Interrupt:  # pragma: no cover
+                elif msg_type == _MessageType.Interrupt:  # pragma: untested
                     raise KeyboardInterrupt
                 elif msg_type == _MessageType.Done:
                     break
@@ -116,7 +112,7 @@ class ProcessPool(object):
         self.responses.close()
         return final_responses
 
-    def _handle_error(self, msg):  # pragma: no cover
+    def _handle_error(self, msg):  # pragma: untested
         worker_num, ex_str = msg
         self.erred = True
         raise Exception("error from worker %d: %s" % (worker_num, ex_str))
@@ -153,7 +149,7 @@ class AsyncPool(object):
 
 
 def _loop(requests, responses, host, worker_num,
-          callback, context, pre_fn, post_fn):  # pragma: no cover
+          callback, context, pre_fn, post_fn):  # pragma: untested
     # TODO: Figure out how to get coverage to work w/ subprocesses.
     host = host or Host()
     erred = False

@@ -23,6 +23,7 @@ class FakeHost(object):
     # "unused arg" pylint: disable=W0613
 
     python_interpreter = 'python'
+    is_python3 = bool(sys.version_info.major == 3)
 
     def __init__(self):
         self.stdin = io.StringIO()
@@ -41,14 +42,14 @@ class FakeHost(object):
         self.cmds = []
         self.cwd = '/tmp'
 
-    def __getstate__(self):  # pragma: no cover
+    def __getstate__(self):  # pragma: untested
         d = copy.copy(self.__dict__)
         del d['stderr']
         del d['stdout']
         del d['stdin']
         return d
 
-    def __setstate__(self, d):  # pragma: no cover
+    def __setstate__(self, d):  # pragma: untested
         for k, v in d.items():
             setattr(self, k, v)
         self.stdin = io.StringIO()
@@ -75,7 +76,7 @@ class FakeHost(object):
 
     def chdir(self, *comps):
         path = self.join(*comps)
-        if not path.startswith('/'):  # pragma: no cover
+        if not path.startswith('/'):  # pragma: untested
             path = self.join(self.cwd, path)
         self.cwd = path
 
@@ -118,7 +119,7 @@ class FakeHost(object):
     def join(self, *comps):
         p = ''
         for c in comps:
-            if c in ('', '.'):  # pragma: no cover
+            if c in ('', '.'):  # pragma: untested
                 continue
             elif c.startswith('/'):
                 p = c
@@ -131,7 +132,7 @@ class FakeHost(object):
         p = p.replace('/./', '/')
 
         # Handle ../
-        while '/..' in p:  # pragma: no cover
+        while '/..' in p:  # pragma: untested
             comps = p.split('/')
             idx = comps.index('..')
             comps = comps[:idx-1] + comps[idx+1:]
@@ -157,7 +158,7 @@ class FakeHost(object):
 
     def print_(self, msg='', end='\n', stream=None):
         stream = stream or self.stdout
-        if sys.version_info.major == 2 and isinstance(msg, str):
+        if not self.is_python3 and isinstance(msg, str):  # pragma: untested
             msg = unicode(msg)
         stream.write(msg + end)
         stream.flush()
@@ -211,12 +212,12 @@ class FakeHost(object):
         self.files[full_path] = contents
         self.written_files[full_path] = contents
 
-    def fetch(self, url, data=None, headers=None):  # pragma: no cover
+    def fetch(self, url, data=None, headers=None):  # pragma: untested
         resp = self.fetch_responses.get(url, FakeResponse('', url))
         self.fetches.append((url, data, headers, resp))
         return resp
 
-    def _tap_output(self):  # pragma: no cover
+    def _tap_output(self):  # pragma: untested
         # TODO: assigning to sys.stdout/sys.stderr confuses the debugger
         # with some sort of str/unicode problem.
         self.stdout = _TeedStream(self.stdout)
@@ -225,7 +226,7 @@ class FakeHost(object):
             sys.stdout = self.stdout
             sys.stderr = self.stderr
 
-    def _untap_output(self):  # pragma: no cover
+    def _untap_output(self):  # pragma: untested
         assert isinstance(self.stdout, _TeedStream)
         self.stdout = self.stdout.stream
         self.stderr = self.stderr.stream
@@ -233,27 +234,27 @@ class FakeHost(object):
             sys.stdout = self.stdout
             sys.stderr = self.stderr
 
-    def capture_output(self, divert=True):  # pragma: no cover
+    def capture_output(self, divert=True):  # pragma: untested
         self._tap_output()
         self.stdout.capture(divert)
         self.stderr.capture(divert)
 
-    def restore_output(self):  # pragma: no cover
+    def restore_output(self):  # pragma: untested
         assert isinstance(self.stdout, _TeedStream)
         out, err = (self.stdout.restore(), self.stderr.restore())
         self._untap_output()
         return out, err
 
 
-class _TeedStream(io.StringIO):
+class _TeedStream(io.StringIO):  # pragma: untested
 
-    def __init__(self, stream):  # pragma: no cover
+    def __init__(self, stream):
         super(_TeedStream, self).__init__()
         self.stream = stream
         self.capturing = False
         self.diverting = False
 
-    def write(self, msg, *args, **kwargs):  # pragma: no cover
+    def write(self, msg, *args, **kwargs):
         if self.capturing:
             if sys.version_info.major == 2 and isinstance(msg, str):
                 msg = unicode(msg)
@@ -261,18 +262,18 @@ class _TeedStream(io.StringIO):
         if not self.diverting:
             self.stream.write(msg, *args, **kwargs)
 
-    def flush(self):  # pragma: no cover
+    def flush(self):
         if self.capturing:
             super(_TeedStream, self).flush()
         if not self.diverting:
             self.stream.flush()
 
-    def capture(self, divert=True):  # pragma: no cover
+    def capture(self, divert=True):
         self.truncate(0)
         self.capturing = True
         self.diverting = divert
 
-    def restore(self):  # pragma: no cover
+    def restore(self):
         msg = self.getvalue()
         self.truncate(0)
         self.capturing = False
@@ -280,7 +281,7 @@ class _TeedStream(io.StringIO):
         return msg
 
 
-class FakeResponse(io.StringIO):  # pragma: no cover
+class FakeResponse(io.StringIO):  # pragma: untested
 
     def __init__(self, response, url, code=200):
         io.StringIO.__init__(self, response)

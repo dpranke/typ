@@ -15,8 +15,6 @@
 import shlex
 import unittest
 
-from typ.host import Host
-
 
 def convert_newlines(msg):
     """A routine that mimics Python's universal_newlines conversion."""
@@ -55,9 +53,11 @@ class MainTestCase(TestCase):
         self.assertEqual(interesting_files, set(expected_files.keys()))
 
     def make_host(self):
-        if self.child:
-            return self.child.host
-        return Host()  # pragma: no cover
+        # If we are ever called by unittest directly, and not through typ,
+        # this will probably fail.
+        assert(self.child)
+
+        return self.child.host
 
     def call(self, host, argv, stdin, env):
         return host.call(argv, stdin=stdin, env=env)

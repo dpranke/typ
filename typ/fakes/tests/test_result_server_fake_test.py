@@ -31,5 +31,6 @@ class TestResultServerFakeTest(unittest.TestCase):
         finally:
             if server:
                 posts = server.stop()
-        self.assertEqual(posts, [('post', '/testfile/upload', 'foo=bar')])
+        self.assertEqual(posts, [('post', '/testfile/upload',
+                                  'foo=bar'.encode('utf8'))])
         self.assertNotEqual(server.log.getvalue(), '')

@@ -47,8 +47,7 @@ typ is still a work in progress, but it's getting close to being done.
 Things remaining for 1.0, roughly in priority order:
 
 - Add input validation on all of the public APIs.
-- Remove as many of the "pragma: no-cover" hacks as possible and get test
-  coverage for the remaining blocks of "uncovered" code:
+- Get test coverage for the remaining untested code:
 
   - figure out how to get coverage of the command-line based tests
   - figure out how to get output trapping working inside tests
@@ -57,17 +56,9 @@ Things remaining for 1.0, roughly in priority order:
 
 - Make --debugger work with Python3
 - Make parallel coverage work.
-- Write documentation
-
-- Write tests for different configurations:
-
-  - typ not installed, invoked via typ/main.py
-  - typ not installed, invoked via -m typ in dir above typ
-  - typ installed, invoked via typ/main.py
-  - test running tests with absolute paths to test files
-
 - Implement a non-python file format for testing command line interfaces,
   clean up testing of exe's.
+- Write documentation
 
 Possible future work
 --------------------
