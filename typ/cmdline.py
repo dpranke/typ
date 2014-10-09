@@ -37,7 +37,7 @@ def main(argv=None, host=None, loader=None):
     return runner.main(argv)
 
 
-def spawn_main():  # pragma: untested
+def spawn_main(argv, stdout, stderr):
     # This function is called from __main__.py when running 'python -m typ' on
     # windows.
     #
@@ -50,10 +50,11 @@ def spawn_main():  # pragma: untested
     # We don't want to always spawn a subprocess, because doing so is more
     # heavyweight than it needs to be on other platforms (and can make
     # debugging a bit more annoying).
-    proc = subprocess.Popen([sys.executable, __file__] + sys.argv[1:])
+    proc = subprocess.Popen([sys.executable, __file__] + argv,
+                            stdout=stdout, stderr=stderr)
     try:
         proc.wait()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: untested
         # We may need a second wait in order to make sure the subprocess exits
         # completely.
         proc.wait()
