@@ -14,7 +14,7 @@
 
 from typ import test_case
 from typ.host import Host
-from typ.pool import make_pool
+from typ.pool import make_pool, ProcessPool, _loop
 
 
 def setup_fn(host, worker_num, context):  # pylint: disable=W0613
@@ -49,6 +49,34 @@ class TestPool(test_case.TestCase):
         expected_context = {'setup': True, 'teardown': True}
         expected_final_contexts = [expected_context for _ in range(jobs)]
         self.assertEqual(final_contexts, expected_final_contexts)
+
+    def test_loop(self):
+        host = Host()
+        jobs = 0
+        context = {'setup': False, 'teardown': False}
+        pool = ProcessPool(host, jobs, echo_fn, context, setup_fn, teardown_fn)
+        pool.send('hello')
+
+        worker_num = 1
+        _loop(pool.requests, pool.responses, host, worker_num, echo_fn,
+              context, setup_fn, teardown_fn, should_loop=False)
+        resp = pool.get()
+        self.assertEqual(resp, 'True/False/hello')
+        pool.close()
+        pool.join()
+
+    def test_pickling_errors(self):
+        def unpicklable_fn():  # pragma: no cover
+            pass
+
+        host = Host()
+        jobs = 2
+        self.assertRaises(ValueError, make_pool,
+                          host, jobs, echo_fn, unpicklable_fn, None, None)
+        self.assertRaises(ValueError, make_pool,
+                          host, jobs, echo_fn, None, unpicklable_fn, None)
+        self.assertRaises(ValueError, make_pool,
+                          host, jobs, echo_fn, None, None, unpicklable_fn)
 
     def test_single_job(self):
         self.run_basic_test(1)

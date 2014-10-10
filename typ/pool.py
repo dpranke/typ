@@ -33,16 +33,16 @@ class _MessageType(object):
 def make_pool(host, jobs, callback, context, pre_fn, post_fn):
     try:
         _ = pickle.dumps(context)
-    except Exception as e:  # pragma: untested
+    except Exception as e:
         raise ValueError('context passed to make_pool is not picklable: %s'
                          % str(e))
     try:
         _ = pickle.dumps(pre_fn)
-    except pickle.PickleError:  # pragma: untested
+    except pickle.PickleError:
         raise ValueError('pre_fn passed to make_pool is not picklable')
     try:
         _ = pickle.dumps(post_fn)
-    except pickle.PickleError:  # pragma: untested
+    except pickle.PickleError:
         raise ValueError('post_fn passed to make_pool is not picklable')
     cls = ProcessPool if jobs > 1 else AsyncPool
     return cls(host, jobs, callback, context, pre_fn, post_fn)
@@ -149,19 +149,22 @@ class AsyncPool(object):
 
 
 def _loop(requests, responses, host, worker_num,
-          callback, context, pre_fn, post_fn):  # pragma: no cover
+          callback, context, pre_fn, post_fn, should_loop=True):
     # TODO: Figure out how to get coverage to work w/ subprocesses.
     host = host or Host()
     erred = False
     try:
         context_after_pre = pre_fn(host, worker_num, context)
-        while True:
+        keep_looping = True
+        while keep_looping:
             message_type, args = requests.get(block=True)
             if message_type == _MessageType.Close:
                 break
             assert message_type == _MessageType.Request
             resp = callback(context_after_pre, args)
             responses.put((_MessageType.Response, resp))
+            keep_looping = should_loop
+
     except KeyboardInterrupt as e:
         erred = True
         responses.put((_MessageType.Interrupt, (worker_num, str(e))))
