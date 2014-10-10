@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typ import Runner, TestCase, TestSet, TestInput
+from textwrap import dedent as d
+
+
+from typ import Host, Runner, TestCase, TestSet, TestInput
 
 
 def _setup_process(child, context):
@@ -34,12 +37,37 @@ class RunnerTests(TestCase):
 
 class TestSetTests(TestCase):
     # This class exists to test the failures that can come up if you
-    # create your own test sets that might have weird failure modes.
+    # create your own test sets and bypass find_tests(); failures that
+    # would normally be caught there can occur later during test execution.
+
     def test_missing_name(self):
         test_set = TestSet()
-        test_set.parallel_test.add('nonexistent test')
+        test_set.parallel_tests = [TestInput('nonexistent test')]
         r = Runner()
         ret, _, _ = r.run(test_set)
+        self.assertEqual(ret, 1)
+
+    def test_failing_load_test(self):
+        h = Host()
+        orig_wd = h.getcwd()
+        tmpdir = None
+        try:
+            tmpdir = h.mkdtemp()
+            h.chdir(tmpdir)
+            h.write_text_file('load_test.py', d("""\
+                import unittest
+                def load_tests(_, _2, _3):
+                    assert False
+                """))
+            test_set = TestSet()
+            test_set.parallel_tests = [TestInput('load_test.BaseTest.test_foo')]
+            r = Runner()
+            ret, _, _ = r.run(test_set)
+            self.assertEqual(ret, 1)
+        finally:
+            h.chdir(orig_wd)
+            if tmpdir:
+                h.rmtree(tmpdir)
 
 
 class ContextTests(TestCase):

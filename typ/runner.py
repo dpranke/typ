@@ -652,16 +652,15 @@ def _run_one_test(child, test_input):
         suite = child.loader.loadTestsFromName(test_name)
     except Exception as e:
         suite = _load_via_load_tests(child, test_name)
-        if not suite:  # pragma: untested
-            # TODO: Figure out how to handle failures here.
-            err = 'failed to load %s: %s' % (test_name, str(e))
-            h.restore_output()
-            return Result(test_name, ResultType.Failure, start, 0,
-                          child.worker_num, unexpected=True, code=1,
-                          err=err, pid=pid)
 
     tests = list(suite)
-    assert len(tests) == 1
+    if len(tests) != 1:
+        err = 'failed to load %s: %s' % (test_name, str(e))
+        h.restore_output()
+        return Result(test_name, ResultType.Failure, start, 0,
+                        child.worker_num, unexpected=True, code=1,
+                        err=err, pid=pid)
+
     test_case = tests[0]
     if isinstance(test_case, TypTestCase):
         test_case.child = child
@@ -756,11 +755,7 @@ def _load_via_load_tests(child, test_name):
             except ImportError:
                 pass
             if module:
-                try:
-                    suite = loader.loadTestsFromModule(module)
-                except Exception:  # pragma: untested
-                    # TODO: Figure out how to handle errors here
-                    pass
+                suite = loader.loadTestsFromModule(module)
             child.loaded_suites[name] = suite
         suite = child.loaded_suites[name]
         if suite:

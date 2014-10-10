@@ -94,8 +94,8 @@ class MainTestCase(TestCase):
                 host.print_(' '.join(prog + argv), stream=host.stdout.stream)
                 host.print_('')
                 import pdb
-                pdb = pdb.Pdb(stdout=host.stdout.stream)
-                pdb.set_trace()
+                dbg = pdb.Pdb(stdout=host.stdout.stream)
+                dbg.set_trace()
 
             result = self.call(host, prog + argv, stdin=stdin, env=env)
 
