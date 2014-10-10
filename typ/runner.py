@@ -115,7 +115,7 @@ class Runner(object):
             return ret, None, None
 
         ret = self._set_up_runner()
-        if ret:  # pragma: untested
+        if ret:  # pragma: no cover
             return ret, None, None
 
         find_start = h.time()

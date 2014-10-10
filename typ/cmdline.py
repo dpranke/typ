@@ -22,7 +22,8 @@ import unittest
 # We need this entry in addition to the one in __main__.py to ensure
 # that typ/cmdline.py works when invoked via subprocess on windows in
 # _spawn_main().
-dir_above_typ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+path_to_file = os.path.abspath(__file__)
+dir_above_typ = os.path.dirname(os.path.dirname(path_to_file))
 if dir_above_typ not in sys.path:  # pragma: untested
     sys.path.append(dir_above_typ)
 
@@ -50,7 +51,7 @@ def spawn_main(argv, stdout, stderr):
     # We don't want to always spawn a subprocess, because doing so is more
     # heavyweight than it needs to be on other platforms (and can make
     # debugging a bit more annoying).
-    proc = subprocess.Popen([sys.executable, __file__] + argv,
+    proc = subprocess.Popen([sys.executable, path_to_file] + argv,
                             stdout=stdout, stderr=stderr)
     try:
         proc.wait()

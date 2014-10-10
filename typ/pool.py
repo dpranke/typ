@@ -143,10 +143,12 @@ class AsyncPool(object):
         self.final_context = self.post_fn(self.context_after_pre)
 
     def join(self):
-        if not self.closed:
+        if not self.closed:  # pragma: untested
             self.close()
         return [self.final_context]
 
+
+# 'Too many arguments' pylint: disable=R0913
 
 def _loop(requests, responses, host, worker_num,
           callback, context, pre_fn, post_fn, should_loop=True):
@@ -158,22 +160,22 @@ def _loop(requests, responses, host, worker_num,
         keep_looping = True
         while keep_looping:
             message_type, args = requests.get(block=True)
-            if message_type == _MessageType.Close:
+            if message_type == _MessageType.Close:  # pragma: untested
                 break
             assert message_type == _MessageType.Request
             resp = callback(context_after_pre, args)
             responses.put((_MessageType.Response, resp))
             keep_looping = should_loop
 
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt as e:  # pragma: untested
         erred = True
         responses.put((_MessageType.Interrupt, (worker_num, str(e))))
-    except Exception as e:
+    except Exception as e:  # pragma: untested
         erred = True
         responses.put((_MessageType.Error, (worker_num, str(e))))
 
     try:
         if not erred:
             responses.put((_MessageType.Done, post_fn(context_after_pre)))
-    except Exception:
+    except Exception:  # pragma: untested
         pass

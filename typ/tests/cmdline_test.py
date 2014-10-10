@@ -17,7 +17,6 @@ import tempfile
 
 from typ import spawn_main
 from typ import test_case
-from typ import Host
 from typ import VERSION
 
 
@@ -43,4 +42,4 @@ class TestSpawnMain(test_case.MainTestCase):
         return ret, out_str, err_str
 
     def test_version(self):
-        self.check(['--version'], out=VERSION + '\n')
+        self.check(['--version'], ret=0, out=VERSION + '\n')
