@@ -205,7 +205,7 @@ class Host(object):
                                      termios.TIOCGWINSZ, '\0' * 8)
                 _, columns, _, _ = struct.unpack('HHHH', packed)
                 return columns
-        except Exception:  # pragma: untested
+        except Exception:
             return 0
 
     def _tap_output(self):
@@ -219,12 +219,9 @@ class Host(object):
 
     def capture_output(self, divert=True):
         self._tap_output()
-
-        # TODO: Make log capture more robust.
         self._orig_logging_handlers = self.logger.handlers
-        if self._orig_logging_handlers:  # pragma: untested
+        if self._orig_logging_handlers:
             self.logger.handlers = [logging.StreamHandler(self.stderr)]
-
         self.stdout.capture(divert)
         self.stderr.capture(divert)
 

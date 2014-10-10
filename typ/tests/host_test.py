@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import pickle
 import sys
 import unittest
@@ -25,13 +26,18 @@ class TestHost(unittest.TestCase):
         return Host()
 
     def test_capture_output(self):
-        h = self.host()
-        h.capture_output()
-        h.print_('on stdout')
-        h.print_('on stderr', stream=h.stderr)
-        out, err = h.restore_output()
-        self.assertEqual(out, 'on stdout\n')
-        self.assertEqual(err, 'on stderr\n')
+        try:
+            logging.basicConfig()
+            h = self.host()
+            h.capture_output()
+            h.print_('on stdout')
+            h.print_('on stderr', stream=h.stderr)
+            logging.critical('critical log failure')
+            out, err = h.restore_output()
+            self.assertEqual(out, 'on stdout\n')
+            self.assertEqual(err, 'on stderr\ncritical log failure\n')
+        finally:
+            h.logger.handlers = []
 
         # TODO: Add tests for divert=False or eliminate the flag?
 

@@ -14,6 +14,7 @@
 
 import copy
 import io
+import logging
 import sys
 
 from typ.host import _TeedStream
@@ -35,6 +36,7 @@ class FakeHost(object):
     is_python3 = bool(sys.version_info.major == 3)
 
     def __init__(self):
+        self.logger = logging.getLogger()
         self.stdin = io.StringIO()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
@@ -56,11 +58,13 @@ class FakeHost(object):
         del d['stderr']
         del d['stdout']
         del d['stdin']
+        del d['logger']
         return d
 
     def __setstate__(self, d):
         for k, v in d.items():
             setattr(self, k, v)
+        self.logger = logging.getLogger()
         self.stdin = io.StringIO()
         self.stdout = io.StringIO()
         self.stderr = io.StringIO()
@@ -244,12 +248,16 @@ class FakeHost(object):
 
     def capture_output(self, divert=True):
         self._tap_output()
-        self.stdout.capture(divert)
-        self.stderr.capture(divert)
+        self._orig_logging_handlers = self.logger.handlers
+        if self._orig_logging_handlers:
+            self.logger.handlers = [logging.StreamHandler(self.stderr)]
+        self.stdout.capture(divert=divert)
+        self.stderr.capture(divert=divert)
 
     def restore_output(self):
         assert isinstance(self.stdout, _TeedStream)
         out, err = (self.stdout.restore(), self.stderr.restore())
+        self.logger.handlers = self._orig_logging_handlers
         self._untap_output()
         return out, err
 
