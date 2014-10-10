@@ -153,9 +153,6 @@ class ArgumentParser(argparse.ArgumentParser):
             self.add_argument('--no-overwrite', action='store_false',
                               dest='overwrite', default=None,
                               help=argparse.SUPPRESS)
-            self.add_argument('--setup', help=argparse.SUPPRESS)
-            self.add_argument('--teardown', help=argparse.SUPPRESS)
-            self.add_argument('--context', help=argparse.SUPPRESS)
 
         if discovery or running:
             self.add_argument('-P', '--path', action='append', default=[],

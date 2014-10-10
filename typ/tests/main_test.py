@@ -139,47 +139,6 @@ class ExpectedFailures(unittest.TestCase):
 SF_TEST_FILES = {'sf_test.py': SF_TEST_PY}
 
 
-ST_TEST_PY = """
-import unittest
-from typ import test_case as typ_test_case
-
-def setupProcess(child, context):
-    if context is None:
-        context = {'calls': 0}
-    child.host.print_('setupProcess(%d): %s' % (child.worker_num, context))
-    context['calls'] += 1
-    return context
-
-
-def teardownProcess(child, context):
-    child.host.print_('\\nteardownProcess(%d): %s' %
-                      (child.worker_num, context))
-
-
-class UnitTest(unittest.TestCase):
-    def test_one(self):
-        self.assertFalse(hasattr(self, 'host'))
-        self.assertFalse(hasattr(self, 'context'))
-
-    def test_two(self):
-        pass
-
-
-class TypTest(typ_test_case.TestCase):
-    def test_one(self):
-        self.assertNotEquals(self.child, None)
-        self.assertGreaterEqual(self.context['calls'], 1)
-        self.context['calls'] += 1
-
-    def test_two(self):
-        self.assertNotEquals(self.context, None)
-        self.assertGreaterEqual(self.context['calls'], 1)
-        self.context['calls'] += 1
-"""
-
-
-ST_TEST_FILES = {'st_test.py': ST_TEST_PY}
-
 LOAD_TEST_PY = """
 import unittest
 def load_tests(_, _2, _3):
@@ -484,22 +443,6 @@ class TestCli(test_case.MainTestCase):
         self.assertEqual(len([l for l in lines
                               if 'test_fail failed unexpectedly:' in l]),
                          3)
-
-    def test_setup_and_teardown_single_child(self):
-        self.check(['--jobs', '1',
-                    '--setup', 'st_test.setupProcess',
-                    '--teardown', 'st_test.teardownProcess'],
-                   files=ST_TEST_FILES, ret=0, err='',
-                   out=d("""\
-                         setupProcess(1): {'calls': 0}
-                         [1/4] st_test.TypTest.test_one passed
-                         [2/4] st_test.TypTest.test_two passed
-                         [3/4] st_test.UnitTest.test_one passed
-                         [4/4] st_test.UnitTest.test_two passed
-                         teardownProcess(1): {'calls': 3}
-
-                         4 tests run, 0 failures.
-                         """))
 
     def test_skip(self):
         self.check(['--skip', '*test_fail*'], files=FAIL_TEST_FILES, ret=1,

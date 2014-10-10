@@ -102,9 +102,9 @@ class MainTestCase(TestCase):
             actual_ret, actual_out, actual_err = result
             actual_files = self._read_files(host, tmpdir)
         finally:
+            host.chdir(orig_wd)
             if tmpdir:
                 host.rmtree(tmpdir)
-            host.chdir(orig_wd)
 
         if universal_newlines:
             actual_out = convert_newlines(actual_out)

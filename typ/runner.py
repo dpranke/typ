@@ -201,13 +201,6 @@ class Runner(object):
 
     def find_tests(self, args, classifier=None,
                    context=None, setup_fn=None, teardown_fn=None):
-        if not context and self.args.context:  # pragma: untested
-            context = json.loads(self.args.context)
-        if not setup_fn and self.args.setup:
-            setup_fn = _import_name(self.args.setup)
-        if not teardown_fn and self.args.teardown:
-            teardown_fn = _import_name(self.args.teardown)
-
         test_set = self._make_test_set(context=context,
                                        setup_fn=setup_fn,
                                        teardown_fn=teardown_fn)
@@ -219,11 +212,10 @@ class Runner(object):
             try:
                 self._add_tests_to_set(test_set, args.suffixes,
                                        self.top_level_dir, classifier, name)
-            except (AttributeError, ImportError, SyntaxError
-                    ) as e:  # pragma: untested
+            except (AttributeError, ImportError, SyntaxError) as e:
                 self.print_('Failed to load "%s": %s' % (name, e))
                 return 1, None
-            except _AddTestsError as e:  # pragma: untested
+            except _AddTestsError as e:
                 self.print_(str(e))
                 return 1, None
 
@@ -640,12 +632,6 @@ def _teardown_process(child):
     return child.worker_num
 
 
-def _import_name(name):  # pragma: untested
-    module_name, function_name = name.rsplit('.', 1)
-    module = importlib.import_module(module_name)
-    return getattr(module, function_name)
-
-
 def _run_one_test(child, test_input):
     h = child.host
     pid = h.getpid()
@@ -731,13 +717,13 @@ def _result_from_test_result(test_result, test_name, start, took, out, err,
         err = err + test_result.skipped[0][1]
         code = 0
         unexpected = False
-    elif test_result.expectedFailures:  # pragma: untested
+    elif test_result.expectedFailures:
         expected = [ResultType.Failure]
         actual = ResultType.Failure
         code = 1
         err = err + test_result.expectedFailures[0][1]
         unexpected = False
-    elif test_result.unexpectedSuccesses:  # pragma: untested
+    elif test_result.unexpectedSuccesses:
         expected = [ResultType.Failure]
         actual = ResultType.Pass
         code = 0

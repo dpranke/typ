@@ -125,7 +125,7 @@ def main(argv=None):
     cov.start()
     try:
         if remaining_args[0] == '-m':
-            run_python_module(remaining_args[1], remaining_args)
+            run_python_module(remaining_args[1], remaining_args[1:])
         else:
             run_python_file(remaining_args[0], remaining_args)
     except SystemExit as e:
