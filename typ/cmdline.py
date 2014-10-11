@@ -24,7 +24,7 @@ import unittest
 # _spawn_main().
 path_to_file = os.path.abspath(__file__)
 dir_above_typ = os.path.dirname(os.path.dirname(path_to_file))
-if dir_above_typ not in sys.path:  # pragma: untested
+if dir_above_typ not in sys.path:  # pragma: no cover
     sys.path.append(dir_above_typ)
 
 from typ.host import Host
@@ -51,16 +51,9 @@ def spawn_main(argv, stdout, stderr):
     # We don't want to always spawn a subprocess, because doing so is more
     # heavyweight than it needs to be on other platforms (and can make
     # debugging a bit more annoying).
-    proc = subprocess.Popen([sys.executable, path_to_file] + argv,
-                            stdout=stdout, stderr=stderr)
-    try:
-        proc.wait()
-    except KeyboardInterrupt:  # pragma: untested
-        # We may need a second wait in order to make sure the subprocess exits
-        # completely.
-        proc.wait()
-    return proc.returncode
+    return subprocess.call([sys.executable, path_to_file] + argv,
+                           stdout=stdout, stderr=stderr)
 
 
-if __name__ == '__main__':  # pragma: untested
+if __name__ == '__main__':  # pragma: no cover
     sys.exit(main())
