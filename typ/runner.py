@@ -414,16 +414,16 @@ class Runner(object):
             if out or err:
                 suffix += ':\n'
             self.update(stats.format() + result.name + suffix, elide=False)
-            for l in out.splitlines():  # pragma: untested
+            for l in out.splitlines():
                 self.print_('  %s' % l)
-            for l in err.splitlines():  # pragma: untested
+            for l in err.splitlines():
                 self.print_('  %s' % l)
         elif not self.args.quiet:
-            if self.args.verbose > 1 and (out or err):  # pragma: untested
+            if self.args.verbose > 1 and (out or err):
                 suffix += ':\n'
             self.update(stats.format() + result.name + suffix,
                         elide=(not self.args.verbose))
-            if self.args.verbose > 1:  # pragma: untested
+            if self.args.verbose > 1:
                 for l in out.splitlines():
                     self.print_('  %s' % l)
                 for l in err.splitlines():
@@ -562,8 +562,7 @@ def _test_adder(test_set, classifier):
             for el in obj:
                 add_tests(el)
         elif (obj.id().startswith('unittest.loader.LoadTestsFailure') or
-              obj.id().startswith('unittest.loader.ModuleImportFailure')
-              ):  # pragma: untested
+              obj.id().startswith('unittest.loader.ModuleImportFailure')):
             # Access to protected member pylint: disable=W0212
             module_name = obj._testMethodName
             try:
