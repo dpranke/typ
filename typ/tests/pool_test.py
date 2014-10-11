@@ -87,10 +87,37 @@ class TestPool(test_case.TestCase):
     def test_basic_two_jobs(self):
         self.run_basic_test(2)
 
+    def test_join_discards_messages(self):
+        host = Host()
+        context = {'pre': False, 'post': False}
+        pool = make_pool(host, 2, _echo, context, _pre, _post)
+        pool.send('hello')
+        pool.close()
+        pool.join()
+        self.assertEqual(len(pool.discarded_responses), 1)
+
+    def test_join_gets_an_error(self):
+        host = Host()
+        pool = make_pool(host, 2, _error, None, _stub, _stub)
+        pool.send('hello')
+        pool.close()
+        try:
+            pool.join()
+        except Exception as e:
+            self.assertIn('_error() raised Exception', str(e))
+
+    def test_join_gets_an_interrupt(self):
+        host = Host()
+        pool = make_pool(host, 2, _interrupt, None, _stub, _stub)
+        pool.send('hello')
+        pool.close()
+        self.assertRaises(KeyboardInterrupt, pool.join)
+
     def test_loop(self):
         pool = self.run_through_loop()
         resp = pool.get()
         self.assertEqual(resp, None)
+        pool.requests.put((_MessageType.Close, None))
         pool.close()
         self.run_through_loop(pool=pool)
         pool.join()
@@ -100,19 +127,7 @@ class TestPool(test_case.TestCase):
         # on a closed queue; we can't simulate this directly through the
         # api in a single thread.
         pool = self.run_through_loop()
-        pool.requests.put((_MessageType.Request))
-        pool.responses.close()
-        self.run_through_loop(pool=pool)
-        pool.join()
-
-    def test_loop_gets_a_close(self):
-        # _loop() may exit the requests.get() call either via
-        # receiving a Close message, or via getting an IOError on the
-        # Queue. We cannot test the former in a single thread through
-        # the api, as the Queue will always be closed (and raise the error)
-        # if we call a loop after a close. So, we have to poke the
-        # queues directly.
-        pool = self.run_through_loop()
+        pool.requests.put((_MessageType.Request, None))
         pool.requests.put((_MessageType.Close, None))
         self.run_through_loop(pool=pool)
         pool.join()
@@ -120,12 +135,14 @@ class TestPool(test_case.TestCase):
     def test_loop_get_raises_error(self):
         pool = self.run_through_loop(_error)
         self.assertRaises(Exception, pool.get)
+        pool.requests.put((_MessageType.Close, None))
         pool.close()
         pool.join()
 
     def test_loop_get_raises_interrupt(self):
         pool = self.run_through_loop(_interrupt)
         self.assertRaises(KeyboardInterrupt, pool.get)
+        pool.requests.put((_MessageType.Close, None))
         pool.close()
         pool.join()
 
@@ -148,29 +165,3 @@ class TestPool(test_case.TestCase):
         pool = make_pool(host, 2, _echo, context, _pre, _post)
         final_contexts = pool.join()
         self.assertEqual(final_contexts, [])
-
-    def test_join_gets_an_error(self):
-        host = Host()
-        pool = make_pool(host, 2, _error, None, _stub, _stub)
-        pool.send('hello')
-        pool.close()
-        try:
-            pool.join()
-        except Exception as e:
-            self.assertIn('_error() raised Exception', str(e))
-
-    def test_join_gets_an_interrupt(self):
-        host = Host()
-        pool = make_pool(host, 2, _interrupt, None, _stub, _stub)
-        pool.send('hello')
-        pool.close()
-        self.assertRaises(KeyboardInterrupt, pool.join)
-
-    def test_join_discards_messages(self):
-        host = Host()
-        context = {'pre': False, 'post': False}
-        pool = make_pool(host, 2, _echo, context, _pre, _post)
-        pool.send('hello')
-        pool.close()
-        pool.join()
-        self.assertEqual(len(pool.discarded_responses), 1)

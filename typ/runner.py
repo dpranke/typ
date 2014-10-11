@@ -650,7 +650,7 @@ def _run_one_test(child, test_input):
 
     try:
         suite = child.loader.loadTestsFromName(test_name)
-    except Exception as e:
+    except Exception:
         suite = _load_via_load_tests(child, test_name)
 
     tests = list(suite)

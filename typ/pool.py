@@ -89,23 +89,27 @@ class _ProcessPool(object):
     def close(self):
         for _ in self.workers:
             self.requests.put((_MessageType.Close, None))
-        self.requests.close()
         self.closed = True
 
     def join(self):
+        # TODO: one would think that we could close self.requests in close(),
+        # above, and close self.responses below, but if we do, we get
+        # weird tracebacks in the daemon threads multiprocessing starts up.
+        # Instead, we have to hack the innards of multiprocessing. It
+        # seems likely that there's a bug somewhere, either in this module or
+        # in multiprocessing.
+        if self.host.is_python3:  # pragma: python3
+            multiprocessing.queues.is_exiting = lambda: True
+        else:  # pragma: python2
+            multiprocessing.util._exiting = True
+
         if not self.closed:
             # We must be aborting; terminate the workers rather than
             # shutting down cleanly.
-            self.requests.close()
             for w in self.workers:
                 w.terminate()
                 w.join()
-            self.responses.close()
             return []
-
-        # This is a hack to get multiprocessing to not log tracebacks
-        # during shutdown :(.
-        multiprocessing.util._exiting = True
 
         final_responses = []
         error = None
@@ -126,7 +130,11 @@ class _ProcessPool(object):
 
         for w in self.workers:
             w.join()
-        self.responses.close()
+
+        # TODO: See comment above at the beginning of the function for
+        # why this is commented out.
+        # self.responses.close()
+
         if error:
             self._handle_error(error)
         if interrupted:
@@ -145,28 +153,22 @@ def _loop(requests, responses, host, worker_num,
           callback, context, pre_fn, post_fn, should_loop=True):
     host = host or Host()
     try:
-        try:
-            context_after_pre = pre_fn(host, worker_num, context)
-            keep_looping = True
-            while keep_looping:
-                try:
-                    message_type, args = requests.get(block=True)
-                except IOError:
-                    break
-                if message_type == _MessageType.Close:
-                    break
-                assert message_type == _MessageType.Request
-                resp = callback(context_after_pre, args)
-                responses.put((_MessageType.Response, resp))
-                keep_looping = should_loop
-            responses.put((_MessageType.Done, (worker_num,
-                                               post_fn(context_after_pre))))
-        except KeyboardInterrupt as e:
-            responses.put((_MessageType.Interrupt, (worker_num, str(e))))
-        except Exception as e:
-            responses.put((_MessageType.Error, (worker_num, str(e))))
-    except Exception:
-        pass
+        context_after_pre = pre_fn(host, worker_num, context)
+        keep_looping = True
+        while keep_looping:
+            message_type, args = requests.get(block=True)
+            if message_type == _MessageType.Close:
+                responses.put((_MessageType.Done,
+                                (worker_num, post_fn(context_after_pre))))
+                break
+            assert message_type == _MessageType.Request
+            resp = callback(context_after_pre, args)
+            responses.put((_MessageType.Response, resp))
+            keep_looping = should_loop
+    except KeyboardInterrupt as e:
+        responses.put((_MessageType.Interrupt, (worker_num, str(e))))
+    except Exception as e:
+        responses.put((_MessageType.Error, (worker_num, str(e))))
 
 
 class _AsyncPool(object):
