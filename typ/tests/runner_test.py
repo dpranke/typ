@@ -18,11 +18,11 @@ from textwrap import dedent as d
 from typ import Host, Runner, TestCase, TestSet, TestInput
 
 
-def _setup_process(child, context):
+def _setup_process(child, context):  # pylint: disable=W0613
     return context
 
 
-def _teardown_process(child, context):
+def _teardown_process(child, context):  # pylint: disable=W0613
     return context
 
 
@@ -60,7 +60,7 @@ class TestSetTests(TestCase):
                     assert False
                 """))
             test_set = TestSet()
-            test_set.parallel_tests = [TestInput('load_test.BaseTest.test_foo')]
+            test_set.parallel_tests = [TestInput('load_test.BaseTest.test_x')]
             r = Runner()
             ret, _, _ = r.run(test_set)
             self.assertEqual(ret, 1)

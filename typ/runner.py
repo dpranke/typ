@@ -655,11 +655,11 @@ def _run_one_test(child, test_input):
 
     tests = list(suite)
     if len(tests) != 1:
-        err = 'failed to load %s: %s' % (test_name, str(e))
+        err = 'failed to load %s' % test_name
         h.restore_output()
         return Result(test_name, ResultType.Failure, start, 0,
-                        child.worker_num, unexpected=True, code=1,
-                        err=err, pid=pid)
+                      child.worker_num, unexpected=True, code=1,
+                      err=err, pid=pid)
 
     test_case = tests[0]
     if isinstance(test_case, TypTestCase):

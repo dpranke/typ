@@ -52,6 +52,7 @@ class FakeHost(object):
         self.mtimes = {}
         self.cmds = []
         self.cwd = '/tmp'
+        self._orig_logging_handlers = []
 
     def __getstate__(self):
         d = copy.copy(self.__dict__)
@@ -59,6 +60,7 @@ class FakeHost(object):
         del d['stdout']
         del d['stdin']
         del d['logger']
+        del d['_orig_logging_handlers']
         return d
 
     def __setstate__(self, d):

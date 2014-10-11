@@ -39,7 +39,7 @@ def _interrupt(context, msg):  # pylint: disable=W0613
     raise KeyboardInterrupt()
 
 
-def _stub(*args):
+def _stub(*args):  # pylint: disable=W0613
     return None
 
 
@@ -68,7 +68,6 @@ class TestPool(test_case.TestCase):
             host = pool.host
         else:
             host = Host()
-            jobs = 0
             pool = _ProcessPool(host, 0, _stub, None, _stub, _stub)
             pool.send('hello')
 

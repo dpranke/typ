@@ -258,8 +258,8 @@ class TestCli(test_case.MainTestCase):
                         self.fail()
             """)}
         _, out, _, files = self.check(['--retry-limit', '3',
-                                      '--write-full-results-to',
-                                      'full_results.json'],
+                                       '--write-full-results-to',
+                                       'full_results.json'],
                                       files=files, ret=0, err='')
         self.assertIn('Retrying failed tests (attempt #1 of 3)', out)
         self.assertNotIn('Retrying failed tests (attempt #2 of 3)', out)
@@ -268,7 +268,6 @@ class TestCli(test_case.MainTestCase):
         self.assertEqual(results['tests'][
             'fail_then_pass_test']['FPTest']['test_count']['actual'],
             'FAIL PASS')
-
 
     def test_failures_are_not_elided(self):
         _, out, _, _ = self.check(['--terminal-width=20'],
