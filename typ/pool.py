@@ -104,6 +104,10 @@ class _ProcessPool(object):
             self.responses.close()
             return []
 
+        # This is a hack to get multiprocessing to not log tracebacks
+        # during shutdown :(.
+        multiprocessing.util._exiting = True
+
         final_responses = []
         error = None
         interrupted = None
