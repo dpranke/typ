@@ -70,9 +70,9 @@ class _AddTestsError(Exception):
 
 class Runner(object):
 
-    def __init__(self, host=None, loader=None):
+    def __init__(self, host=None):
         self.host = host or Host()
-        self.loader = loader or unittest.loader.TestLoader()
+        self.loader = unittest.loader.TestLoader()
         self.printer = None
         self.stats = None
         self.cov = None

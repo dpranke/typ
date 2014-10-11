@@ -15,7 +15,7 @@
 import os
 import subprocess
 import sys
-import unittest
+
 
 # This ensures that absolute imports of typ modules will work when
 # running typ/cmdline.py as a script even if typ is not installed.
@@ -27,14 +27,11 @@ dir_above_typ = os.path.dirname(os.path.dirname(path_to_file))
 if dir_above_typ not in sys.path:  # pragma: no cover
     sys.path.append(dir_above_typ)
 
-from typ.host import Host
 from typ.runner import Runner
 
 
-def main(argv=None, host=None, loader=None):
-    host = host or Host()
-    loader = loader or unittest.loader.TestLoader()
-    runner = Runner(host=host, loader=loader)
+def main(argv=None, host=None):
+    runner = Runner(host=host)
     return runner.main(argv)
 
 

@@ -627,10 +627,9 @@ class TestMain(TestCli):
         host.capture_output()
         orig_sys_path = sys.path[:]
         orig_sys_modules = list(sys.modules.keys())
-        loader = None
 
         try:
-            ret = main(argv + ['-j', '1'], host, loader)
+            ret = main(argv + ['-j', '1'], host)
         finally:
             out, err = host.restore_output()
             modules_to_unload = []

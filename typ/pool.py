@@ -159,7 +159,7 @@ def _loop(requests, responses, host, worker_num,
             message_type, args = requests.get(block=True)
             if message_type == _MessageType.Close:
                 responses.put((_MessageType.Done,
-                                (worker_num, post_fn(context_after_pre))))
+                               (worker_num, post_fn(context_after_pre))))
                 break
             assert message_type == _MessageType.Request
             resp = callback(context_after_pre, args)

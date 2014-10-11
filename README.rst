@@ -46,8 +46,6 @@ Work remaining
 typ is still a work in progress, but it's getting close to being done.
 Things remaining for 1.0, roughly in priority order:
 
-- Add input validation on all of the public APIs.
-- Get test coverage for the remaining untested code.
 - Implement a non-python file format for testing command line interfaces
 - Write documentation
 
