@@ -214,10 +214,11 @@ class ArgumentParser(argparse.ArgumentParser):
     def print_help(self, file=None):
         self._print_message(msg=self.format_help(), file=file)
 
-    def error(self, message, bailout=True):
+    def error(self, message, bailout=True):  # pylint: disable=W0221
         self.exit(2, '%s: error: %s\n' % (self.prog, message), bailout=bailout)
 
-    def exit(self, status=0, message=None, bailout=True):
+    def exit(self, status=0, message=None,  # pylint: disable=W0221
+             bailout=True):
         self.exit_status = status
         if message:
             self._print_message(message, file=self._host.stderr)

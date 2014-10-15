@@ -227,7 +227,8 @@ class Runner(object):
             for name in names:
                 try:
                     self._add_tests_to_set(test_set, args.suffixes,
-                                        self.top_level_dir, classifier, name)
+                                           self.top_level_dir, classifier,
+                                           name)
                 except (AttributeError, ImportError, SyntaxError) as e:
                     self.print_('Failed to load "%s": %s' % (name, e))
                     return 1, None

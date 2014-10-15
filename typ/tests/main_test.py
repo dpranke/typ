@@ -526,7 +526,6 @@ class TestCli(test_case.MainTestCase):
         # the decorators.
         self.assertIn('sf_test.SkipSetup.test_notrun was skipped', out)
 
-
     def test_subdir(self):
         files = {
             'foo/__init__.py': '',
