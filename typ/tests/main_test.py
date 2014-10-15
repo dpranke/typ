@@ -505,6 +505,40 @@ class TestCli(test_case.MainTestCase):
                        '  setup failed\n'
                        '9 tests run, 4 failures.\n'), out)
 
+    def test_skip_and_all(self):
+        # --all should override --skip
+        self.check(['-l', '--skip', '*test_pass'],
+                   files=PASS_TEST_FILES, ret=1, err='',
+                   out='No tests to run.\n')
+        self.check(['-l', '--all', '--skip', '*test_pass'],
+                   files=PASS_TEST_FILES, ret=0, err='',
+                   out='pass_test.PassingTest.test_pass\n')
+
+    def test_skip_decorators_and_all(self):
+        _, out, _, _ = self.check(['--all', '-j', '1', '-v', '-v'],
+                                  files=SF_TEST_FILES, ret=1, err='')
+        self.assertIn('sf_test.SkipClass.test_method failed', out)
+        self.assertIn('sf_test.SkipMethods.test_reason failed', out)
+        self.assertIn('sf_test.SkipMethods.test_skip_if_true failed', out)
+        self.assertIn('sf_test.SkipMethods.test_skip_if_false failed', out)
+
+        # --all does not override explicit calls to skipTest(), only
+        # the decorators.
+        self.assertIn('sf_test.SkipSetup.test_notrun was skipped', out)
+
+
+    def test_subdir(self):
+        files = {
+            'foo/__init__.py': '',
+            'foo/bar/__init__.py': '',
+            'foo/bar/pass_test.py': PASS_TEST_PY
+        }
+        self.check(['foo/bar'], files=files, ret=0, err='',
+                   out=d("""\
+                         [1/1] foo.bar.pass_test.PassingTest.test_pass passed
+                         1 test run, 0 failures.
+                         """))
+
     def test_timing(self):
         self.check(['-t'], files=PASS_TEST_FILES, ret=0, err='',
                    rout=('\[1/1\] pass_test.PassingTest.test_pass passed '

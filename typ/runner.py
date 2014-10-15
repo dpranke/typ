@@ -84,9 +84,9 @@ class Runner(object):
         parser = ArgumentParser(self.host)
         self.parse_args(parser, [])
 
-    def main(self, argv=None):
+    def main(self, argv=None, **defaults):
         parser = ArgumentParser(self.host)
-        self.parse_args(parser, argv)
+        self.parse_args(parser, argv, **defaults)
         if parser.exit_status is not None:
             return parser.exit_status
 
@@ -97,7 +97,13 @@ class Runner(object):
             self.print_("interrupted, exiting", stream=self.host.stderr)
             return 130
 
-    def parse_args(self, parser, argv):
+    def parse_args(self, parser, argv, **defaults):
+        for attrname in defaults:
+            if not hasattr(self.args, attrname):
+                parser.error("Unknown default argument name '%s'" % attrname,
+                             bailout=False)
+                return
+        parser.set_defaults(**defaults)
         self.args = parser.parse_args(args=argv)
         if parser.exit_status is not None:
             return
@@ -105,8 +111,8 @@ class Runner(object):
     def print_(self, msg='', end='\n', stream=None):
         self.host.print_(msg, end, stream=stream)
 
-    def run(self, test_set=None, classifier=None, context=None,
-            setup_fn=None, teardown_fn=None):
+    def run(self, test_set=None, classifier=None,
+            context=None, setup_fn=None, teardown_fn=None):
         ret = 0
         h = self.host
 
@@ -168,16 +174,19 @@ class Runner(object):
 
         self.top_level_dir = args.top_level_dir
         if not self.top_level_dir:
-            if args.tests and h.exists(args.tests[0]):
+            if args.tests and h.isdir(args.tests[0]):
                 # TODO: figure out what to do if multiple files are
                 # specified and they don't all have the same correct
                 # top level dir.
-                top_dir = h.dirname(args.tests[0])
+                if h.exists(h.dirname(args.tests[0]), '__init__.py'):
+                    top_dir = h.dirname(args.tests[0])
+                else:
+                    top_dir = args.tests[0]
             else:
                 top_dir = h.getcwd()
             while h.exists(top_dir, '__init__.py'):
                 top_dir = h.dirname(top_dir)
-            self.top_level_dir = h.abspath(top_dir)
+            self.top_level_dir = h.realpath(top_dir)
 
         h.add_to_path(self.top_level_dir)
 
@@ -205,26 +214,36 @@ class Runner(object):
                                        setup_fn=setup_fn,
                                        teardown_fn=teardown_fn)
 
-        names = self._name_list_from_args(args)
-        classifier = classifier or _default_classifier(args)
+        orig_skip = unittest.skip
+        orig_skip_if = unittest.skipIf
+        if args.all:
+            unittest.skip = lambda reason: lambda x: x
+            unittest.skipIf = lambda condition, reason: lambda x: x
 
-        for name in names:
-            try:
-                self._add_tests_to_set(test_set, args.suffixes,
-                                       self.top_level_dir, classifier, name)
-            except (AttributeError, ImportError, SyntaxError) as e:
-                self.print_('Failed to load "%s": %s' % (name, e))
-                return 1, None
-            except _AddTestsError as e:
-                self.print_(str(e))
-                return 1, None
+        try:
+            names = self._name_list_from_args(args)
+            classifier = classifier or _default_classifier(args)
 
-        # TODO: Add support for discovering setupProcess/teardownProcess?
+            for name in names:
+                try:
+                    self._add_tests_to_set(test_set, args.suffixes,
+                                        self.top_level_dir, classifier, name)
+                except (AttributeError, ImportError, SyntaxError) as e:
+                    self.print_('Failed to load "%s": %s' % (name, e))
+                    return 1, None
+                except _AddTestsError as e:
+                    self.print_(str(e))
+                    return 1, None
 
-        test_set.parallel_tests = _sort_inputs(test_set.parallel_tests)
-        test_set.isolated_tests = _sort_inputs(test_set.isolated_tests)
-        test_set.tests_to_skip = _sort_inputs(test_set.tests_to_skip)
-        return 0, test_set
+            # TODO: Add support for discovering setupProcess/teardownProcess?
+
+            test_set.parallel_tests = _sort_inputs(test_set.parallel_tests)
+            test_set.isolated_tests = _sort_inputs(test_set.isolated_tests)
+            test_set.tests_to_skip = _sort_inputs(test_set.tests_to_skip)
+            return 0, test_set
+        finally:
+            unittest.skip = orig_skip
+            unittest.skipIf = orig_skip_if
 
     def _name_list_from_args(self, args):
         if args.tests:
@@ -236,7 +255,7 @@ class Runner(object):
                 s = self.host.read_text_file(args.file_list)
             names = [line.strip() for line in s.splitlines()]
         else:
-            names = ['.']
+            names = [self.top_level_dir]
         return names
 
     def _add_tests_to_set(self, test_set, suffixes, top_level_dir, classifier,
@@ -546,7 +565,7 @@ def _matches(name, globs):
 def _default_classifier(args):
     def default_classifier(test_set, test):
         name = test.id()
-        if _matches(name, args.skip):
+        if not args.all and _matches(name, args.skip):
             test_set.tests_to_skip.append(TestInput(name,
                                                     'skipped by request'))
         elif _matches(name, args.isolate):
@@ -585,6 +604,7 @@ class _Child(object):
     def __init__(self, parent, loader, test_set):
         self.host = None
         self.worker_num = None
+        self.all = parent.args.all
         self.debugger = parent.args.debugger
         self.coverage = parent.args.coverage and parent.args.jobs > 1
         self.coverage_source = parent.coverage_source
@@ -648,9 +668,18 @@ def _run_one_test(child, test_input):
     h.capture_output(divert=not child.passthrough)
 
     try:
-        suite = child.loader.loadTestsFromName(test_name)
-    except Exception:
-        suite = _load_via_load_tests(child, test_name)
+        orig_skip = unittest.skip
+        orig_skip_if = unittest.skipIf
+        if child.all:
+            unittest.skip = lambda reason: lambda x: x
+            unittest.skipIf = lambda condition, reason: lambda x: x
+        try:
+            suite = child.loader.loadTestsFromName(test_name)
+        except Exception:
+            suite = _load_via_load_tests(child, test_name)
+    finally:
+        unittest.skip = orig_skip
+        unittest.skipIf = orig_skip_if
 
     tests = list(suite)
     if len(tests) != 1:

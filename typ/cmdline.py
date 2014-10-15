@@ -22,7 +22,7 @@ import sys
 # We need this entry in addition to the one in __main__.py to ensure
 # that typ/cmdline.py works when invoked via subprocess on windows in
 # _spawn_main().
-path_to_file = os.path.abspath(__file__)
+path_to_file = os.path.realpath(__file__)
 dir_above_typ = os.path.dirname(os.path.dirname(path_to_file))
 if dir_above_typ not in sys.path:  # pragma: no cover
     sys.path.append(dir_above_typ)
@@ -30,9 +30,9 @@ if dir_above_typ not in sys.path:  # pragma: no cover
 from typ.runner import Runner
 
 
-def main(argv=None, host=None):
+def main(argv=None, host=None, **defaults):
     runner = Runner(host=host)
-    return runner.main(argv)
+    return runner.main(argv, **defaults)
 
 
 def spawn_main(argv, stdout, stderr):

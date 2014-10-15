@@ -188,6 +188,9 @@ class FakeHost(object):
     def _read(self, comps):
         return self.files[self.abspath(*comps)]
 
+    def realpath(self, *comps):
+        return self.abspath(*comps)
+
     def relpath(self, path, start):
         return path.replace(start + '/', '')
 

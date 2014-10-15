@@ -58,14 +58,17 @@ class ArgumentParser(argparse.ArgumentParser):
                               action='store',
                               help=('Takes the list of tests from the file '
                                     '(use "-" for stdin).'))
+            self.add_argument('--all', action='store_true',
+                              help=('Run all the tests, including the ones '
+                                    'normally skipped.'))
             self.add_argument('--isolate', metavar='glob', default=[],
                               action='append',
                               help=('Globs of tests to run in isolation '
                                     '(serially).'))
             self.add_argument('--skip', metavar='glob', default=[],
                               action='append',
-                              help=('Globs of test names to skip (can specify '
-                                    'multiple times).'))
+                              help=('Globs of test names to skip ('
+                                    'defaults to %(default)s).'))
             self.add_argument('--suffixes', metavar='glob', default=[],
                               action='append',
                               help=('Globs of test filenames to look for ('
@@ -211,14 +214,15 @@ class ArgumentParser(argparse.ArgumentParser):
     def print_help(self, file=None):
         self._print_message(msg=self.format_help(), file=file)
 
-    def error(self, message):
-        self.exit(2, '%s: error: %s\n' % (self.prog, message))
+    def error(self, message, bailout=True):
+        self.exit(2, '%s: error: %s\n' % (self.prog, message), bailout=bailout)
 
-    def exit(self, status=0, message=None):
+    def exit(self, status=0, message=None, bailout=True):
         self.exit_status = status
         if message:
             self._print_message(message, file=self._host.stderr)
-        raise _Bailout()
+        if bailout:
+            raise _Bailout()
 
     def optparse_options(self, skip=None):
         skip = skip or []

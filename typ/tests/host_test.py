@@ -41,6 +41,11 @@ class TestHost(unittest.TestCase):
 
         # TODO: Add tests for divert=False or eliminate the flag?
 
+    def test_abspath_and_realpath(self):
+        h = self.host()
+        self.assertNotEqual(h.abspath(h.getcwd()), None)
+        self.assertNotEqual(h.realpath(h.getcwd()), None)
+
     def test_chdir(self):
         h = self.host()
         orig_cwd = h.getcwd()

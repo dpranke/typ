@@ -34,6 +34,16 @@ class RunnerTests(TestCase):
                           teardown_fn=_teardown_process)
         self.assertEqual(ret, 0)
 
+    def test_bad_default(self):
+        r = Runner()
+        ret = r.main(foo='bar')
+        self.assertEqual(ret, 2)
+
+    def test_good_default(self):
+        r = Runner()
+        ret = r.main(tests=['typ.tests.runner_test.ContextTests'])
+        self.assertEqual(ret, 0)
+
 
 class TestSetTests(TestCase):
     # This class exists to test the failures that can come up if you

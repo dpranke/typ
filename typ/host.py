@@ -119,7 +119,7 @@ class Host(object):
     def maybe_mkdir(self, *comps):
         path = self.abspath(self.join(*comps))
         if not self.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
 
     def mkdtemp(self, **kwargs):
         return tempfile.mkdtemp(**kwargs)
@@ -142,6 +142,9 @@ class Host(object):
         path = self.join(*comps)
         with open(path, mode) as f:
             return f.read()
+
+    def realpath(self, *comps):
+        return os.path.realpath(os.path.join(*comps))
 
     def relpath(self, path, start):
         return os.path.relpath(path, start)
