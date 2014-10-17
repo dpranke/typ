@@ -29,6 +29,8 @@ from collections import OrderedDict
 # that typ/runner.py works when invoked via subprocess on windows in
 # _spawn_main().
 path_to_file = os.path.realpath(__file__)
+if path_to_file.endswith('.pyc'):  # pragma: no cover
+    path_to_file = path_to_file[:-1]
 dir_above_typ = os.path.dirname(os.path.dirname(path_to_file))
 if dir_above_typ not in sys.path:  # pragma: no cover
     sys.path.append(dir_above_typ)
@@ -163,10 +165,11 @@ class Runner(object):
 
         if wmp is None:
             raise ValueError(
-                'The __main__ module is not importable; The caller '
+                'The __main__ module (%s) may not be importable; The caller '
                 'must pass a valid WinMultiprocessing value (one of %s) '
                 'to %s to tell typ how to handle Windows.' %
-                (WinMultiprocessing.values, entry_point))
+                (sys.modules['__main__'].__file__,
+                 WinMultiprocessing.values, entry_point))
 
         h = self.host
 
@@ -189,10 +192,18 @@ class Runner(object):
         return h.call_inline([h.python_interpreter, path_to_file] + argv)
 
     def _main_is_importable(self):
-        path = self.host.realpath(sys.modules['__main__'].__file__)
-        if not path or not path.endswith('.py'):  # pragma: no cover
+        path = sys.modules['__main__'].__file__
+        if not path:  # pragma: untested
+            return False
+        if path.endswith('.pyc'):  # pragma: untested
+            path = path[:-1]
+        if not path.endswith('.py'):  # pragma: untested
+            return False
+        if path.endswith('__main__.py'):  # pragma: untested
+            # main modules are not directly importable.
             return False
 
+        path = self.host.realpath(path)
         for d in sys.path:
             if path.startswith(self.host.realpath(d)):
                 return True
@@ -897,4 +908,5 @@ def _sort_inputs(inps):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    sys.exit(main(win_multiprocessing='spawn'))
+    sys.modules['__main__'].__file__ = path_to_file
+    sys.exit(main(win_multiprocessing=WinMultiprocessing.spawn))

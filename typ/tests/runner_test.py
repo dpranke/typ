@@ -150,9 +150,10 @@ class TestWinMultiprocessing(TestCase):
         h = self.make_host()
         if h.platform == 'win32':  # pragma: win32
             self.assertRaises(ValueError, self.call, [],
+                              importable=False,
                               win_multiprocessing=WinMultiprocessing.ignore)
         else:
-            result = self.call([], platform=None, importable=False,
+            result = self.call([], importable=False,
                                win_multiprocessing=WinMultiprocessing.ignore)
             ret, out, err = result
             self.assertEqual(ret, 1)
@@ -164,8 +165,8 @@ class TestWinMultiprocessing(TestCase):
                           platform='win32', importable=False)
 
     def test_normal(self):
-        # This tests that typ itself is importable ...
         ret, out, err = self.call([])
+        # This tests that typ itself is importable ...
         self.assertEqual(ret, 1)
         self.assertEqual(out, 'No tests to run.\n')
         self.assertEqual(err, '')
@@ -182,7 +183,14 @@ class TestWinMultiprocessing(TestCase):
             out = tempfile.NamedTemporaryFile(delete=False)
             err = tempfile.NamedTemporaryFile(delete=False)
             path_above_typ = h.realpath(h.dirname(__file__), '..', '..')
-            env = {'PYTHONPATH': path_above_typ}
+            env = h.env.copy()
+            if 'PYTHONPATH' in env:  # pragma: untested
+                env['PYTHONPATH'] = '%s%s%s' % (env['PYTHONPATH'],
+                                                h.pathsep,
+                                                path_above_typ)
+            else:
+                env['PYTHONPATH'] = path_above_typ
+
             h.write_text_file('test', d("""
                 import sys
                 import typ
@@ -211,28 +219,29 @@ class TestWinMultiprocessing(TestCase):
 
         self.assertEqual(ret, 1)
         self.assertEqual(out_str, '')
-        self.assertIn('ValueError: The __main__ module is not importable',
+        self.assertIn('ValueError: The __main__ module ',
                       err_str)
 
     def test_run_serially(self):
-        ret, out, err = self.call([], importable=False,
-                                  win_multiprocessing=WinMultiprocessing.spawn)
+        ret, out, err = self.call(
+            [], platform='win32', importable=False,
+            win_multiprocessing=WinMultiprocessing.run_serially)
         self.assertEqual(ret, 1)
-        self.assertEqual(out, 'No tests to run.\n')
+        self.assertIn('No tests to run.', out)
         self.assertEqual(err, '')
 
     def test_single_job(self):
         ret, out, err = self.call(['-j', '1'], platform='win32',
                                   importable=False)
         self.assertEqual(ret, 1)
-        self.assertEqual(out, 'No tests to run.\n')
+        self.assertIn('No tests to run.', out)
         self.assertEqual(err, '')
 
     def test_spawn(self):
         ret, out, err = self.call([], importable=False,
                                   win_multiprocessing=WinMultiprocessing.spawn)
         self.assertEqual(ret, 1)
-        self.assertEqual(out, 'No tests to run.\n')
+        self.assertIn('No tests to run.', out)
         self.assertEqual(err, '')
 
 

@@ -35,6 +35,7 @@ class Host(object):
     python_interpreter = sys.executable
     is_python3 = bool(sys.version_info.major == 3)
 
+    pathsep = os.pathsep
     sep = os.sep
     env = os.environ
 
@@ -77,6 +78,11 @@ class Host(object):
         return proc.returncode, stdout.decode('utf-8'), stderr.decode('utf-8')
 
     def call_inline(self, argv, env=None):
+        if isinstance(self.stdout, _TeedStream): # pragma: no cover
+            ret, out, err = self.call(argv, env)
+            self.print_(out, end='')
+            self.print_(err, end='', stream=self.stderr)
+            return ret
         return subprocess.call(argv, stdin=self.stdin, stdout=self.stdout,
                                stderr=self.stderr, env=env)
 
