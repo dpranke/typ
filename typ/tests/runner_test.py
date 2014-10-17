@@ -188,7 +188,7 @@ class TestWinMultiprocessing(TestCase):
                 env['PYTHONPATH'] = '%s%s%s' % (env['PYTHONPATH'],
                                                 h.pathsep,
                                                 path_above_typ)
-            else:
+            else:  # pragma: untested.
                 env['PYTHONPATH'] = path_above_typ
 
             h.write_text_file('test', d("""
