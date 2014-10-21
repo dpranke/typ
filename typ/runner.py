@@ -208,6 +208,12 @@ class Runner(object):
             raise ValueError('illegal value %s for win_multiprocessing' %
                              wmp)
 
+        h = self.host
+        if wmp == ignore and h.platform == 'win32':  # pragma: win32
+            raise ValueError('Cannot use WinMultiprocessing.ignore for '
+                             'win_multiprocessing when actually running '
+                             'on Windows.')
+
         if wmp == ignore or self.args.jobs == 1:
             return False
 
@@ -217,12 +223,6 @@ class Runner(object):
             raise ValueError('The __main__ module (%s) '  # pragma: no cover
                              'may not be importable' %
                              sys.modules['__main__'].__file__)
-
-        h = self.host
-        if wmp == ignore and h.platform == 'win32':  # pragma: win32
-            raise ValueError('Cannot use WinMultiprocessing.ignore for '
-                             'win_multiprocessing when actually running '
-                             'on Windows.')
 
         assert wmp == spawn
         return True
