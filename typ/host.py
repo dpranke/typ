@@ -78,7 +78,7 @@ class Host(object):
         return proc.returncode, stdout.decode('utf-8'), stderr.decode('utf-8')
 
     def call_inline(self, argv, env=None):
-        if isinstance(self.stdout, _TeedStream): # pragma: no cover
+        if isinstance(self.stdout, _TeedStream):  # pragma: no cover
             ret, out, err = self.call(argv, env)
             self.print_(out, end='')
             self.print_(err, end='', stream=self.stderr)
@@ -131,6 +131,9 @@ class Host(object):
         path = self.abspath(self.join(*comps))
         if not self.exists(path):
             os.makedirs(path)
+
+    def mktempfile(self, delete=True):
+        return tempfile.NamedTemporaryFile(delete=delete)
 
     def mkdtemp(self, **kwargs):
         return tempfile.mkdtemp(**kwargs)

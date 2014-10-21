@@ -14,8 +14,8 @@
 
 import sys  # pragma: no cover
 
-from typ import main, WinMultiprocessing  # pragma: no cover
+from typ import main  # pragma: no cover
 
 
 if __name__ == '__main__':  # pragma: no cover
-    sys.exit(main(win_multiprocessing=WinMultiprocessing.force))
+    sys.exit(main())
