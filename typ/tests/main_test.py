@@ -23,7 +23,7 @@ from typ import main
 from typ import test_case
 from typ import Host
 from typ import VERSION
-from typ.fakes import test_result_server_fake
+from typ import test_result_server_fake
 
 
 is_python3 = bool(sys.version_info.major == 3)

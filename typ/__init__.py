@@ -57,7 +57,7 @@ functionality:
 """
 
 from typ.arg_parser import ArgumentParser
-from typ.fakes.host_fake import FakeHost
+from typ.host_fake import FakeHost
 from typ.host import Host
 from typ.json_results import exit_code_from_full_results
 from typ.json_results import make_full_results, make_upload_request
