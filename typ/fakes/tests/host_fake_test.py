@@ -15,7 +15,7 @@
 import sys
 
 from typ.tests import host_test
-from typ.host_fake import FakeHost, FakeResponse
+from typ.fakes.host_fake import FakeHost, FakeResponse
 
 is_python3 = bool(sys.version_info.major == 3)
 

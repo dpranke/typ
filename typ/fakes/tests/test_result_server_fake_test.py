@@ -14,7 +14,7 @@
 
 import unittest
 
-from typ import test_result_server_fake
+from typ.fakes import test_result_server_fake
 from typ import Host
 
 
