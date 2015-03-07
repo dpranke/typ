@@ -20,6 +20,7 @@ import os
 import pdb
 import sys
 import unittest
+import traceback
 
 from collections import OrderedDict
 
@@ -772,23 +773,33 @@ def _run_one_test(child, test_input):
     # but could come up when testing non-typ code as well.
     h.capture_output(divert=not child.passthrough)
 
+    tb_str = ''
     try:
         orig_skip = unittest.skip
         orig_skip_if = unittest.skipIf
         if child.all:
             unittest.skip = lambda reason: lambda x: x
             unittest.skipIf = lambda condition, reason: lambda x: x
+
         try:
             suite = child.loader.loadTestsFromName(test_name)
-        except Exception:
-            suite = _load_via_load_tests(child, test_name)
+        except Exception as e:
+            try:
+                suite = _load_via_load_tests(child, test_name)
+            except Exception as e:  # pragma: untested
+                suite = []
+                tb_str = traceback.format_exc(e)
     finally:
         unittest.skip = orig_skip
         unittest.skipIf = orig_skip_if
 
     tests = list(suite)
     if len(tests) != 1:
-        err = 'failed to load %s' % test_name
+        err = 'Failed to load %s'
+        if tb_str:  # pragma: untested
+            err += ' (traceback follows):\n  %s' % (
+                    '  \n'.join(tb.splitlines()))
+
         h.restore_output()
         return Result(test_name, ResultType.Failure, start, 0,
                       child.worker_num, unexpected=True, code=1,
