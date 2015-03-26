@@ -27,7 +27,7 @@ def call(*args, **kwargs):
 
 
 def main(argv):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='mbw')
     parser.add_argument('--no3', action='store_true',
                         help='Do not run the tests under Python 3.')
     parser.add_argument('-v', '--verbose', action='store_true')
