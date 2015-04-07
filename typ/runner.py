@@ -616,6 +616,8 @@ class Runner(object):
             cov.combine()
             cov.report(show_missing=self.args.coverage_show_missing,
                        omit=self.args.coverage_omit)
+            if self.args.coverage_annotate:
+                cov.annotate(omit=self.args.coverage_omit)
 
     def _add_trace_event(self, trace, name, start, end):
         event = {
