@@ -728,6 +728,7 @@ class _Child(object):
 def _setup_process(host, worker_num, child):
     child.host = host
     child.worker_num = worker_num
+    # pylint: disable=protected-access
 
     if child.coverage:  # pragma: no cover
         import coverage
@@ -748,9 +749,9 @@ def _teardown_process(child):
     e = None
     if child.teardown_fn:
         try:
-          res = child.teardown_fn(child, child.context_after_setup)
+            res = child.teardown_fn(child, child.context_after_setup)
         except Exception as e:
-          pass
+            pass
 
     if child.cov:  # pragma: no cover
         child.cov.stop()
@@ -799,8 +800,8 @@ def _run_one_test(child, test_input):
     if len(tests) != 1:
         err = 'Failed to load %s'
         if tb_str:  # pragma: untested
-            err += ' (traceback follows):\n  %s' % (
-                    '  \n'.join(tb.splitlines()))
+            err += (' (traceback follows):\n  %s' %
+                    '  \n'.join(tb_str.splitlines()))
 
         h.restore_output()
         return Result(test_name, ResultType.Failure, start, 0,
