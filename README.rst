@@ -1,6 +1,8 @@
-typ (Test Your Program)
-=======================
-typ is a simple program for testing command line executables and Python code.
+TYP: Test Your (Python) Program
+===============================
+
+``typ`` is a simple framework for testing command line executables and Python
+code.
 
 When testing Python code, it is basically a wrapper around the standard
 unittest module, but it provides the following bits of additional
@@ -33,6 +35,10 @@ functionality:
 
 (These last two bullet points allow one to write tests that do not require
 Python globals).
+
+For more information, see `the docs`_.
+
+.. _the docs: https://github.com/dpranke/typ/docs/index.rst.
 
 History
 -------

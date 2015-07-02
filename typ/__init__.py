@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Test Your Project
+"""Test Your (Python) Project.
 
 typ is a simple program for testing command line executables and Python code.
 
@@ -46,7 +46,7 @@ functionality:
       os, subprocess, and time modules.
 
     * Simple libraries for integrating Ninja-style statistics and line
-      printing into your own code (the Stats and Printer classes).
+      srinting into your own code (the Stats and Printer classes).
 
     * Support for processing arbitrary arguments from calling code to
       test cases.
@@ -54,6 +54,13 @@ functionality:
     * Support for once-per-process setup and teardown hooks.
       (These last two bullet points allow one to write tests that do not
        require Python globals).
+
+
+For more information, see the docs_.
+
+.. docs: https://www.github.com/dpranke/typ/docs/index.rst.
+
+
 """
 
 from typ.arg_parser import ArgumentParser
@@ -68,26 +75,3 @@ from typ.printer import Printer
 from typ.test_case import convert_newlines, TestCase, MainTestCase
 from typ.version import VERSION
 
-
-__all__ = [
-    'ArgumentParser',
-    'FakeHost',
-    'Host',
-    'MainTestCase',
-    'Printer',
-    'Result',
-    'ResultSet',
-    'ResultType',
-    'Runner',
-    'Stats',
-    'TestCase',
-    'TestInput',
-    'TestSet',
-    'VERSION',
-    'WinMultiprocessing',
-    'convert_newlines',
-    'exit_code_from_full_results',
-    'main',
-    'make_full_results',
-    'make_upload_request',
-]

@@ -648,33 +648,11 @@ class TestCli(test_case.MainTestCase):
 
 
 class TestMain(TestCli):
-    prog = []
+    prog = None
+    func = lambda self, host, argv: main(argv + ['-j', '1'], host)
 
     def make_host(self):
         return Host()
-
-    def call(self, host, argv, stdin, env):
-        stdin = unicode(stdin)
-        host.stdin = io.StringIO(stdin)
-        if env:
-            host.getenv = env.get
-        host.capture_output()
-        orig_sys_path = sys.path[:]
-        orig_sys_modules = list(sys.modules.keys())
-
-        try:
-            ret = main(argv + ['-j', '1'], host)
-        finally:
-            out, err = host.restore_output()
-            modules_to_unload = []
-            for k in sys.modules:
-                if k not in orig_sys_modules:
-                    modules_to_unload.append(k)
-            for k in modules_to_unload:
-                del sys.modules[k]
-            sys.path = orig_sys_path
-
-        return ret, out, err
 
     def test_debugger(self):
         # TODO: this test seems to hang under coverage.

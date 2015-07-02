@@ -27,6 +27,7 @@ class TestFuncs(test_case.MainTestCase):
 
 
 class TestMainTestCase(test_case.MainTestCase):
+    prog = ['<python>', '../test.py']
 
     def test_basic(self):
         h = self.make_host()

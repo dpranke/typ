@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import fnmatch
+import io
 import shlex
+import sys
 import unittest
 
 
@@ -30,6 +32,8 @@ class TestCase(unittest.TestCase):
 
 class MainTestCase(TestCase):
     prog = None
+    func = None
+    in_place = False
     files_to_ignore = []
 
     def _write_files(self, host, files):
@@ -62,28 +66,65 @@ class MainTestCase(TestCase):
         assert self.child
         return self.child.host
 
-    def call(self, host, argv, stdin, env):
-        return host.call(argv, stdin=stdin, env=env)
+    def call(self, host, argv, prog, func, stdin, env):
+        assert prog or func
+
+        if prog and prog[0] == '<python>':
+            cmd = [host.python_interpreter] + prog[1:] + argv
+        else:
+            cmd = prog + argv
+
+        if func:
+            return self._call_func(host, func, argv, stdin, env)
+        return host.call(cmd, stdin=stdin, env=env)
+
+    def _call_func(self, host, func, argv, stdin, env):
+        stdin = unicode(stdin)
+        host.stdin = io.StringIO(stdin)
+        if env:
+            host.getenv = env.get
+        host.capture_output()
+        orig_sys_path = sys.path[:]
+        orig_sys_modules = list(sys.modules.keys())
+
+        try:
+            ret = func(host, argv)
+        finally:
+            out, err = host.restore_output()
+            modules_to_unload = []
+            for k in sys.modules:
+                if k not in orig_sys_modules:
+                    modules_to_unload.append(k)
+            for k in modules_to_unload:
+                del sys.modules[k]
+            sys.path = orig_sys_path
+
+        return ret, out, err
+
 
     def check(self, cmd=None, stdin=None, env=None, aenv=None, files=None,
-              prog=None, cwd=None, host=None,
+              prog=None, func=None, cwd=None, host=None,
               ret=None, out=None, rout=None, err=None, rerr=None,
               exp_files=None,
               files_to_ignore=None, universal_newlines=True):
         # Too many arguments pylint: disable=R0913
         prog = prog or self.prog or []
+        func = func or self.func
         host = host or self.make_host()
         argv = shlex.split(cmd) if isinstance(cmd, str) else cmd or []
 
         tmpdir = None
         orig_wd = host.getcwd()
         try:
-            tmpdir = host.mkdtemp()
-            host.chdir(tmpdir)
-            if files:
-                self._write_files(host, files)
-            if cwd:
-                host.chdir(cwd)
+            if self.in_place:
+                assert exp_files is None
+            else:
+                tmpdir = host.mkdtemp()
+                host.chdir(tmpdir)
+                if files:
+                    self._write_files(host, files)
+                if cwd:
+                    host.chdir(cwd)
             if aenv:
                 env = host.env.copy()
                 env.update(aenv)
@@ -97,10 +138,13 @@ class MainTestCase(TestCase):
                 dbg = pdb.Pdb(stdout=host.stdout.stream)
                 dbg.set_trace()
 
-            result = self.call(host, prog + argv, stdin=stdin, env=env)
+            result = self.call(host, argv, prog, func, stdin, env)
 
             actual_ret, actual_out, actual_err = result
-            actual_files = self._read_files(host, tmpdir)
+            if self.in_place:
+                actual_files = None
+            else:
+                actual_files = self._read_files(host, tmpdir)
         finally:
             host.chdir(orig_wd)
             if tmpdir:

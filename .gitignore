@@ -1,5 +1,7 @@
 build
+dist
+typ.egg-info
+.coverage
 *.pyc
 *.pyc.d
 *.py,cover
-typ.egg-info
