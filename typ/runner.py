@@ -724,6 +724,7 @@ class _Child(object):
         self.top_level_dir = parent.top_level_dir
         self.loaded_suites = {}
         self.cov = None
+        self.prog = parent.args.prog
 
 
 def _setup_process(host, worker_num, child):
@@ -813,6 +814,8 @@ def _run_one_test(child, test_input):
     if isinstance(test_case, TypTestCase):
         test_case.child = child
         test_case.context = child.context_after_setup
+        if child.prog:
+            test_case.prog = child.prog
 
     test_result = unittest.TestResult()
     out = ''

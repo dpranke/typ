@@ -158,6 +158,8 @@ class ArgumentParser(argparse.ArgumentParser):
             self.add_argument('--no-overwrite', action='store_false',
                               dest='overwrite', default=None,
                               help=argparse.SUPPRESS)
+            self.add_argument('--prog', action='append',
+                              help='program args to override in test case')
 
         if discovery or running:
             self.add_argument('-P', '--path', action='append', default=[],
