@@ -601,12 +601,25 @@ class TestCli(test_case.MainTestCase):
                          '1 test run, 0 failures.\n'
                          'Uploading the JSON results raised .*\n'))
 
-    def test_verbose(self):
+    def test_verbose_2(self):
         self.check(['-vv', '-j', '1', 'output_test.PassTest'],
                    files=OUTPUT_TEST_FILES, ret=0,
                    out=d("""\
                          [1/2] output_test.PassTest.test_err passed:
                            hello on stderr
+                         [2/2] output_test.PassTest.test_out passed:
+                           hello on stdout
+                         2 tests run, 0 failures.
+                         """), err='')
+
+    def test_verbose_3(self):
+        self.check(['-vvv', '-j', '1', 'output_test.PassTest'],
+                   files=OUTPUT_TEST_FILES, ret=0,
+                   out=d("""\
+                         [0/2] output_test.PassTest.test_err queued
+                         [1/2] output_test.PassTest.test_err passed:
+                           hello on stderr
+                         [1/2] output_test.PassTest.test_out queued
                          [2/2] output_test.PassTest.test_out passed:
                            hello on stdout
                          2 tests run, 0 failures.

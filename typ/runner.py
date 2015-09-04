@@ -505,9 +505,22 @@ class Runner(object):
             self.final_responses.extend(pool.join())
 
     def _print_test_started(self, stats, test_input):
-        if not self.args.quiet and self.args.overwrite:
-            self.update(stats.format() + test_input.name,
-                        elide=(not self.args.verbose))
+        if self.args.quiet:
+            # Print nothing when --quiet was passed.
+            return
+
+        # If -vvv was passed, print when the test is queued to be run.
+        # We don't actually know when the test picked up to run, because
+        # that is handled by the child process (where we can't easily
+        # print things). Otherwise, only print when the test is started
+        # if we know we can overwrite the line, so that we do not
+        # get multiple lines of output as noise (in -vvv, we actually want
+        # the noise).
+        test_start_msg = stats.format() + test_input.name
+        if self.args.verbose > 2:
+            self.update(test_start_msg + ' queued', elide=False)
+        if self.args.overwrite:
+            self.update(test_start_msg, elide=(not self.args.verbose))
 
     def _print_test_finished(self, stats, result):
         stats.add_time()
