@@ -295,8 +295,9 @@ class Runner(object):
                 # TODO: figure out what to do if multiple files are
                 # specified and they don't all have the same correct
                 # top level dir.
-                if h.exists(h.dirname(args.tests[0]), '__init__.py'):
-                    top_dir = h.dirname(args.tests[0])
+                d = h.realpath(h.dirname(args.tests[0]))
+                if h.exists(d, '__init__.py'):
+                    top_dir = d
                 else:
                     top_dir = args.tests[0]
             else:
