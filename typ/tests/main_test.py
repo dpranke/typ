@@ -141,16 +141,17 @@ SF_TEST_FILES = {'sf_test.py': SF_TEST_PY}
 
 LOAD_TEST_PY = """
 import unittest
+
+class BaseTest(unittest.TestCase):
+    pass
+
+def method_fail(self):
+    self.fail()
+
+def method_pass(self):
+    pass
+
 def load_tests(_, _2, _3):
-    class BaseTest(unittest.TestCase):
-        pass
-
-    def method_fail(self):
-        self.fail()
-
-    def method_pass(self):
-        pass
-
     setattr(BaseTest, "test_fail", method_fail)
     setattr(BaseTest, "test_pass", method_pass)
     suite = unittest.TestSuite()
@@ -341,8 +342,7 @@ class TestCli(test_case.MainTestCase):
                                     pass
                              """)}
         self.check(['-l', 'foo.py'], files=files, ret=1, err='',
-                   rout=('Failed to load "foo.py": No module named '
-                         '\'?package_that_does_not_exist\'?\n'))
+                   rout=('Failed to load "foo.py":'))
 
     def test_import_failure_no_tests(self):
         files = {'foo.py': 'import unittest'}
@@ -359,9 +359,7 @@ class TestCli(test_case.MainTestCase):
                              """)}
         _, out, _, _ = self.check([], files=files, ret=1, err='')
         self.assertIn('Failed to import test module: syn_test', out)
-        self.assertIn(('    syntax error\n'
-                       '               ^\n'
-                       'SyntaxError: invalid syntax\n'), out)
+        self.assertIn('SyntaxError: invalid syntax', out)
 
     def test_interrupt(self):
         files = {'interrupt_test.py': d("""\
@@ -385,8 +383,8 @@ class TestCli(test_case.MainTestCase):
                                   def load_tests(_, _2, _3):
                                       raise ValueError('this should fail')
                                   """)}
-        self.check([], files=files, ret=1, err='',
-                   out=('foo_test.load_tests() failed: this should fail\n'))
+        _, out, _, _ = self.check([], files=files, ret=1, err='')
+        self.assertIn('this should fail', out)
 
     def test_load_tests_single_worker(self):
         files = LOAD_TEST_FILES

@@ -87,15 +87,15 @@ def run_lint(args):
 
 def run_tests(args):
     python = sys.executable
-    print('Testing running the typ module directly if it is in sys.path.')
+    # Test running the typ module directly if it is in sys.path.
     call([python, '-m', 'typ', 'typ.tests.main_test.TestMain.test_basic'])
 
-    print('Testing running the runner directly if nothing is in sys.path.')
+    # Testing running the runner directly if nothing is in sys.path.'
     home_dir = os.environ['HOME']
     call([python, path_to_runner, 'typ.tests.main_test.TestMain.test_basic'],
          cwd=home_dir)
 
-    print('Running the unit tests.')
+    # Run the remaining tests.
     call([python, path_to_runner])
 
 
