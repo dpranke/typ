@@ -271,6 +271,32 @@ class TestCli(test_case.MainTestCase):
                 'fail_then_pass_test']['FPTest']['test_count']['actual'],
             'FAIL PASS')
 
+    def test_fail_then_skip(self):
+        files = {'fail_then_skip_test.py': d("""\
+            import unittest
+            count = 0
+            class FPTest(unittest.TestCase):
+                def test_count(self):
+                    global count
+                    count += 1
+                    if count == 1:
+                        self.fail()
+                    elif count == 2:
+                        self.skipTest('')
+            """)}
+        _, out, _, files = self.check(['--retry-limit', '3',
+                                       '--write-full-results-to',
+                                       'full_results.json'],
+                                      files=files, ret=0, err='')
+        self.assertIn('Retrying failed tests (attempt #1 of 3)', out)
+        self.assertNotIn('Retrying failed tests (attempt #2 of 3)', out)
+        self.assertIn('1 test run, 0 failures.\n', out)
+        results = json.loads(files['full_results.json'])
+        self.assertEqual(
+            results['tests'][
+                'fail_then_skip_test']['FPTest']['test_count']['actual'],
+            'FAIL SKIP')
+
     def test_failures_are_not_elided(self):
         _, out, _, _ = self.check(['--terminal-width=20'],
                                   files=FAIL_TEST_FILES, ret=1, err='')
@@ -605,7 +631,7 @@ class TestCli(test_case.MainTestCase):
 
         self.assertEqual(len(posts), 1)
         payload = posts[0][2].decode('utf8')
-        self.assertIn('"test_pass": {"expected": "PASS", "actual": "PASS"}',
+        self.assertIn('"test_pass": {"actual": "PASS", "expected": "PASS"}',
                       payload)
         self.assertTrue(payload.endswith('--\r\n'))
         self.assertNotEqual(server.log.getvalue(), '')
