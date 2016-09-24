@@ -18,7 +18,6 @@ import os
 import sys
 import textwrap
 
-
 from typ import main
 from typ import test_case
 from typ import Host
@@ -142,14 +141,18 @@ SF_TEST_FILES = {'sf_test.py': SF_TEST_PY}
 LOAD_TEST_PY = """
 import unittest
 
+
 class BaseTest(unittest.TestCase):
     pass
+
 
 def method_fail(self):
     self.fail()
 
+
 def method_pass(self):
     pass
+
 
 def load_tests(_, _2, _3):
     setattr(BaseTest, "test_fail", method_fail)

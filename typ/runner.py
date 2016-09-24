@@ -357,8 +357,8 @@ class Runner(object):
             total_shards = args.total_shards
             assert total_shards >= 1
             assert shard_index >= 0 and shard_index < total_shards, (
-              'shard_index (%d) must be >= 0 and < total_shards (%d)' %
-              (shard_index, total_shards))
+                'shard_index (%d) must be >= 0 and < total_shards (%d)' %
+                (shard_index, total_shards))
             test_set.parallel_tests = _sort_inputs(
                 test_set.parallel_tests)[shard_index::total_shards]
             test_set.isolated_tests = _sort_inputs(
@@ -407,6 +407,8 @@ class Runner(object):
                     add_tests(suite)
             else:
                 add_tests(loader.loadTestsFromName(name))
+
+        # pylint: disable=no-member
         if hasattr(loader, 'errors') and loader.errors:
             # In Python3's version of unittest, loader failures get converted
             # into failed test cases, rather than raising exceptions. However,
