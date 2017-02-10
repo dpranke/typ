@@ -20,13 +20,12 @@ from typ import Host
 
 class TestResultServerFakeTest(unittest.TestCase):
     def test_basic_upload(self):
-        return
         host = Host()
         server = None
         posts = []
         try:
             server = test_result_server_fake.start()
-            url = 'https://%s:%d/testfile/upload' % server.server_address
+            url = 'http://%s:%d/testfile/upload' % server.server_address
             if server:
                 resp = host.fetch(url, 'foo=bar')
         finally:

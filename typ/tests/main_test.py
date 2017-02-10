@@ -617,13 +617,12 @@ class TestCli(test_case.MainTestCase):
                          r'1 test run in \d+.\d+s, 0 failures.'))
 
     def test_test_results_server(self):
-        return
         server = test_result_server_fake.start()
         self.assertNotEqual(server, None, 'could not start fake server')
 
         try:
             self.check(['--test-results-server',
-                        '%s:%d' % server.server_address,
+                        'http://%s:%d' % server.server_address,
                         '--master-name', 'fake_master',
                         '--builder-name', 'fake_builder',
                         '--test-type', 'typ_tests',
@@ -637,19 +636,18 @@ class TestCli(test_case.MainTestCase):
 
         self.assertEqual(len(posts), 1)
         payload = posts[0][2].decode('utf8')
-        self.assertIn('"test_pass": {"actual": "PASS", "expected": "PASS"}',
+        self.assertIn('"test_pass": {"actual": "PASS"',
                       payload)
         self.assertTrue(payload.endswith('--\r\n'))
         self.assertNotEqual(server.log.getvalue(), '')
 
     def test_test_results_server_error(self):
-        return
         server = test_result_server_fake.start(code=500)
         self.assertNotEqual(server, None, 'could not start fake server')
 
         try:
             self.check(['--test-results-server',
-                        '%s:%d' % server.server_address,
+                        'http://%s:%d' % server.server_address,
                         '--master-name', 'fake_master',
                         '--builder-name', 'fake_builder',
                         '--test-type', 'typ_tests',
@@ -664,8 +662,7 @@ class TestCli(test_case.MainTestCase):
             _ = server.stop()
 
     def test_test_results_server_not_running(self):
-        return
-        self.check(['--test-results-server', 'localhost:99999',
+        self.check(['--test-results-server', 'http://localhost:99999',
                     '--master-name', 'fake_master',
                     '--builder-name', 'fake_builder',
                     '--test-type', 'typ_tests',
