@@ -706,6 +706,14 @@ class TestCli(test_case.MainTestCase):
         results = json.loads(files['results.json'])
         self.assertEqual(results['interrupted'], False)
         self.assertEqual(results['path_delimiter'], '.')
+
+        # The time it takes to run the test varies, so we test that
+        # we got a single entry greater than zero, but then delete it from
+        # the result so we can do an exact match on the rest of the trie.
+        result = results['tests']['pass_test']['PassingTest']['test_pass']
+        self.assertEqual(len(result['times']), 1)
+        self.assertGreater(result['times'][0], 0)
+        result.pop('times')
         self.assertEqual(results['tests'],
                          {u'pass_test': {
                              u'PassingTest': {

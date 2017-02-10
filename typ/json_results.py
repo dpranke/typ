@@ -90,8 +90,7 @@ def make_full_results(metadata, seconds_since_epoch, all_test_names, results):
     full_results['tests'] = OrderedDict()
 
     for test_name in all_test_names:
-        value = OrderedDict()
-        value['actual'] = _actual_results_for_test(test_name, results)
+        value = _results_for_test(test_name, results)
         if test_name in skipped_tests:
             value['expected'] = 'SKIP'
         else:
@@ -141,8 +140,10 @@ def _passing_test_names(results):
     return set(r.name for r in results.results if r.actual == ResultType.Pass)
 
 
-def _actual_results_for_test(test_name, results):
+def _results_for_test(test_name, results):
+    value = OrderedDict()
     actuals = []
+    times = []
     for r in results.results:
         if r.name == test_name:
             if r.actual == ResultType.Failure:
@@ -151,10 +152,18 @@ def _actual_results_for_test(test_name, results):
                 actuals.append('PASS')
             elif r.actual == ResultType.Skip:
                 actuals.append('SKIP')
+
+            # The time a test takes is a floating point number of seconds;
+            # if we were to encode this unmodified, then when we converted it
+            # to JSON it might make the file significantly larger. Instead
+            # we truncate the file to ten-thousandths of a second, which is
+            # probably more than good enough for most tests.
+            times.append(round(r.took, 4))
     if not actuals:  # pragma: untested
         actuals.append('SKIP')
-    return ' '.join(actuals)
-
+    value['actual'] = ' '.join(actuals)
+    value['times'] = times
+    return value
 
 def _add_path_to_trie(trie, path, value):
     if TEST_SEPARATOR not in path:
