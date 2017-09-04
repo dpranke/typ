@@ -414,7 +414,7 @@ class TestCli(test_case.MainTestCase):
     def test_import_failure_missing_file(self):
         _, out, _, _ = self.check(['-l', 'foo'], ret=1, err='')
         self.assertIn('Failed to load "foo" in find_tests', out)
-        self.assertIn('No module named foo', out)
+        self.assertIn('No module named', out)
 
     def test_import_failure_missing_package(self):
         files = {'foo.py': d("""\
@@ -427,7 +427,7 @@ class TestCli(test_case.MainTestCase):
                              """)}
         _, out, _, _ = self.check(['-l', 'foo.py'], files=files, ret=1, err='')
         self.assertIn('Failed to load "foo.py" in find_tests', out)
-        self.assertIn('No module named package_that_does_not_exist', out)
+        self.assertIn('No module named', out)
 
     def test_import_failure_no_tests(self):
         files = {'foo.py': 'import unittest'}
