@@ -110,6 +110,7 @@ class Runner(object):
         self.setup_fn = None
         self.stats = None
         self.teardown_fn = None
+        self.cleanup_fn = None
         self.top_level_dir = None
         self.top_level_dirs = []
         self.win_multiprocessing = WinMultiprocessing.spawn
@@ -533,7 +534,7 @@ class Runner(object):
 
         child = _Child(self)
         pool = make_pool(h, jobs, _run_one_test, child,
-                         _setup_process, _teardown_process)
+                         _setup_process, _teardown_process, self.cleanup_fn)
         try:
             while test_inputs or running_jobs:
                 while test_inputs and (len(running_jobs) < self.args.jobs):
