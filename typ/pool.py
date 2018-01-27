@@ -20,12 +20,14 @@ import traceback
 from typ.host import Host
 
 
-def make_pool(host, jobs, callback, context, pre_fn, post_fn):
+def make_pool(host, jobs, callback, context, pre_fn, post_fn, cleanup_fn):
     _validate_args(context, pre_fn, post_fn)
     if jobs > 1:
-        return _ProcessPool(host, jobs, callback, context, pre_fn, post_fn)
+        return _ProcessPool(host, jobs, callback, context, pre_fn, post_fn,
+                            cleanup_fn)
     else:
-        return _AsyncPool(host, jobs, callback, context, pre_fn, post_fn)
+        return _AsyncPool(host, jobs, callback, context, pre_fn, post_fn,
+                          cleanup_fn)
 
 
 class _MessageType(object):
@@ -57,7 +59,8 @@ def _validate_args(context, pre_fn, post_fn):
 
 class _ProcessPool(object):
 
-    def __init__(self, host, jobs, callback, context, pre_fn, post_fn):
+    def __init__(self, host, jobs, callback, context, pre_fn, post_fn,
+                 cleanup_fn):
         self.host = host
         self.jobs = jobs
         self.requests = multiprocessing.Queue()
@@ -74,6 +77,7 @@ class _ProcessPool(object):
                                               pre_fn, post_fn))
             w.start()
             self.workers.append(w)
+        self.cleanup_fn = cleanup_fn
 
     def send(self, msg):
         self.requests.put((_MessageType.Request, msg))
@@ -137,10 +141,14 @@ class _ProcessPool(object):
         # why this is commented out.
         # self.responses.close()
 
+        if self.cleanup_fn:
+            self.cleanup_fn()
+
         if error:
             self._handle_error(error)
         if interrupted:
             raise KeyboardInterrupt
+
         return final_responses
 
     def _handle_error(self, msg):
@@ -177,7 +185,8 @@ def _loop(requests, responses, host, worker_num,
 
 class _AsyncPool(object):
 
-    def __init__(self, host, jobs, callback, context, pre_fn, post_fn):
+    def __init__(self, host, jobs, callback, context, pre_fn, post_fn,
+                 cleanup_fn):
         self.host = host or Host()
         self.jobs = jobs
         self.callback = callback
@@ -185,6 +194,7 @@ class _AsyncPool(object):
         self.msgs = []
         self.closed = False
         self.post_fn = post_fn
+        self.cleanup_fn = cleanup_fn
         self.context_after_pre = pre_fn(self.host, 1, self.context)
         self.final_context = None
 
@@ -192,7 +202,11 @@ class _AsyncPool(object):
         self.msgs.append(msg)
 
     def get(self):
-        return self.callback(self.context_after_pre, self.msgs.pop(0))
+        try:
+            return self.callback(self.context_after_pre, self.msgs.pop(0))
+        finally:
+            if self.cleanup_fn:
+                self.cleanup_fn()
 
     def close(self):
         self.closed = True
