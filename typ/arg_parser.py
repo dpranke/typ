@@ -166,6 +166,9 @@ class ArgumentParser(argparse.ArgumentParser):
             self.add_argument('--no-overwrite', action='store_false',
                               dest='overwrite', default=None,
                               help=argparse.SUPPRESS)
+            self.add_argument('--broken-threshold', type=int, default=20,
+                              help=('Maximum number of failed tests that '
+                                    'will be restarted.'))
 
         if discovery or running:
             self.add_argument('-P', '--path', action='append', default=[],

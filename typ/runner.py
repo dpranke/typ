@@ -467,6 +467,11 @@ class Runner(object):
         failed_tests = sorted(json_results.failed_test_names(result_set))
         retry_limit = self.args.retry_limit
 
+        if retry_limit and len(failed_tests) > self.args.broken_threshold:
+            self.print_('Too many failed tests %d, skipping retries.' %
+                        len(failed_tests))
+            retry_limit = 0
+
         while retry_limit and failed_tests:
             if retry_limit == self.args.retry_limit:
                 self.flush()
