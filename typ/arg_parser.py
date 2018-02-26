@@ -166,6 +166,8 @@ class ArgumentParser(argparse.ArgumentParser):
             self.add_argument('--no-overwrite', action='store_false',
                               dest='overwrite', default=None,
                               help=argparse.SUPPRESS)
+            self.add_argument('--timeout', type=int, default=180,
+                              help='Timeout to wait for each test.')
 
         if discovery or running:
             self.add_argument('-P', '--path', action='append', default=[],

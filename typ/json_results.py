@@ -134,7 +134,7 @@ def num_skips(full_results):
 def failed_test_names(results):
     names = set()
     for r in results.results:
-        if r.actual == ResultType.Failure:
+        if r.actual == ResultType.Failure or r.actual == ResultType.Timeout:
             names.add(r.name)
         elif ((r.actual == ResultType.Pass or r.actual == ResultType.Skip)
               and r.name in names):

@@ -19,6 +19,7 @@ import json
 import os
 import pdb
 import sys
+import time
 import unittest
 import traceback
 
@@ -532,7 +533,8 @@ class Runner(object):
             return
 
         child = _Child(self)
-        pool = make_pool(h, jobs, _run_one_test, child,
+        pool = make_pool(h, jobs, _run_one_test,
+                         self.args.timeout, _result_for_timeout, child,
                          _setup_process, _teardown_process)
         try:
             while test_inputs or running_jobs:
@@ -574,11 +576,13 @@ class Runner(object):
         stats.add_time()
 
         assert result.actual in [ResultType.Failure, ResultType.Skip,
-                                 ResultType.Pass]
+                                 ResultType.Pass, ResultType.Timeout]
         if result.actual == ResultType.Failure:
             result_str = ' failed'
         elif result.actual == ResultType.Skip:
             result_str = ' was skipped'
+        elif result.actual == ResultType.Timeout:
+            result_str = ' was timed out'
         elif result.actual == ResultType.Pass:
             result_str = ' passed'
 
@@ -823,6 +827,14 @@ def _teardown_process(child):
         child.cov.save()
 
     return (child.worker_num, res, e)
+
+
+def _result_for_timeout(test_input, worker_id, pid, start_time, stack_trace):
+    test_name = test_input.name
+    took = time.time() - start_time
+    return Result(test_name, ResultType.Timeout, start_time, took,
+                  worker_id, unexpected=True, code=1, out=stack_trace,
+                  err='Test timed out', pid=pid)
 
 
 def _run_one_test(child, test_input):

@@ -18,10 +18,15 @@ import pickle
 import traceback
 
 from typ.host import Host
+from typ.timeout_pool import ProcessPoolWithTimeouts
 
 
-def make_pool(host, jobs, callback, context, pre_fn, post_fn):
+def make_pool(host, jobs, callback, timeout, timeout_fn,
+              context, pre_fn, post_fn):
     _validate_args(context, pre_fn, post_fn)
+    if timeout:
+        return ProcessPoolWithTimeouts(host, jobs, timeout, callback,
+                                       timeout_fn, context, pre_fn, post_fn)
     if jobs > 1:
         return _ProcessPool(host, jobs, callback, context, pre_fn, post_fn)
     else:
