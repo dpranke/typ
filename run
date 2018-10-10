@@ -79,6 +79,10 @@ class Runner(object):
         self.call('pylint --rcfile=pylintrc */*.py */*/*.py', shell=True)
 
     def run_tests(self, _args):
+        # Don't leak the environment's NINJA_STATUS leak into the tests, which
+        # depend on setting a custom NINJA_STATUS.
+        os.environ.pop('NINJA_STATUS', None)
+
         # Test running the typ module directly if it is in sys.path.
         self.call([
             self._python, '-m', 'typ',
